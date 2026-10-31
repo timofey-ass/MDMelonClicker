@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/logo.png" width="128" alt="exteraless">
+<img src="46823294048ce1a47439c138a4a1c65f.webp" width="128" alt="logotip4ik">
 
 # MDMelonClicker
 
