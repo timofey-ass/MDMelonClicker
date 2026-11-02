@@ -1,5 +1,6 @@
 # MDMelonClicker extension v1 (loaded from GitHub)
 _NEW = (
+    ("5.7.9", ("Новый экран загрузки с прыгающим арбузом", "Фразы питомца: переключатель «Только мои фразы»",)),
     ("5.7.8", ("Вход в игру только после проверки обновлений: показывается загрузка, без интернета игра не открывается",)),
     ("5.7.7", ("Автообновление: плагин сам скачивает новую версию с GitHub и перезапускается",)),
     ("5.7.6", ("Админка на час надёжнее: выдача доходит в фоне, даже если кликер закрыт; проверка ID при отправке",)),
@@ -802,7 +803,11 @@ class _Pet:
         if self.bub is None:
             return
         pool = PET_PH[cat]
-        if cat == "idle":
+        if self.h._flag("pet_own", False):
+            pool = _xph(self.h)
+            if not pool:
+                return
+        elif cat == "idle":
             pool = _xph(self.h) or pool
         self.show(random.choice(pool))
 
@@ -1410,7 +1415,21 @@ def _x_phrases(self):
     ov = self._mk_ov("Фразы питомца")
     col = self.lin(True)
     self.pad(col, 8, 0, 8, 0)
-    col.addView(self.tv("Питомец говорит их сам по себе. Пусто — стандартные фразы.", 12, ONV), self.lp(-1, -2, 4, 0, 4, 10))
+    col.addView(self.tv("Питомец говорит их сам по себе. С переключателем он говорит только твои фразы, а стандартные отключаются (без своих фраз он молчит).", 12, ONV), self.lp(-1, -2, 4, 0, 4, 10))
+    sr = self.lin(False, 16)
+    sr.addView(self.tv("Только мои фразы", 14, ON, True), self.lp(0, -2, 4, 4, 0, 4, 1))
+    sw = self._sw(self._flag("pet_own", False))
+
+    def tgo(v):
+        self.set_setting("pet_own", not self._flag("pet_own", False))
+        self.shell.removeView(ov)
+        self.ov = None
+        self.spinning = False
+        _x_phrases(self)
+
+    sw.setOnClickListener(self._k(Click(tgo)))
+    sr.addView(sw, self.lp(self.dp(52), self.dp(32), 0, 6, 0, 6))
+    col.addView(sr, self.lp(-1, -2, 0, 0, 0, 8))
     row = self.lin(False, 16)
     et = jclass("android.widget.EditText")(self.a)
     et.setSingleLine(True)
@@ -1606,24 +1625,55 @@ def _x_reopen_g(self, tab):
     return _O["_reopen_g"](self, tab)
 
 
+_LP = ("Будим арбузного кота…", "Считаем семечки…", "Полируем голо-карточки…", "Кормим питомца рыбками…", "Раскладываем монетки…", "Договариваемся с котами…", "Греем лихорадку…")
+
+
 def _x_gate_dlg(self, text):
     ctx = jclass("org.telegram.ui.LaunchActivity").instance
-    lay = jclass("android.widget.LinearLayout")(ctx)
-    lay.setOrientation(jint(1))
-    lay.setGravity(jint(17))
-    pad = int(self.dp(28))
-    lay.setPadding(jint(pad), jint(pad), jint(pad), jint(pad))
-    pb = jclass("android.widget.ProgressBar")(ctx)
-    lay.addView(pb)
-    t = jclass("android.widget.TextView")(ctx)
-    t.setText(text)
-    t.setTextSize(15.0)
-    t.setGravity(jint(17))
-    t.setPadding(jint(0), jint(int(self.dp(16))), jint(0), jint(0))
-    lay.addView(t)
-    d = jclass("android.app.AlertDialog$Builder")(ctx).setView(lay).setCancelable(False).create()
+    d = jclass("android.app.Dialog")(ctx, jint(16973832))
+    d.setCancelable(False)
+    fr = jclass("android.widget.FrameLayout")(ctx)
+    fr.setBackgroundColor(C(SURF))
+    col = self.lin(True)
+    col.setGravity(17)
+    mel = self.tv("\U0001F349", 72, ON, False, 17)
+    col.addView(mel, self.lp(-2, -2, 0, 0, 0, 10))
+    col.addView(self.tv("MDMelonClicker", 22, ONPRC, True, 17), self.lp(-2, -2, 0, 14, 0, 0))
+    st = self.tv(text, 14, ONV, False, 17)
+    col.addView(st, self.lp(-2, -2, 0, 6, 0, 0))
+    tw = int(self.dp(220))
+    sgw = int(self.dp(70))
+    track = jclass("android.widget.FrameLayout")(ctx)
+    track.setBackground(self.shape(SCH, self.dp(4)))
+    seg = jclass("android.view.View")(ctx)
+    seg.setBackground(self.shape(PRI, self.dp(4)))
+    track.addView(seg, jclass("android.widget.FrameLayout$LayoutParams")(jint(sgw), jint(-1)))
+    col.addView(track, self.lp(tw, int(self.dp(6)), 0, 22, 0, 0))
+    tip = self.tv(random.choice(_LP), 12, OUT, False, 17)
+    col.addView(tip, self.lp(-2, -2, 0, 16, 0, 0))
+    fr.addView(col, jclass("android.widget.FrameLayout$LayoutParams")(jint(-2), jint(-2), jint(17)))
+    d.setContentView(fr)
     d.show()
-    return d, t
+    n = [0]
+
+    def tick():
+        try:
+            if not d.isShowing():
+                return
+            n[0] += 1
+            t = n[0] * 0.14
+            mel.setTranslationY(float(-abs(math.sin(t)) * self.dp(34)))
+            mel.setRotation(float(14 * math.sin(t)))
+            q = abs((n[0] * 0.025) % 2 - 1)
+            seg.setTranslationX(float(q * (tw - sgw)))
+            if n[0] % 36 == 0:
+                tip.setText(random.choice(_LP))
+            run_on_ui_thread(tick, 33)
+        except Exception:
+            pass
+
+    run_on_ui_thread(tick, 33)
+    return d, st
 
 
 def _x_open_g(self):
@@ -1685,10 +1735,14 @@ def _x_open_g(self):
         except Exception as e:
             fail("Ошибка проверки: " + type(e).__name__)
             return
-        self._gate_t = time.time()
-        close()
-        _O["_open_g"](self)
+        def go():
+            self._gate_t = time.time()
+            close()
+            _O["_open_g"](self)
 
+        run_on_ui_thread(go, int(max(0.0, 1.3 - (time.time() - t0)) * 1000))
+
+    t0 = time.time()
     self._bg(job, done)
 
 
