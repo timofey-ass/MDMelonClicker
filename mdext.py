@@ -1,5 +1,6 @@
 # MDMelonClicker extension v1 (loaded from GitHub)
 _NEW = (
+    ("5.7.8", ("Вход в игру только после проверки обновлений: показывается загрузка, без интернета игра не открывается",)),
     ("5.7.7", ("Автообновление: плагин сам скачивает новую версию с GitHub и перезапускается",)),
     ("5.7.6", ("Админка на час надёжнее: выдача доходит в фоне, даже если кликер закрыт; проверка ID при отправке",)),
     ("5.7.5", ("Нормальное окно для фраз питомца: добавление и удаление по одной",)),
@@ -1593,3 +1594,103 @@ def _x_selfupd(self, nv, u):
 
 
 MDClickerPlugin._self_update = _x_selfupd
+
+# ============== ВХОД ТОЛЬКО ПОСЛЕ ПРОВЕРКИ ОБНОВЛЕНИЙ ==============
+for _k in ("_open", "_reopen"):
+    if _k + "_g" not in _O:
+        _O[_k + "_g"] = getattr(MDClickerPlugin, _k)
+
+
+def _x_reopen_g(self, tab):
+    self._ng = True
+    return _O["_reopen_g"](self, tab)
+
+
+def _x_gate_dlg(self, text):
+    ctx = jclass("org.telegram.ui.LaunchActivity").instance
+    lay = jclass("android.widget.LinearLayout")(ctx)
+    lay.setOrientation(jint(1))
+    lay.setGravity(jint(17))
+    pad = int(self.dp(28))
+    lay.setPadding(jint(pad), jint(pad), jint(pad), jint(pad))
+    pb = jclass("android.widget.ProgressBar")(ctx)
+    lay.addView(pb)
+    t = jclass("android.widget.TextView")(ctx)
+    t.setText(text)
+    t.setTextSize(15.0)
+    t.setGravity(jint(17))
+    t.setPadding(jint(0), jint(int(self.dp(16))), jint(0), jint(0))
+    lay.addView(t)
+    d = jclass("android.app.AlertDialog$Builder")(ctx).setView(lay).setCancelable(False).create()
+    d.show()
+    return d, t
+
+
+def _x_open_g(self):
+    if self._game is not None:
+        return
+    if getattr(self, "_ng", False):
+        self._ng = False
+        return _O["_open_g"](self)
+    if time.time() - float(getattr(self, "_gate_t", 0)) < 90:
+        return _O["_open_g"](self)
+    if getattr(self, "_gate_b", False):
+        return
+    self._gate_b = True
+    try:
+        self.a = self._activity()
+        self.den = float(self.a.getResources().getDisplayMetrics().density)
+        dlg, tv = _x_gate_dlg(self, "Проверяю обновления…")
+    except Exception:
+        self._gate_b = False
+        return _O["_open_g"](self)
+
+    def close():
+        self._gate_b = False
+        try:
+            dlg.dismiss()
+        except Exception:
+            pass
+
+    def fail(m):
+        close()
+        toast(m)
+
+    def job():
+        r = self._http("GET", UPD_URL + "?t=" + str(int(time.time())))[1]
+        x = str(r.get("x", ""))
+        if x and (x != str(self.get_setting("xv", "")) or not os.path.isfile(_ext_path())):
+            b = urllib.request.urlopen(urllib.request.Request(EXT_URL + "?t=" + str(int(time.time())), headers={"User-Agent": "Mozilla/5.0"}), timeout=30).read()
+            compile(b, "mdext", "exec")
+            open(_ext_path(), "wb").write(b)
+            r["nx"] = x
+        return r
+
+    def done(res, err):
+        if err is not None:
+            fail("Нужен интернет, чтобы открыть игру")
+            return
+        try:
+            if res.get("nx"):
+                self.set_setting("xv", res["nx"])
+                _ext_run()
+            nv = str(res.get("v", ""))
+            key = lambda z: tuple(int(q) for q in z.split("."))
+            if key(nv) > key(__version__):
+                tv.setText("Скачиваю версию %s и перезапускаю плагин…" % nv)
+                globals()["_UPD_DONE"] = None
+                _x_selfupd(self, nv, "")
+                run_on_ui_thread(close, 9000)
+                return
+        except Exception as e:
+            fail("Ошибка проверки: " + type(e).__name__)
+            return
+        self._gate_t = time.time()
+        close()
+        _O["_open_g"](self)
+
+    self._bg(job, done)
+
+
+MDClickerPlugin._reopen = _x_reopen_g
+MDClickerPlugin._open = _x_open_g
