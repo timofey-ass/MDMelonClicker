@@ -1,5 +1,6 @@
 # MDMelonClicker extension v1 (loaded from GitHub)
 _NEW = (
+    ("5.7.6", ("Админка на час надёжнее: выдача доходит в фоне, даже если кликер закрыт; проверка ID при отправке",)),
     ("5.7.5", ("Нормальное окно для фраз питомца: добавление и удаление по одной",)),
     ("5.7.4", ("Админ может выдать любому игроку админку на час (кнопка в админ-панели)",)),
     ("5.7.3", ("Свои фразы питомца: кнопка в «Наградах»",)),
@@ -996,10 +997,17 @@ def _x_chk(self, quiet=False):
         _pet_boot(self)
     except Exception:
         pass
+    try:
+        if globals().get("_GLI") is not self:
+            _x_gloop(self)
+    except Exception:
+        pass
     return r
 
 
 def _x_unload(self):
+    globals()["_GLT"] = globals().get("_GLT", 0) + 1
+    globals()["_GLI"] = None
     try:
         globals()["_PET"].stop()
     except Exception:
@@ -1299,8 +1307,7 @@ def _x_admcard(self, col):
                 if not t or t == self._uid():
                     toast("Впиши ID другого игрока")
                     return
-                self._give(t, "adm", m, 1)
-                toast("Админка уйдёт игроку, когда у него откроется кликер")
+                _x_sendadm(self, t, m)
             return f
 
         card.addView(self.tv("Временная админка", 13, ONPRC, True), self.lp(-1, -2, 0, 12, 0, 0))
@@ -1315,6 +1322,61 @@ def _x_admcard(self, col):
     except Exception:
         pass
 
+
+def _x_sendadm(self, t, m):
+    url = self.API + "/" + self.BOARD
+    gid = "%d%03d" % (int(time.time() * 1000), random.randint(0, 999))
+
+    def job():
+        d = self._http("GET", url)[1]
+        if t not in ((d.get("p") or {}) if isinstance(d, dict) else {}):
+            return 0
+        self._http("PATCH", url, {"g": {t: {gid: ["adm", m, 1]}}})
+        return 1
+
+    def done(r, e):
+        if e is not None:
+            toast("Ошибка: " + type(e).__name__)
+        elif not r:
+            toast("Игрока с ID " + t + " нет в таблице. Пусть откроет вкладку Топ и проверит ID")
+        else:
+            toast("Отправлено. Дойдёт за ~20 сек")
+
+    toast("Отправляю…")
+    self._bg(job, done)
+
+
+def _x_gloop(self):
+    g = globals()
+    g["_GLT"] = g.get("_GLT", 0) + 1
+    g["_GLI"] = self
+    tok = g["_GLT"]
+    url = self.API + "/" + self.BOARD
+
+    def cb(d):
+        try:
+            self._grants(d)
+        except Exception:
+            pass
+
+    def run():
+        time.sleep(4)
+        while g.get("_GLT") == tok:
+            try:
+                d = self._http("GET", url)[1]
+                run_on_ui_thread(lambda d=d: cb(d))
+            except Exception:
+                pass
+            for _ in range(20):
+                if g.get("_GLT") != tok:
+                    return
+                time.sleep(1)
+
+    threading.Thread(target=run, daemon=True).start()
+
+
+globals()["_GLT"] = globals().get("_GLT", 0) + 1
+globals()["_GLI"] = None
 
 MDClickerPlugin._is_admin = _x_isadm
 MDClickerPlugin._apply = _x_apply
