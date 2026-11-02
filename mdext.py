@@ -1,5 +1,6 @@
 # MDMelonClicker extension v1 (loaded from GitHub)
 _NEW = (
+    ("5.7.7", ("Автообновление: плагин сам скачивает новую версию с GitHub и перезапускается",)),
     ("5.7.6", ("Админка на час надёжнее: выдача доходит в фоне, даже если кликер закрыт; проверка ID при отправке",)),
     ("5.7.5", ("Нормальное окно для фраз питомца: добавление и удаление по одной",)),
     ("5.7.4", ("Админ может выдать любому игроку админку на час (кнопка в админ-панели)",)),
@@ -1493,3 +1494,102 @@ def _x_phrases(self):
 
     b2.setOnClickListener(self._k(Click(close)))
     b1.setOnClickListener(self._k(Click(clear)))
+
+# ============== АВТО-ПЕРЕЗАПУСК ПОСЛЕ ОБНОВЛЕНИЯ ==============
+def _x_reload(self):
+    p = globals().get("__file__")
+    cn = "com.exteragram.messenger.plugins.PluginsController"
+
+    def ui(fn):
+        r, ev = [False], threading.Event()
+
+        def w():
+            try:
+                r[0] = fn()
+            except Exception:
+                pass
+            ev.set()
+
+        run_on_ui_thread(w)
+        ev.wait(6)
+        return r[0]
+
+    def run():
+        try:
+            inst = jclass(cn).getInstance()
+            cls = jclass("java.lang.Class").forName(cn)
+        except Exception:
+            run_on_ui_thread(lambda: toast("Обновлено. Перезапусти приложение"))
+            return
+
+        def call(name, sv, flag):
+            def f():
+                for m in cls.getDeclaredMethods():
+                    if str(m.getName()) != name:
+                        continue
+                    args, first = [], True
+                    for t in m.getParameterTypes():
+                        tn = str(t.getName())
+                        if tn == "java.lang.String":
+                            args.append(sv if first else None)
+                            first = False
+                        elif tn == "boolean":
+                            args.append(flag)
+                        else:
+                            args.append(None)
+                    try:
+                        m.setAccessible(True)
+                        m.invoke(inst, *args)
+                        return True
+                    except Exception:
+                        continue
+                return False
+            return ui(f)
+
+        if call("setPluginEnabled", "md_clicker", False):
+            time.sleep(2)
+            for _ in range(4):
+                if call("setPluginEnabled", "md_clicker", True):
+                    return
+                time.sleep(2)
+            run_on_ui_thread(lambda: toast("Включи плагин MDMelonClicker вручную"))
+            return
+        a = call("unloadPlugin", "md_clicker", False)
+        time.sleep(1.5)
+        b = call("loadPluginFromFile", p, False)
+        if not (a and b):
+            run_on_ui_thread(lambda: toast("Обновлено. Перезапусти приложение"))
+
+    threading.Thread(target=run, daemon=True).start()
+
+
+def _x_selfupd(self, nv, u):
+    g = globals()
+    if g.get("_UPD_DONE") == nv:
+        return
+    g["_UPD_DONE"] = nv
+
+    def job():
+        rq = urllib.request.Request(PLG_URL + "?t=" + str(int(time.time())), headers={"User-Agent": "Mozilla/5.0"})
+        b = urllib.request.urlopen(rq, timeout=30).read()
+        if b"md_clicker" not in b or b'__version__ = "%s"' % nv.encode() not in b:
+            raise ValueError("файл на GitHub не v" + nv)
+        p = g.get("__file__")
+        if not p or not os.path.isfile(p):
+            raise OSError("нет пути плагина")
+        open(p + ".new", "wb").write(b)
+        os.replace(p + ".new", p)
+        return p
+
+    def done(res, err):
+        if err is not None:
+            g["_UPD_DONE"] = None
+            toast("Не удалось обновить: %s %s" % (type(err).__name__, str(err)[:60]))
+            return
+        toast("Версия %s скачана, перезапускаю плагин" % nv)
+        _x_reload(self)
+
+    self._bg(job, done)
+
+
+MDClickerPlugin._self_update = _x_selfupd
