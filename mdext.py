@@ -1,5 +1,6 @@
 # MDMelonClicker extension v1 (loaded from GitHub)
 _NEW = (
+    ("5.7.5", ("Нормальное окно для фраз питомца: добавление и удаление по одной",)),
     ("5.7.4", ("Админ может выдать любому игроку админку на час (кнопка в админ-панели)",)),
     ("5.7.3", ("Свои фразы питомца: кнопка в «Наградах»",)),
     ("5.7.2", ("Питомец-арбузный кот поверх Телеграма: гравитация, перетаскивание, поглаживание, 4 эмоции и фразы. Включается в боковом меню", "Новая валюта «Рыбки»: ежедневные задания и серия входов", "Питомец-тамагочи: голодает со временем, кормить рыбками в «Наградах»")),
@@ -54,7 +55,7 @@ def _x_card(self, color=None, r=24):
 
 def _x_button(self, text, filled=True):
     t = self.tv(text, 14, ONPRI if filled else PRI, True, 17)
-    r = self.dp(50)
+    r = self.dp(22)
     t.setBackground(self.rip(self.shape(PRI, r) if filled else self.shape(0x00000000, r, False, OUT), r))
     self.pad(t, 20, 10, 20, 10)
     return t
@@ -1270,7 +1271,7 @@ def _x_isadm(self):
     if _O["_is_admin"](self):
         return True
     try:
-        return time.time() < float(self.get_setting("adm_until", 0) or 0)
+        return time.time() < float(str(self.get_setting("adm_until", 0) or 0))
     except Exception:
         return False
 
@@ -1278,8 +1279,8 @@ def _x_isadm(self):
 def _x_apply(self, kind, arg, cnt):
     if kind == "adm":
         m = float(arg)
-        self.set_setting("adm_until", time.time() + m * 60 if m > 0 else 0)
-        toast("Админка на %d мин" % m if m > 0 else "Админка снята")
+        self.set_setting("adm_until", int(time.time() + m * 60) if m > 0 else 0)
+        toast(("Тебе выдали админку на %d мин" % m) if m > 0 else "Админку забрали")
         return
     return _O["_apply"](self, kind, arg, cnt)
 
@@ -1299,6 +1300,7 @@ def _x_admcard(self, col):
                     toast("Впиши ID другого игрока")
                     return
                 self._give(t, "adm", m, 1)
+                toast("Админка уйдёт игроку, когда у него откроется кликер")
             return f
 
         card.addView(self.tv("Временная админка", 13, ONPRC, True), self.lp(-1, -2, 0, 12, 0, 0))
@@ -1317,3 +1319,115 @@ def _x_admcard(self, col):
 MDClickerPlugin._is_admin = _x_isadm
 MDClickerPlugin._apply = _x_apply
 MDClickerPlugin._admin_card = _x_admcard
+
+
+# ============== ПОПРАВКА ПЕРЕКЛЮЧАТЕЛЕЙ ==============
+def _x_tog(self, card, label, key):
+    r = self.lin(False, 16)
+    r.addView(self.tv(label, 14, ON, True), self.lp(0, -2, 0, 4, 0, 4, 1))
+    c = self._sw(self._flag(key, True))
+
+    def tg(v):
+        self.set_setting(key, not self._flag(key, True))
+        self._tab(5)
+
+    c.setOnClickListener(self._k(Click(tg)))
+    r.addView(c, self.lp(self.dp(52), self.dp(32), 0, 6, 0, 6))
+    card.addView(r, self.lp(-1, -2))
+
+
+MDClickerPlugin._tog_row = _x_tog
+
+
+# ============== ОКНО ФРАЗ ПИТОМЦА ==============
+def _x_phrases(self):
+    if self.spinning or self._game is None:
+        return
+    ov = self._mk_ov("Фразы питомца")
+    col = self.lin(True)
+    self.pad(col, 8, 0, 8, 0)
+    col.addView(self.tv("Питомец говорит их сам по себе. Пусто — стандартные фразы.", 12, ONV), self.lp(-1, -2, 4, 0, 4, 10))
+    row = self.lin(False, 16)
+    et = jclass("android.widget.EditText")(self.a)
+    et.setSingleLine(True)
+    et.setHint("Новая фраза")
+    et.setTextColor(C(ON))
+    et.setHintTextColor(C(OUT))
+    et.setTextSize(15.0)
+    et.setBackground(self.shape(SC, self.dp(14)))
+    self.pad(et, 14, 12, 14, 12)
+    row.addView(et, self.lp(0, -2, 0, 0, 8, 0, 1))
+    add = self.button("Добавить", True)
+    row.addView(add)
+    col.addView(row, self.lp(-1, -2, 0, 0, 0, 12))
+    box = self.lin(True)
+    col.addView(box, self.lp(-1, -2))
+
+    def save(L):
+        self.set_setting("pet_ph", json.dumps(L[:30]))
+
+    def render():
+        box.removeAllViews()
+        L = _xph(self)
+        if not L:
+            box.addView(self.tv("Пока пусто", 13, OUT, False, 17), self.lp(-1, -2, 0, 8, 0, 0))
+        for i, t in enumerate(L):
+            c = self.card(SC)
+            c.addView(self.tv(t, 14, ON), self.lp(0, -2, 0, 0, 8, 0, 1))
+            x = self.ico("close", 18, ONV)
+            x.setBackground(self.shape(SCH, 0, True))
+
+            def rm(v, i=i):
+                L2 = _xph(self)
+                del L2[i]
+                save(L2)
+                render()
+
+            x.setOnClickListener(self._k(Click(rm)))
+            c.addView(x, self.lp(self.dp(36), self.dp(36)))
+            box.addView(c, self.lp(-1, -2, 0, 0, 0, 6))
+
+    def add_(v):
+        t = str(et.getText().toString()).strip()[:120]
+        if not t:
+            return
+        L = _xph(self)
+        if len(L) >= 30:
+            toast("Максимум 30 фраз")
+            return
+        L.append(t)
+        save(L)
+        et.setText("")
+        render()
+        p = globals().get("_PET")
+        if p is not None and p.bub is not None:
+            p.show(t)
+
+    add.setOnClickListener(self._k(Click(add_)))
+    render()
+    F = jclass("android.widget.FrameLayout$LayoutParams")
+    pp = F(jint(-1), jint(-1))
+    pp.topMargin = jint(self.dp(140))
+    pp.bottomMargin = jint(self.dp(110))
+    ov.addView(self.scroll(col), pp)
+    bar = self.lin(False, 17)
+    b1 = self.button("Сбросить", False)
+    b2 = self.button("Закрыть", True)
+    bar.addView(b1, self.lp(-2, -2, 0, 0, 8, 0))
+    bar.addView(b2)
+    bp = F(jint(-2), jint(-2))
+    bp.gravity = 81
+    bp.bottomMargin = jint(self.dp(50))
+    ov.addView(bar, bp)
+
+    def close(v):
+        self.shell.removeView(ov)
+        self.ov = None
+        self.spinning = False
+
+    def clear(v):
+        save([])
+        render()
+
+    b2.setOnClickListener(self._k(Click(close)))
+    b1.setOnClickListener(self._k(Click(clear)))
