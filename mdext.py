@@ -1,5 +1,6 @@
 # MDMelonClicker extension v1 (loaded from GitHub)
 _NEW = (
+    ("5.8.0", ("Код переноса прогресса в бота: Ещё, «Код переноса»",)),
     ("5.7.9", ("Новый экран загрузки с прыгающим арбузом", "Фразы питомца: переключатель «Только мои фразы»",)),
     ("5.7.8", ("Вход в игру только после проверки обновлений: показывается загрузка, без интернета игра не открывается",)),
     ("5.7.7", ("Автообновление: плагин сам скачивает новую версию с GitHub и перезапускается",)),
@@ -1748,3 +1749,43 @@ def _x_open_g(self):
 
 MDClickerPlugin._reopen = _x_reopen_g
 MDClickerPlugin._open = _x_open_g
+
+# ============== КОД ПЕРЕНОСА В БОТА ==============
+def _x_code(self):
+    import zlib
+    S = dict(self.S())
+    S["hist"] = []
+    return "MDC1:" + base64.b64encode(zlib.compress(json.dumps(S, separators=(",", ":")).encode("utf-8"), 9)).decode()
+
+
+def _x_more(self):
+    sv = _O["_t_more"](self)
+    try:
+        col = cast(jclass("android.view.ViewGroup"), cast(jclass("android.view.ViewGroup"), sv).getChildAt(0))
+        card = self.card(SC)
+        info = self.lin(True)
+        info.addView(self.tv("Код переноса в бота", 15, ON, True))
+        info.addView(self.tv("Скопируй и вставь в игре бота: Ещё, Перенос из плагина", 12, ONV))
+        card.addView(info, self.lp(0, -2, 0, 0, 8, 0, 1))
+        b = self.button("Копировать", True)
+
+        def cp(v):
+            try:
+                self.save()
+                cm = self.a.getSystemService("clipboard")
+                cm.setPrimaryClip(jclass("android.content.ClipData").newPlainText("md", _x_code(self)))
+                toast("Код скопирован")
+            except Exception as e:
+                toast("Не вышло: " + type(e).__name__)
+
+        b.setOnClickListener(self._k(Click(cp)))
+        card.addView(b)
+        col.addView(card, 0, self.lp(-1, -2, 0, 0, 0, 8))
+    except Exception:
+        pass
+    return sv
+
+
+if "_t_more" not in _O:
+    _O["_t_more"] = MDClickerPlugin._t_more
+MDClickerPlugin._t_more = _x_more
