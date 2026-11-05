@@ -4,6 +4,6 @@
   "compatibility_date": "2025-01-01",
   "workers_dev": true,
   "d1_databases": [
-    { "binding": "DB", "database_name": "mdclicker", "database_id": "ВСТАВЬ_ID_БАЗЫ_D1" }
+    { "binding": "DB", "database_name": "mdclicker", "database_id": "ecc4bf69-dd38-4117-a06a-1c8b47d6eb0a" }
   ]
 }
