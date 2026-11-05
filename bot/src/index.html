@@ -913,7 +913,7 @@ async function pollNow() {
       onlineN = r.online || 0; if (r.badges !== undefined) myBadges = r.badges;
       if (r.rev && r.rev > rev && !saving && !(r.grants && r.grants.length)) { dirty = true; save(true); }
       for (const g of r.grants || []) {
-        if (g.kind === "reset") { S = defState(); snap = {inv: {}}; rev = r.rev; dirty = true; fever = frenzy = 0; mark(); save(true); toast("Прогресс сброшен администратором"); render(); if (g.b === 2) announce("Из-за баланса игры нам пришлось сбросить прогресс всем игрокам. В качестве утешительного приза ты получаешь кота «Королевский арбуз»: он даёт ×40 к монетам за тап. Его также можно выбить в Особом кейсе (шанс 2%). Прости и удачной игры!"); continue; }
+        if (g.kind === "reset") { S = defState(); snap = {inv: {}}; rev = r.rev; dirty = true; fever = frenzy = 0; mark(); save(true); toast("Прогресс сброшен администратором"); render(); if (g.b === 2) announce("Из-за баланса игры нам пришлось сбросить прогресс всем игрокам. В качестве утешительного приза ты получаешь кота «Королевский арбуз»: он увеличивает заработок за каждый тап в 40 раз. Его также можно выбить в Особом кейсе (шанс 2%). Прости и удачной игры!"); continue; }
         applyReward(g.kind, g.a, g.b); toast((g.kind[0] === "t" && g.kind.startsWith("take") ? "Администратор забрал: " : "Тебе выдали: ") + rewTxt(g.kind, g.a, g.b));
       }
       if (r.grants && r.grants.length && tab !== 0) render();
