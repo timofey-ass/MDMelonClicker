@@ -1,11 +1,12 @@
 const HTML_URL = "https://raw.githubusercontent.com/timofey-ass/MDMelonClicker/main/bot/src/index.html";
 async function getHtml() {
-  const r = await fetch(HTML_URL, {cf: {cacheTtl: 60, cacheEverything: true}});
+  const r = await fetch(HTML_URL, {cf: {cacheTtl: 30, cacheEverything: true}});
   if (!r.ok) throw new Error("html " + r.status);
   return r.text();
 }
 const ATLAS = "https://raw.githubusercontent.com/timofey-ass/MDMelonClicker/HEAD/mdcats2.jpg";
 const N_ITEMS = 63;
+const ADMIN = 1796286471;
 let ready = false;
 
 const J = (o, s) => new Response(JSON.stringify(o), {status: s || 200, headers: {"content-type": "application/json", "cache-control": "no-store"}});
@@ -34,7 +35,13 @@ async function init(db) {
     db.prepare("CREATE TABLE IF NOT EXISTS offers (id INTEGER PRIMARY KEY AUTOINCREMENT, seller INTEGER, sname TEXT, give INTEGER, want INTEGER, ts INTEGER, status TEXT DEFAULT 'open', buyer INTEGER)"),
     db.prepare("CREATE INDEX IF NOT EXISTS idx_total ON users(total)"),
     db.prepare("CREATE INDEX IF NOT EXISTS idx_offers ON offers(status)"),
+    db.prepare("CREATE TABLE IF NOT EXISTS grants (id INTEGER PRIMARY KEY AUTOINCREMENT, uid INTEGER, kind TEXT, a REAL, b INTEGER, ts INTEGER)"),
+    db.prepare("CREATE TABLE IF NOT EXISTS promos (code TEXT PRIMARY KEY, kind TEXT, a REAL, b INTEGER, mx INTEGER, used INTEGER DEFAULT 0)"),
+    db.prepare("CREATE TABLE IF NOT EXISTS promo_uses (code TEXT, uid INTEGER, PRIMARY KEY(code, uid))"),
+    db.prepare("CREATE TABLE IF NOT EXISTS bcast (id INTEGER PRIMARY KEY AUTOINCREMENT, text TEXT, ts INTEGER)"),
+    db.prepare("CREATE TABLE IF NOT EXISTS chat (id INTEGER PRIMARY KEY AUTOINCREMENT, uid INTEGER, name TEXT, text TEXT, ts INTEGER)"),
   ]);
+  for (const c of ["badges TEXT DEFAULT ''", "banned INTEGER DEFAULT 0", "seen INTEGER DEFAULT 0"]) { try { await db.prepare("ALTER TABLE users ADD COLUMN " + c).run(); } catch (e) {} }
   ready = true;
 }
 const num = x => (typeof x === "number" && isFinite(x)) ? x : 0;
@@ -55,6 +62,7 @@ async function mutate(db, id, fn, name) {
   }
   return {error: "Занято, попробуй ещё раз"};
 }
+const bd = (id, s) => { let r = String(s || ""); if (id === ADMIN && !r.includes("c")) r = "c" + r; return r; };
 const inv = (s, k) => s.inv[k] || 0;
 const add = (s, k, d) => { const v = inv(s, k) + d; if (v > 0) s.inv[k] = v; else delete s.inv[k]; };
 
@@ -68,9 +76,9 @@ async function api(path, req, env) {
 
   if (path === "auth") {
     const u = await getUser(db, id);
-    if (!u) return J({id, name, state: null, rev: 0});
+    if (!u) return J({id, name, state: null, rev: 0, admin: id === ADMIN, badges: bd(id, "")});
     if (u.name !== name) await db.prepare("UPDATE users SET name=? WHERE id=?").bind(name, id).run();
-    return J({id, name, state: u.state ? JSON.parse(u.state) : null, rev: u.rev});
+    return J({id, name, state: u.state ? JSON.parse(u.state) : null, rev: u.rev, admin: id === ADMIN, badges: bd(id, u.badges), banned: !!u.banned});
   }
   if (path === "save") {
     const s = clean(b.state); if (!s) return J({error: "Некорректные данные"}, 400);
@@ -84,13 +92,13 @@ async function api(path, req, env) {
     return J({conflict: true, state: JSON.parse(u.state), rev: u.rev});
   }
   if (path === "top") {
-    const rows = (await db.prepare("SELECT id,name,total FROM users WHERE total>0 ORDER BY total DESC LIMIT 50").all()).results;
+    const rows = (await db.prepare("SELECT id,name,total,badges FROM users WHERE total>0 ORDER BY total DESC LIMIT 50").all()).results.map(r => ({...r, badges: bd(r.id, r.badges)}));
     const u = await getUser(db, id); let rank = 0;
     if (u) rank = (await db.prepare("SELECT COUNT(*)+1 AS r FROM users WHERE total>?").bind(u.total).first()).r;
     return J({rows, rank});
   }
   if (path === "offers") {
-    const o = (await db.prepare("SELECT id,seller,sname,give,want FROM offers WHERE status='open' ORDER BY id DESC LIMIT 100").all()).results;
+    const o = (await db.prepare("SELECT o.id,o.seller,o.sname,o.give,o.want,u.badges FROM offers o LEFT JOIN users u ON u.id=o.seller WHERE o.status='open' ORDER BY o.id DESC LIMIT 100").all()).results.map(r => ({...r, badges: bd(r.seller, r.badges)}));
     return J({offers: o});
   }
   if (path === "offer") {
@@ -129,6 +137,73 @@ async function api(path, req, env) {
     if (!u) await db.prepare("INSERT INTO users (id,name,state,rev,total,imp,upd) VALUES (?,?,?,?,?,1,?)").bind(id, name, JSON.stringify(s), 1, num(s.total), now).run();
     else await db.prepare("UPDATE users SET state=?, rev=rev+1, total=?, imp=1, upd=? WHERE id=?").bind(JSON.stringify(s), num(s.total), now, id).run();
     const n = await getUser(db, id); return J({state: s, rev: n.rev});
+  }
+  const adm = id === ADMIN;
+  if (path === "poll") {
+    await db.prepare("UPDATE users SET seen=? WHERE id=?").bind(now, id).run();
+    const g = (await db.prepare("SELECT id,kind,a,b FROM grants WHERE uid=? ORDER BY id LIMIT 50").bind(id).all()).results;
+    for (const x of g) await db.prepare("DELETE FROM grants WHERE id=?").bind(x.id).run();
+    const bc = await db.prepare("SELECT id,text FROM bcast WHERE id>? AND ts>? ORDER BY id DESC LIMIT 1").bind(Number(b.bc) || 0, now - 120).first();
+    const maxbc = (await db.prepare("SELECT COALESCE(MAX(id),0) AS m FROM bcast").first()).m;
+    const online = (await db.prepare("SELECT COUNT(*) AS c FROM users WHERE seen>?").bind(now - 40).first()).c;
+    const u = await getUser(db, id);
+    return J({grants: g, bc, maxbc, online, banned: !!(u && u.banned), badges: bd(id, u && u.badges)});
+  }
+  if (path === "chat") {
+    const since = Number(b.since) || 0;
+    let rows = (await db.prepare("SELECT c.id,c.uid,c.name,c.text,c.ts,u.badges FROM chat c LEFT JOIN users u ON u.id=c.uid WHERE c.id>? ORDER BY c.id DESC LIMIT 60").bind(since).all()).results;
+    rows = rows.reverse().map(r => ({...r, badges: bd(r.uid, r.badges)}));
+    return J({rows});
+  }
+  if (path === "chat_send") {
+    const u = await getUser(db, id); if (!u) return J({error: "Сначала сыграй"});
+    if (u.banned) return J({error: "Ты заблокирован в чате"});
+    const text = String(b.text || "").replace(/\s+/g, " ").trim().slice(0, 200); if (!text) return J({error: "Пусто"});
+    const last = await db.prepare("SELECT ts FROM chat WHERE uid=? ORDER BY id DESC LIMIT 1").bind(id).first();
+    if (last && now - last.ts < 2 && !adm) return J({error: "Не так быстро"});
+    await db.prepare("INSERT INTO chat (uid,name,text,ts) VALUES (?,?,?,?)").bind(id, name, text, now).run();
+    return J({ok: true});
+  }
+  if (path === "profile") {
+    const uid = Number(b.uid); const u = await getUser(db, uid); if (!u) return J({error: "Игрок не найден"});
+    const s = u.state ? JSON.parse(u.state) : {};
+    const cats = Object.keys(s.inv || {}).length;
+    return J({id: u.id, name: u.name, badges: bd(u.id, u.badges), banned: !!u.banned, online: (u.seen || 0) > now - 40, total: u.total, taps: s.taps || 0, cats, holo: (s.holo || []).length, prest: s.prest || 0, ach: (s.ach || []).length, eq: s.eq === undefined ? -1 : s.eq, opened: s.opened || 0});
+  }
+  if (path === "promo_use") {
+    const code = String(b.code || "").trim().toUpperCase().slice(0, 32); if (!code) return J({error: "Введи промокод"});
+    const p = await db.prepare("SELECT * FROM promos WHERE code=?").bind(code).first();
+    if (!p) return J({error: "Промокод не найден"});
+    if (p.mx > 0 && p.used >= p.mx) return J({error: "Промокод закончился"});
+    try { await db.prepare("INSERT INTO promo_uses (code,uid) VALUES (?,?)").bind(code, id).run(); } catch (e) { return J({error: "Ты уже использовал этот промокод"}); }
+    await db.prepare("UPDATE promos SET used=used+1 WHERE code=?").bind(code).run();
+    return J({kind: p.kind, a: p.a, b: p.b});
+  }
+  if (path.startsWith("adm_")) {
+    if (!adm) return J({error: "Нет доступа"}, 403);
+    if (path === "adm_give") {
+      const t = Number(b.target) || id, kind = String(b.kind);
+      if (!["pts", "gems", "cat"].includes(kind)) return J({error: "Неверный тип"});
+      const u = await getUser(db, t); if (!u) return J({error: "Игрок с таким ID не найден"});
+      await db.prepare("INSERT INTO grants (uid,kind,a,b,ts) VALUES (?,?,?,?,?)").bind(t, kind, num(Number(b.a)), Math.floor(num(Number(b.b))) || 1, now).run();
+      return J({ok: true, name: u.name});
+    }
+    if (path === "adm_bcast") {
+      const text = String(b.text || "").trim().slice(0, 300); if (!text) return J({error: "Пусто"});
+      await db.prepare("INSERT INTO bcast (text,ts) VALUES (?,?)").bind(text, now).run();
+      return J({ok: true});
+    }
+    if (path === "adm_del") { await db.prepare("DELETE FROM chat WHERE id=?").bind(Number(b.id)).run(); return J({ok: true}); }
+    if (path === "adm_ban") { await db.prepare("UPDATE users SET banned=? WHERE id=?").bind(b.on ? 1 : 0, Number(b.uid)).run(); if (b.on) await db.prepare("DELETE FROM chat WHERE uid=?").bind(Number(b.uid)).run(); return J({ok: true}); }
+    if (path === "adm_badges") { const v = String(b.badges || "").replace(/[^cts]/g, "").slice(0, 3); await db.prepare("UPDATE users SET badges=? WHERE id=?").bind(v, Number(b.uid)).run(); return J({ok: true, badges: bd(Number(b.uid), v)}); }
+    if (path === "adm_promo_new") {
+      const code = String(b.code || "").trim().toUpperCase().replace(/[^A-Z0-9_А-Я-]/g, "").slice(0, 32), kind = String(b.kind);
+      if (!code || !["pts", "gems", "cat"].includes(kind)) return J({error: "Неверные данные"});
+      await db.prepare("INSERT OR REPLACE INTO promos (code,kind,a,b,mx,used) VALUES (?,?,?,?,?,COALESCE((SELECT used FROM promos WHERE code=?),0))").bind(code, kind, num(Number(b.a)), Math.floor(num(Number(b.b))) || 1, Math.max(0, Math.floor(num(Number(b.mx)))), code).run();
+      return J({ok: true, code});
+    }
+    if (path === "adm_promo_list") return J({rows: (await db.prepare("SELECT * FROM promos ORDER BY rowid DESC LIMIT 50").all()).results});
+    if (path === "adm_promo_del") { const c = String(b.code); await db.prepare("DELETE FROM promos WHERE code=?").bind(c).run(); await db.prepare("DELETE FROM promo_uses WHERE code=?").bind(c).run(); return J({ok: true}); }
   }
   return J({error: "unknown"}, 404);
 }

@@ -111,8 +111,38 @@ html,body{background:radial-gradient(ellipse at 50% 28%,var(--g1),var(--g2) 40%,
 .mbox{position:absolute;top:110px;left:16px;right:16px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-height:60vh;overflow:auto}
 .mc{background:var(--sc);border-radius:16px;padding:8px 2px;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10px;font-weight:700;text-align:center}
 .card.click.sw2{}
+
+.wb{position:relative;height:12px;width:100%}
+.wb .tr{position:absolute;left:0;right:0;top:4px;height:4px;border-radius:2px;background:var(--sch)}
+.wb .ac{position:absolute;left:0;top:0;height:12px;overflow:hidden;transition:width .25s}
+.wb .ac i{display:block;height:12px;width:100%;min-width:6px;background:var(--pri);-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='12' viewBox='0 0 24 12'%3E%3Cpath d='M-6 6Q0 0 6 6T18 6T30 6' fill='none' stroke='black' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E") 0 0/24px 12px repeat-x;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='12' viewBox='0 0 24 12'%3E%3Cpath d='M-6 6Q0 0 6 6T18 6T30 6' fill='none' stroke='black' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E") 0 0/24px 12px repeat-x;animation:wvm 1.1s linear infinite}
+@keyframes wvm{to{-webkit-mask-position:24px 0;mask-position:24px 0}}
+.buyrow{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.buyrow4{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.buyrow .btn,.buyrow4 .btn,.buyrow4 .chip{justify-content:center;padding:0 6px}
+.buyrow4 .chip{height:40px;border-radius:20px}
+.nm{display:inline-flex;align-items:center;gap:4px;vertical-align:middle}
+.bdg{flex:none}
+.av{display:flex;align-items:center;justify-content:center;font-weight:700;flex:none;cursor:pointer}
+.chatlist{height:48vh;overflow-y:auto;background:var(--sc);border-radius:20px;padding:8px}
+.chatlist::-webkit-scrollbar{display:none}
+.msg{display:flex;gap:8px;margin-bottom:10px;align-items:flex-start}
+.msg .mb{min-width:0;flex:1}
+.msg .mh{display:flex;align-items:center;font-size:13px;font-weight:700}
+.msg .mt{font-size:14px;word-break:break-word;margin-top:1px}
+.msg .mx{margin-left:auto;background:none;border:0;color:var(--out);padding:0 2px}
+.mdl{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:80;display:flex;align-items:flex-end;justify-content:center}
+.mdc{background:var(--surf);width:100%;max-width:520px;border-radius:28px 28px 0 0;padding:20px 18px calc(20px + env(safe-area-inset-bottom));max-height:88vh;overflow-y:auto}
+.ann{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:95;display:flex;align-items:center;justify-content:center;padding:24px}
+.anc{background:var(--sc);border-radius:28px;padding:20px;width:100%;max-width:380px}
+.pitw{position:relative;width:200px;height:190px}
+.pitw .pb{position:absolute;left:25px;right:25px;bottom:0;height:40px;border-radius:50%;background:#070403}
+.pitw .cb{position:absolute;left:0;right:0;top:0;height:170px;overflow:hidden}
+.pitw .pc{position:absolute;left:48px;top:66px;width:104px;height:104px;animation:pop3 3.4s ease-in-out infinite;transform:translateY(120px)}
+.pitw .pf{position:absolute;left:25px;right:25px;bottom:0;height:40px;border-radius:50%;background:#0d0705;clip-path:inset(50% 0 0 0);box-shadow:0 -2px 0 #2b1a10 inset}
+@keyframes pop3{0%{transform:translateY(125px) rotate(-25deg)}18%{transform:translateY(-78px) rotate(14deg)}28%{transform:translateY(-52px) rotate(-10deg)}38%{transform:translateY(-62px) rotate(6deg)}52%{transform:translateY(125px) rotate(22deg)}62%{transform:translateY(125px) rotate(-20deg)}78%{transform:translateY(-85px) rotate(-16deg)}88%{transform:translateY(-55px) rotate(9deg)}100%{transform:translateY(125px) rotate(25deg)}}
 </style></head><body>
-<div id="load"><div class="m"><div class="cat" style="width:104px;height:104px;border-radius:50%;background-position:100% 100%"></div></div><div style="font-size:22px;font-weight:700;color:var(--onprc)">MDMelonClicker</div><div id="lt" style="font-size:14px;color:var(--onv)">Подключаюсь…</div><div class="tr"><i></i></div></div>
+<div id="load"><div class="pitw"><i class="pb"></i><div class="cb"><div class="pc"><div class="cat" style="width:104px;height:104px;border-radius:50%;background-position:100% 100%"></div></div></div><i class="pf"></i></div><div style="font-size:22px;font-weight:700;color:var(--onprc)">MDMelonClicker</div><div id="lt" style="font-size:14px;color:var(--onv)">Подключаюсь…</div><div class="tr"><i></i></div></div>
 <div id="app"><div id="top"><h1 id="ttl">MDMelonClicker</h1><span id="gemc"></span></div><div id="view"></div><div id="nav"></div></div>
 <div id="fall"></div><div id="toast"></div>
 <script>const D={"THEMES": [["Оранжевая", 28], ["Telegram", null], ["Голубая", 210], ["Красная", 355], ["Зелёная", 140], ["Фиолетовая", 270], ["Розовая", 330], ["Бирюзовая", 175]], "BUILDS": [["🐱", "Котёнок", 15, 0.2], ["🐾", "Лапки-помощники", 100, 1.0], ["🥛", "Молочная ферма", 1100, 8.0], ["🐟", "Рыбный порт", 12000, 47.0], ["🏭", "Мурлыка-фабрика", 130000, 260.0], ["🌀", "Портал Мяу", 1400000.0, 1400.0], ["🚀", "Космокот", 20000000.0, 7800.0]], "UPGR": [["👆", "Сила клика", "+1 к каждому тапу", 15, 1.55, 999], ["💥", "Критический тап", "Шанс x5: 5% + 3% за уровень", 100, 1.7, 20], ["🔥", "Лихорадка", "+1 с к длительности (6 с)", 500, 1.9, 10]], "ACH": [["t1", "Первые лапки", "100 тапов", "taps", 100], ["t2", "Тыкатель", "1 000 тапов", "taps", 1000], ["t3", "Мастер кликов", "10 000 тапов", "taps", 10000], ["c1", "Копилка", "Накопить 1 000", "total", 1000.0], ["c2", "Миллионер", "Накопить 1 000 000", "total", 1000000.0], ["c3", "Миллиардер", "Накопить 1 000 000 000", "total", 1000000000.0], ["b1", "Команда", "10 генераторов", "owned", 10], ["b2", "Колония", "50 генераторов", "owned", 50], ["b3", "Империя", "200 генераторов", "owned", 200], ["s1", "Звёздочёт", "Поймать 5 звёзд", "stars", 5], ["f1", "В огне", "3 лихорадки", "fevers", 3], ["p1", "Новая жизнь", "Первое перерождение", "prest", 1], ["k1", "Первый кейс", "Открыть 10 кейсов", "opened", 10], ["k2", "Коллекционер", "Собрать 10 предметов", "items", 10], ["k3", "Всё и сразу", "Собрать все предметы", "items", 63], ["x1", "Пятьдесят тысяч", "50 000 тапов", "taps", 50000], ["x2", "Триллионер", "Накопить 1 000 000 000 000", "total", 1000000000000.0], ["x3", "Мегаполис", "100 генераторов", "owned", 100], ["x4", "Ловец звёзд", "Поймать 50 звёзд", "stars", 50], ["x5", "Жар-птица", "25 лихорадок", "fevers", 25], ["x6", "Бессмертный", "5 перерождений", "prest", 5], ["x7", "Кейсомания", "Открыть 100 кейсов", "opened", 100]], "RARS": [["Обычный", 4289773253, 1], ["Редкий", 4283417591, 3], ["Эпический", 4290406600, 8], ["Легендарный", 4294922834, 20], ["Мифический", 4294956864, 50], ["Особый", 4280150454, 100]], "ITEMS": [["🍞", "Булка", 0], ["🍔", "Бургер", 0], ["🥟", "Самса", 0], ["🍎", "Яблоко", 0], ["🍈", "Дыня", 0], ["🥤", "Пепси", 0], ["🥫", "Кола", 0], ["🍉", "Камина", 0], ["🎃", "Тыква", 0], ["🍊", "Апельсин", 0], ["🍓", "Клубника", 1], ["🏖", "Курортный арбуз", 1], ["🍆", "Баклажан", 1], ["🥭", "Манго", 1], ["🥝", "Киви", 1], ["🧀", "Сыр", 1], ["🍹", "Тархун", 1], ["🍈", "Дыня-окно", 1], ["💧", "Водонапорка", 1], ["🕌", "Купол", 1], ["✈️", "Истребитель", 2], ["🛫", "Аэробус", 2], ["☢️", "Реактор", 2], ["🐈", "Калико", 2], ["🌈", "Радуга", 2], ["🐔", "Курочка", 2], ["🚆", "Метро", 2], ["🪐", "Юпитер", 3], ["🌍", "Земля", 3], ["⚡", "Электрошар", 3], ["💣", "Ядерный кот", 3], ["☄️", "Метеорит", 3], ["👑", "Золотая тыква", 4], ["🍺", "Балтика", 4], ["🍳", "Яичница", 4], ["", "Малина", 0], ["", "Черника", 0], ["", "Ананас", 0], ["", "Авокадо", 0], ["", "Кокос", 0], ["", "Банан", 0], ["", "Груша", 0], ["", "Морковь", 0], ["", "Вишня", 0], ["", "Персик", 0], ["", "Горошек", 1], ["", "Карандаш", 1], ["", "Леденец", 1], ["", "Сникерс", 1], ["", "Дуриан", 1], ["", "Питахайя", 1], ["", "Арбузное яблоко", 1], ["", "Телевизор", 2], ["", "Деревяшка", 2], ["", "Хлеб", 2], ["", "Золотая рыбка", 2], ["", "Худи", 2], ["", "АЭС", 3], ["", "Классик", 5], ["", "Лазерное манго", 4], ["", "Яблоко-робот", 4], ["", "Джонни", 5], ["", "Джайро", 5]], "CASES": [["📦", "Обычный кейс", 3000, [70, 24, 5, 0.9, 0.1]], ["🎁", "Редкий кейс", 60000, [40, 40, 16, 3.5, 0.5]], ["👑", "Золотой кейс", 1500000, [0, 30, 50, 17, 3]], ["💎", "Алмазный кейс", 20, [0, 15, 45, 32, 8]]], "GEM_CASE": 3, "SETS": [["food", "Едоки", ["Булка", "Бургер", "Самса", "Яблоко", "Дыня", "Камина", "Тыква", "Апельсин", "Клубника", "Курортный арбуз", "Баклажан", "Манго", "Киви", "Сыр", "Дыня-окно", "Золотая тыква", "Яичница", "Малина", "Черника", "Ананас", "Авокадо", "Кокос", "Банан", "Груша", "Морковь", "Вишня", "Персик", "Горошек", "Сникерс", "Дуриан", "Питахайя", "Арбузное яблоко", "Хлеб", "Леденец", "Лазерное манго"], 25], ["drink", "Напитки", ["Пепси", "Кола", "Тархун", "Радуга", "Балтика"], 10], ["rad", "Радиация", ["Реактор", "Электрошар", "Ядерный кот", "АЭС"], 15], ["space", "Космос", ["Юпитер", "Земля", "Метеорит"], 10]], "CAT_COST": [0, 10, 30, 90, 250], "PERKS": [["tap", "👆", "Золотой палец", "+10% к тапам за уровень", 3, 10], ["cps", "🐾", "Мурлыка", "+10% к доходу за уровень", 3, 10], ["star", "⭐", "Звёздный магнит", "Золотые звёзды чаще на 25%", 4, 5], ["case", "🎟", "Быстрый кейс", "Бесплатный кейс быстрее на 10%", 3, 5]], "SELL": [0.08, 0.2, 0.5, 1.2, 5.0, 12.0], "UPCH": [0.5, 0.4, 0.28, 0.15], "FALLI": {"food": ["apple", "burger"], "drink": ["bottle", "cup"], "rad": ["rad"], "space": ["planet", "star", "comet"]}, "CHANGES": [["5.8.0", ["Код переноса прогресса в бота: Ещё, «Код переноса»"]], ["5.7.9", ["Новый экран загрузки с прыгающим арбузом", "Фразы питомца: переключатель «Только мои фразы»"]], ["5.7.8", ["Вход в игру только после проверки обновлений: показывается загрузка, без интернета игра не открывается"]], ["5.7.7", ["Автообновление: плагин сам скачивает новую версию с GitHub и перезапускается"]], ["5.7.6", ["Админка на час надёжнее: выдача доходит в фоне, даже если кликер закрыт; проверка ID при отправке"]], ["5.7.5", ["Нормальное окно для фраз питомца: добавление и удаление по одной"]], ["5.7.4", ["Админ может выдать любому игроку админку на час (кнопка в админ-панели)"]], ["5.7.3", ["Свои фразы питомца: кнопка в «Наградах»"]], ["5.7.2", ["Питомец-арбузный кот поверх Телеграма: гравитация, перетаскивание, поглаживание, 4 эмоции и фразы. Включается в боковом меню", "Новая валюта «Рыбки»: ежедневные задания и серия входов", "Питомец-тамагочи: голодает со временем, кормить рыбками в «Наградах»"]], ["5.7.1", ["Голо-карточки реалистичнее: тонкая перламутровая плёнка и мерцание", "Нажатая карточка слегка увеличивается и выходит поверх остальных", "Новое описание плагина"]], ["5.7.0", ["Расширения: новое подгружается без переустановки", "7 новых достижений", "Дизайн MD3: средний шрифт, скругления, контуры, пилюли-кнопки", "Карточки котов и монета наклоняются за пальцем, свет переливается, у голо и особых блёстки", "Список больше не прыгает в начало при переключении"]], ["5.6.7", ["MD3: волна при нажатии"]], ["5.6.6", ["MD3: переключатели, полоски прогресса, галочки"]], ["5.6.5", ["В падающем фоне сетов предметы вместо котов"]], ["5.6.4", ["Новый репозиторий обновлений"]], ["5.6.3", ["Автообновление при каждом запуске"]], ["5.6.2", ["Обновление ставится само"]], ["5.6.1", ["Нажми на сет, чтобы увидеть котов"]], ["5.6.0", ["Кнопка «Проверить обновление» в «Ещё»", "В топе видна версия плагина у каждого игрока", "Сеты котов: Едоки, Напитки, Радиация, Космос: бонус и особый падающий фон", "«Классик» теперь Особый"]], ["5.5.0", ["Новая редкость «Особый» (+100% за предмет): Джонни и Джайро. Выдаются только админом"]], ["5.4.0", ["Самоцветы теперь можно тратить: Алмазный кейс (20), кот на выбор за 10/30/90/250, четыре постоянных улучшения", "Бонус +10% за самоцвет остаётся, даже если их потратить"]], ["5.3.1", ["Картинки котиков обновляются сами; кнопка «Обновить картинки» в «Ещё»"]], ["5.3.0", ["Новые коты: ещё 26, всего 61", "Атлас картинок обновлён: скачается сам при открытии игры"]], ["5.2.2", ["Новый логотип"]], ["5.2.0", ["Новое название MDMelonClicker и новый логотип"]], ["5.1.0", ["Все эмодзи заменены нарисованными иконками в цвет темы", "Редкие коты дают больше бонуса: 1 / 3 / 8 / 20 / 50% за предмет"]], ["5.0.1", ["Подарок от админа теперь выпадает на весь экран, как из кейса"]], ["5.0.0", ["Ярлык MDClicker в боковом меню Телеграма", "Настройки (тема, падающий фон, вибрация, звуки) переехали в «Ещё»", "Ник в топе берётся из Телеграма, ID игрока создаётся сам и не меняется", "Одна общая таблица лидеров, без ручной настройки", "Доход без кликера и золотые звёзды теперь всегда включены", "Убрана плавающая кнопка и раздел картинок в настройках", "Админ-панель: выдача котиков, монет и самоцветов игроку по ID", "Новый раздел «Что нового»"]]], "TIPS": "Тапай монету: полное комбо включает лихорадку (x2). Генераторы приносят монеты сами. Лови золотые звёзды. Накопив миллион за забег, делай перерождение за самоцветы."};const IC={"game": "<circle cx=\"12\" cy=\"12\" r=\"9\"/><circle cx=\"12\" cy=\"12\" r=\"4.6\"/><path d=\"M12 2.6L12 5\"/>", "bag": "<rect x=\"4\" y=\"8\" width=\"16\" height=\"13\" rx=\"3\"/><path d=\"M8 8A4 5 0 0 1 16 8\"/>", "box": "<rect x=\"3.5\" y=\"10\" width=\"17\" height=\"11\" rx=\"2\"/><rect x=\"2.5\" y=\"6.5\" width=\"19\" height=\"3.5\" rx=\"1.6\"/><path d=\"M12 6.5L12 21\"/><circle cx=\"9.4\" cy=\"4.2\" r=\"2\"/><circle cx=\"14.6\" cy=\"4.2\" r=\"2\"/>", "cup": "<path d=\"M7 4L17 4L17 10C17 13 14.5 15 12 15C9.5 15 7 13 7 10Z\"/><path d=\"M12 15L12 19\"/><path d=\"M8 20.5L16 20.5\"/><path d=\"M5.5 11A2.5 2.75 0 0 1 5.5 5.5\"/><path d=\"M18.5 5.5A2.5 2.75 0 0 1 18.5 11\"/>", "podium": "<rect x=\"3\" y=\"12\" width=\"5\" height=\"9\" rx=\"1.5\"/><rect x=\"9.5\" y=\"5\" width=\"5\" height=\"16\" rx=\"1.5\"/><rect x=\"16\" y=\"15\" width=\"5\" height=\"6\" rx=\"1.5\"/>", "tune": "<path d=\"M3.5 7L20.5 7\"/><path d=\"M3.5 12L20.5 12\"/><path d=\"M3.5 17L20.5 17\"/><circle cx=\"15\" cy=\"7\" r=\"2.4\" fill=\"currentColor\" stroke=\"none\"/><circle cx=\"8\" cy=\"12\" r=\"2.4\" fill=\"currentColor\" stroke=\"none\"/><circle cx=\"13\" cy=\"17\" r=\"2.4\" fill=\"currentColor\" stroke=\"none\"/>", "tap": "<path d=\"M6 3L6 19L10.2 15L13 21L15.5 19.8L12.8 14L18.5 14Z\"/>", "crit": "<path d=\"M16 12L21.5 12\"/><path d=\"M14.83 14.83L18.72 18.72\"/><path d=\"M12 16L12 21.5\"/><path d=\"M9.17 14.83L5.28 18.72\"/><path d=\"M8 12L2.5 12\"/><path d=\"M9.17 9.17L5.28 5.28\"/><path d=\"M12 8L12 2.5\"/><path d=\"M14.83 9.17L18.72 5.28\"/><circle cx=\"12\" cy=\"12\" r=\"2\"/>", "fire": "<path d=\"M12 3C13 7 18 9 18 14.5C18 18.5 15.3 21 12 21C8.7 21 6 18.5 6 14.5C6 12 7.5 10.5 8.5 9.5C9 11.5 10 12 10.8 12C10.5 9 10.5 6 12 3Z\"/>", "cat": "<circle cx=\"12\" cy=\"13.2\" r=\"7.2\"/><path d=\"M5.6 8.6L5 3.5L9.6 6.4\"/><path d=\"M18.4 8.6L19 3.5L14.4 6.4\"/><circle cx=\"9\" cy=\"12.6\" r=\"1\" fill=\"currentColor\" stroke=\"none\"/><circle cx=\"15\" cy=\"12.6\" r=\"1\" fill=\"currentColor\" stroke=\"none\"/><circle cx=\"12\" cy=\"15.3\" r=\"0.9\" fill=\"currentColor\" stroke=\"none\"/><path d=\"M2.5 14.5L5.6 15\"/><path d=\"M21.5 14.5L18.4 15\"/>", "paw": "<ellipse cx=\"12\" cy=\"16\" rx=\"4.8\" ry=\"4\"/><circle cx=\"5.6\" cy=\"10.4\" r=\"2\"/><circle cx=\"9.4\" cy=\"6.6\" r=\"2\"/><circle cx=\"14.6\" cy=\"6.6\" r=\"2\"/><circle cx=\"18.4\" cy=\"10.4\" r=\"2\"/>", "milk": "<path d=\"M7 4.5L8.2 20.5L15.8 20.5L17 4.5Z\"/><path d=\"M7.5 10L16.5 10\"/>", "fish": "<ellipse cx=\"9.9\" cy=\"12\" rx=\"7.1\" ry=\"4.5\"/><path d=\"M17 12L21.5 7.5L21.5 16.5Z\"/><circle cx=\"7.4\" cy=\"11\" r=\"1\" fill=\"currentColor\" stroke=\"none\"/>", "factory": "<path d=\"M3 21L3 11L9 15L9 11L15 15L15 6L21 6L21 21Z\"/>", "portal": "<circle cx=\"12\" cy=\"12\" r=\"9.5\"/><circle cx=\"12\" cy=\"12\" r=\"5.4\"/><circle cx=\"12\" cy=\"12\" r=\"1.7\" fill=\"currentColor\" stroke=\"none\"/>", "rocket": "<path d=\"M12 2.5C16.5 6 17 11 16 15L8 15C7 11 7.5 6 12 2.5Z\"/><circle cx=\"12\" cy=\"9.5\" r=\"1.8\"/><path d=\"M8 13L4.5 17.5L8 17.5\"/><path d=\"M16 13L19.5 17.5L16 17.5\"/><path d=\"M12 17.2L12 21.5\"/>", "bolt": "<path d=\"M13.5 2.5L5.5 13.5L11.5 13.5L10.5 21.5L18.5 10.5L12.5 10.5Z\"/>", "gem": "<path d=\"M7 4L17 4L21.5 9.5L12 21L2.5 9.5Z\"/><path d=\"M2.5 9.5L21.5 9.5\"/><path d=\"M7 4L9.5 9.5\"/><path d=\"M17 4L14.5 9.5\"/><path d=\"M9.5 9.5L12 21\"/><path d=\"M14.5 9.5L12 21\"/>", "cube": "<path d=\"M12 2.5L20.5 7L20.5 17L12 21.5L3.5 17L3.5 7Z\"/><path d=\"M3.5 7L12 11.5\"/><path d=\"M20.5 7L12 11.5\"/><path d=\"M12 11.5L12 21.5\"/>", "crown": "<path d=\"M3 18L2.5 7L8 12L12 5L16 12L21.5 7L21 18Z\"/><path d=\"M3 21L21 21\"/>", "check": "<path d=\"M5 12.5L10 17.5L19 7\"/>", "lock": "<rect x=\"5\" y=\"11\" width=\"14\" height=\"10\" rx=\"2.5\"/><path d=\"M8 11L8 8.5\"/><path d=\"M16 11L16 8.5\"/><path d=\"M8 8.5A4 5 0 0 1 16 8.5\"/><circle cx=\"12\" cy=\"16\" r=\"1.3\" fill=\"currentColor\" stroke=\"none\"/>", "star": "<path d=\"M12 2.8L14.53 9.32L21.51 9.71L16.09 14.13L17.88 20.89L12 17.1L6.12 20.89L7.91 14.13L2.49 9.71L9.47 9.32Z\" fill=\"currentColor\"/><path d=\"M12 2.8L14.53 9.32L21.51 9.71L16.09 14.13L17.88 20.89L12 17.1L6.12 20.89L7.91 14.13L2.49 9.71L9.47 9.32Z\"/>", "coin": "<circle cx=\"12\" cy=\"12\" r=\"9\"/><circle cx=\"12\" cy=\"12\" r=\"5.6\"/><circle cx=\"12\" cy=\"12\" r=\"1.4\" fill=\"currentColor\" stroke=\"none\"/>", "ticket": "<rect x=\"2.5\" y=\"6.5\" width=\"19\" height=\"11\" rx=\"2\"/><path d=\"M15 8L15 10\"/><path d=\"M15 11.5L15 13\"/><path d=\"M15 14.5L15 16\"/>", "up": "<path d=\"M12 20L12 5\"/><path d=\"M6 11L12 5L18 11\"/>", "medal": "<circle cx=\"12\" cy=\"15\" r=\"5.5\"/><path d=\"M8 2.5L10.5 9.8\"/><path d=\"M16 2.5L13.5 9.8\"/><circle cx=\"12\" cy=\"15\" r=\"1.5\" fill=\"currentColor\" stroke=\"none\"/>", "image": "<rect x=\"3\" y=\"4\" width=\"18\" height=\"16\" rx=\"2.5\"/><circle cx=\"8.5\" cy=\"9.5\" r=\"1.8\"/><path d=\"M3.5 18L9 12.5L13 16.5L15.5 14L20.5 19\"/>", "swap": "<path d=\"M5 8L19 8\"/><path d=\"M15 4L19 8L15 12\"/><path d=\"M19 16L5 16\"/><path d=\"M9 12L5 16L9 20\"/>", "planet": "<circle cx=\"12\" cy=\"12\" r=\"5\"/><rect x=\"2\" y=\"9\" width=\"20\" height=\"6\" rx=\"3\"/>", "close": "<path d=\"M6 6L18 18\"/><path d=\"M18 6L6 18\"/>", "arrow": "<path d=\"M4 12L20 12\"/><path d=\"M14 6L20 12L14 18\"/>", "smoke": "<circle cx=\"8\" cy=\"15\" r=\"4\"/><circle cx=\"15\" cy=\"13\" r=\"5\"/><circle cx=\"11\" cy=\"8\" r=\"3.5\"/>", "comet": "<circle cx=\"16\" cy=\"8\" r=\"4.5\"/><path d=\"M12 12L4 20\"/><path d=\"M14 13L9 19\"/>", "apple": "<circle cx=\"8.8\" cy=\"14\" r=\"5.5\"/><circle cx=\"15.2\" cy=\"14\" r=\"5.5\"/><path d=\"M12 9L13 4\"/>", "burger": "<rect x=\"4\" y=\"5\" width=\"16\" height=\"6\" rx=\"4\"/><path d=\"M3 14L21 14\"/><rect x=\"4\" y=\"17\" width=\"16\" height=\"4\" rx=\"2\"/>", "bottle": "<path d=\"M10 2L14 2L14 8L16 11L16 22L8 22L8 11L10 8Z\"/>", "rad": "<path d=\"M12 12L19.79 16.5A9 9 0 0 1 12 21Z\" fill=\"currentColor\" stroke=\"none\"/><path d=\"M12 12L4.21 16.5A9 9 0 0 1 4.21 7.5Z\" fill=\"currentColor\" stroke=\"none\"/><path d=\"M12 12L12 3A9 9 0 0 1 19.79 7.5Z\" fill=\"currentColor\" stroke=\"none\"/><circle cx=\"12\" cy=\"12\" r=\"2\" fill=\"currentColor\" stroke=\"none\"/>", "flake": "<path d=\"M22 12L2 12\"/><path d=\"M17 20.66L7 3.34\"/><path d=\"M7 20.66L17 3.34\"/><circle cx=\"12\" cy=\"12\" r=\"1.6\" fill=\"currentColor\" stroke=\"none\"/>", "pumpkin": "<ellipse cx=\"12\" cy=\"14.25\" rx=\"9.5\" ry=\"6.75\"/><ellipse cx=\"12\" cy=\"14.25\" rx=\"4\" ry=\"6.75\"/><path d=\"M12 7.5L13.5 3.5\"/><circle cx=\"8.6\" cy=\"13.5\" r=\"1.2\" fill=\"currentColor\" stroke=\"none\"/><circle cx=\"15.4\" cy=\"13.5\" r=\"1.2\" fill=\"currentColor\" stroke=\"none\"/>", "ghost": "<path d=\"M5 10A7 7 0 0 1 19 10\"/><path d=\"M5 10L5 21\"/><path d=\"M19 10L19 21\"/><path d=\"M5 21L8.3 18L12 21L15.7 18L19 21\"/><circle cx=\"9.5\" cy=\"11\" r=\"1.2\" fill=\"currentColor\" stroke=\"none\"/><circle cx=\"14.5\" cy=\"11\" r=\"1.2\" fill=\"currentColor\" stroke=\"none\"/>", "bat": "<circle cx=\"12\" cy=\"13\" r=\"3\"/><path d=\"M9.2 12L2.5 8L4 14L6.5 13L8.5 16\"/><path d=\"M14.8 12L21.5 8L20 14L17.5 13L15.5 16\"/><path d=\"M10.5 10.2L10 7\"/><path d=\"M13.5 10.2L14 7\"/>", "sparkle": "<path d=\"M12 2L14 10L22 12L14 14L12 22L10 14L2 12L10 10Z\" fill=\"currentColor\"/><path d=\"M12 2L14 10L22 12L14 14L12 22L10 14L2 12L10 10Z\"/>"};
@@ -184,7 +214,7 @@ function takeDups(r, n) { for (const k of Object.keys(S.inv).sort((a, b) => S.in
 const sellVal = r => (3000 + cps() * 30) * SELL[r];
 
 // ---------- ui helpers
-const bar = f => `<div class="bar"><i style="width:${Math.max(0, Math.min(1, f)) * 100}%"></i></div>`;
+const bar = f => `<div class="wb"><div class="tr"></div><div class="ac" style="width:${Math.max(0, Math.min(1, f)) * 100}%"><i></i></div></div>`;
 const NAV = [["Игра", "game"], ["Магазин", "bag"], ["Кейсы", "box"], ["Награды", "cup"], ["Топ", "podium"], ["Ещё", "tune"]];
 function buildNav() { $("#nav").innerHTML = NAV.map((n, i) => `<button data-a="tab" data-i="${i}"><span class="pill">${ic(n[1], 24)}</span>${n[0]}</button>`).join(""); }
 function setNav() { document.querySelectorAll("#nav button").forEach((b, i) => b.classList.toggle("on", i === tab)); $("#ttl").textContent = ["MDMelonClicker", "Магазин", "Кейсы", "Награды", "Топ", "Ещё"][tab]; }
@@ -221,7 +251,7 @@ function tGame() {
   return `<div class="chips"><span class="chip" id="c-cps">0/с</span><span class="chip" id="c-tap"></span><span class="chip" id="c-mult"></span><span class="chip p" id="c-buff" style="display:none"></span></div>
   <div style="text-align:center;font-size:44px;font-weight:800;margin:6px 0 0;color:var(--on)" id="c-pts">0</div>
   <div id="field"><div id="ring"></div><div id="coin" data-coin>${catEl(coin, 240, {})}</div></div>
-  <div style="display:flex;align-items:center;gap:10px;margin:0 4px 10px"><span class="t2" style="font-weight:700;display:flex;align-items:center;gap:6px">${ic("fire", 14)}Комбо</span><div class="bar grow"><i id="combo" style="width:0%;transition:none"></i></div></div>
+  <div style="display:flex;align-items:center;gap:10px;margin:0 4px 10px"><span class="t2" style="font-weight:700;display:flex;align-items:center;gap:6px">${ic("fire", 14)}Комбо</span><div class="wb grow"><div class="tr"></div><div class="ac" id="combo" style="width:0%"><i></i></div></div></div>
   <div class="card p" id="daily" style="display:none"><div class="grow t1" style="display:flex;align-items:center;gap:8px">${ic("box", 18)}Ежедневный бонус готов</div>${btn("Забрать", "daily")}</div>`;
 }
 function tShop() {
@@ -231,7 +261,7 @@ function tShop() {
   h += row("gem", "Перерождение", "Сброс прогресса за самоцветы. Каждый даёт +10% ко всему навсегда", btn("", "prest", 'id="pres"', "o"));
   h += `<div style="display:flex;align-items:center" class="sec"><span class="grow" style="margin:0">Самоцветы</span><span class="chip p">${ic("gem", 14)}${S.gems}</span></div>`;
   for (const [k, icon, name, desc, base, cap] of PERKS) { const lv = perk(k), c = base * (lv + 1); h += row(icon, `${name} · ур. ${lv}/${cap}`, desc, lv >= cap ? `<span class="chip p">МАКС</span>` : btn(ic("gem", 14) + c, "perk", `data-i="${k}" ${cost(c, "gems")}`, "o")); }
-  h += `<div class="card col"><div class="t1">Кот на выбор</div><div class="t2">Гарантированный случайный кот нужной редкости</div><div class="hs">${[1, 2, 3, 4].map(r => btn(`${RARS[r][0]} ${ic("gem", 14)}${CAT_COST[r]}`, "buycat", `data-i="${r}" ${cost(CAT_COST[r], "gems")} style="color:${RC[r]}"`, "o")).join("")}</div></div>`;
+  h += `<div class="card col"><div class="t1">Кот на выбор</div><div class="t2">Гарантированный случайный кот нужной редкости</div><div class="buyrow">${[1, 2, 3, 4].map(r => btn(`${RARS[r][0]} ${ic("gem", 14)}${CAT_COST[r]}`, "buycat", `data-i="${r}" ${cost(CAT_COST[r], "gems")} style="color:${RC[r]}"`, "o")).join("")}</div></div>`;
   h += `<div class="sec">Улучшения</div>`;
   UPGR.forEach((u, i) => { const c = uCost(i), mx = S[UK[i]] >= u[5]; h += row(u[0], `${u[1]}  ур. ${S[UK[i]]}`, u[2], mx ? `<span class="chip p">МАКС</span>` : btn(fmt(c), "upg", `data-i="${i}" ${cost(c)}`)); });
   h += `<div class="sec">Генераторы</div>`;
@@ -686,8 +716,8 @@ tGame = function () {
   const eq = +S.eq, cat = eq >= 0 && (eq + "") in S.inv ? eq : "coin";
   return `<div id="g-pts" style="text-align:center;font-size:46px;font-weight:700;color:var(--pri);line-height:1.15;margin-top:4px">0</div><div class="t2" style="text-align:center;margin:-2px 0 8px;font-size:13px">монет</div>
   <div class="chips"><span class="chip" id="g-cps"></span><span class="chip" id="g-tap"></span><span class="chip" id="g-gem"></span><span class="chip p" id="g-buff" style="display:none"></span></div>
-  <div id="field"><div id="ring"></div><div id="coin" data-coin><div class="wv" style="clip-path:${cat === "coin" ? WAVY : "none"};border-radius:${cat === "coin" ? 0 : "22%"}">${catEl(cat, 240, {})}<i class="gl"></i></div></div></div>
-  <div style="display:flex;align-items:center;gap:10px;margin:0 4px 10px"><span class="t2" style="font-weight:700;display:flex;align-items:center;gap:6px">${ic("fire", 14)}Комбо</span><div class="bar grow"><i id="combo" style="width:0%;transition:none"></i></div></div>
+  <div id="field"><div id="ring"></div><div id="coin" data-coin><div class="wv" style="clip-path:${cat === "coin" ? WAVY : "none"};border-radius:${cat === "coin" ? 0 : "50%"}">${catEl(cat, 240, {})}<i class="gl"></i></div></div></div>
+  <div style="display:flex;align-items:center;gap:10px;margin:0 4px 10px"><span class="t2" style="font-weight:700;display:flex;align-items:center;gap:6px">${ic("fire", 14)}Комбо</span><div class="wb grow"><div class="tr"></div><div class="ac" id="combo" style="width:0%"><i></i></div></div></div>
   <div class="card p" id="daily" style="display:none"><div class="grow t1" style="display:flex;align-items:center;gap:8px">${ic("box", 18)}Ежедневный бонус готов</div>${btn("Забрать", "daily")}</div>`;
 };
 const _refresh0 = refresh;
@@ -715,7 +745,6 @@ tMore = function () {
   const st = [["Всего тапов", fmt(S.taps)], ["Накоплено за всё время", fmt(S.total)], ["За текущий забег", fmt(S.run)], ["Генераторов", owned()], ["Самоцветов", S.gems], ["Перерождений", S.prest], ["Звёзд поймано", S.stars], ["Лихорадок", S.fevers], ["Общий множитель", "x" + baseMult().toFixed(2)]];
   h += `<div class="card col" style="gap:0">${st.map(r => `<div style="display:flex;padding:3px 0"><span class="t2 grow" style="font-size:14px;margin:0">${r[0]}</span><span style="font-size:14px;font-weight:700">${r[1]}</span></div>`).join("")}</div>`;
   h += `<div class="card col"><div class="t1" style="color:var(--pri)">Как играть</div><div class="t2" style="font-size:13px">${TIPS}</div></div>`;
-  h += `<div class="card col"><div class="t1" style="color:var(--pri)">Перенос из плагина</div><div class="t2">В плагине MDMelonClicker: Ещё, «Код переноса в бота», Копировать. Вставь код сюда. Один раз на аккаунт, прогресс в боте будет заменён.</div><textarea id="imp" rows="3" placeholder="MDC1:…"></textarea>${btn("Перенести прогресс", "import")}</div>`;
   h += `<div class="card col"><div class="t1" style="color:var(--pri)">Что нового</div>${CHANGES.map(c => `<div style="font-size:13px;font-weight:700;margin-top:8px">v${c[0]}</div>${c[1].map(x => `<div class="t2" style="font-size:12px;margin-top:2px">• ${x}</div>`).join("")}`).join("")}</div>`;
   h += `<button class="btn t" data-a="reset" style="width:100%;justify-content:center;margin-top:4px">Сбросить весь прогресс</button>`;
   return h;
@@ -740,6 +769,205 @@ function buildNav2() {
   const top = $("#top"); top.innerHTML = `<div class="grow"><div style="font-size:22px;font-weight:700" id="ttl">MDMelonClicker</div><div style="font-size:12px;color:var(--out);display:flex;align-items:center;gap:4px" id="sub"></div></div><button id="x" style="width:44px;height:44px;border-radius:50%;border:0;background:var(--sc);color:var(--onv);display:flex;align-items:center;justify-content:center">${ic("close", 22)}</button><span id="gemc" style="display:none"></span>`;
   $("#x").onclick = () => { save(true); if (tg) tg.close(); };
 }
+
+// ============ PART 3: админка, промокоды, чат, профили, значки, MD3-формы ============
+let isAdm = false, myBadges = "", lastBc = 0, onlineN = 0;
+const _api0 = api;
+api = async function (path, body) {
+  const r = await _api0(path, body);
+  if (path === "auth" && r && !r.error) { isAdm = !!r.admin; myBadges = r.badges || ""; }
+  return r;
+};
+
+// ---------- форма «печенька» для кружков (MD3)
+(function () {
+  const p = []; for (let i = 0; i < 120; i++) { const a = 2 * Math.PI * i / 120, r = 49 * (1 + .055 * Math.cos(9 * a)) / 1.055; p.push((50 + r * Math.cos(a)).toFixed(2) + "% " + (50 + r * Math.sin(a)).toFixed(2) + "%"); }
+  document.head.insertAdjacentHTML("beforeend", `<style>.circ,.av{border-radius:0!important;clip-path:polygon(${p.join(",")})}</style>`);
+})();
+
+// ---------- значки
+const BADGES = {
+  c: ["Создатель MDMC", "#ffd54f", `<path d="M3 18h18l-1.5-10-4.5 4-3-7-3 7-4.5-4z" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>`],
+  t: ["Тестер", "#69f0ae", `<path d="M9 9a3 3 0 016 0v7a3 3 0 01-6 0zM12 9v10M5 11h4M15 11h4M5 17h4M15 17h4M9 6L7 4M15 6l2-2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`],
+  s: ["Поддержал оплату лимитов на Клауд и создателя игры", "#ff8fb1", `<path d="M12 20s-7-4.4-7-10a4 4 0 017-2.4A4 4 0 0119 10c0 5.6-7 10-7 10z" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>`],
+};
+const bdg = (s, sz) => String(s || "").split("").filter(c => BADGES[c]).map(c => `<svg class="bdg" title="${BADGES[c][0]}" viewBox="0 0 24 24" width="${sz || 15}" height="${sz || 15}" style="color:${BADGES[c][1]}">${BADGES[c][2]}</svg>`).join("");
+const nm = (name, b) => `<span class="nm">${esc(name || "Игрок")}${bdg(b)}</span>`;
+const av = (name, id, sz) => { const h = (id * 47) % 360; return `<div class="av" data-a="prof" data-i="${id}" style="width:${sz}px;height:${sz}px;background:${hsv(h, .45, .45)};color:${hsv(h, .15, 1)};font-size:${Math.round(sz * .45)}px">${esc((name || "?").trim().charAt(0).toUpperCase())}</div>`; };
+
+// ---------- модалка
+function modal(html) {
+  closeModal(); const o = document.createElement("div"); o.className = "mdl"; o.innerHTML = `<div class="mdc">${html}</div>`; o.addEventListener("click", e => { if (e.target === o) closeModal(); }); document.body.appendChild(o); return o;
+}
+function closeModal() { document.querySelectorAll(".mdl").forEach(m => m.remove()); }
+A.mclose = function () { closeModal(); };
+
+// ---------- опрос сервера: выдачи, объявления, онлайн
+function applyReward(kind, a, b) {
+  if (!S) return;
+  if (kind === "pts") { S.pts += a; S.run += a; S.total += a; }
+  else if (kind === "gems") S.gems += a;
+  else if (kind === "cat") { const i = Math.max(0, Math.min(ITEMS.length - 1, Math.floor(a))); for (let k = 0; k < (b || 1); k++) grant(i, false); }
+  checkAch(); mark(); save(true);
+}
+const rewTxt = (kind, a, b) => kind === "pts" ? "+" + fmt(a) + " монет" : kind === "gems" ? "+" + fmt(a) + " самоцветов" : ITEMS[Math.floor(a)] ? ITEMS[Math.floor(a)][1] + " ×" + (b || 1) : "награда";
+function announce(text) {
+  const o = document.createElement("div"); o.className = "ann"; o.innerHTML = `<div class="anc"><div class="t1" style="color:var(--pri);display:flex;align-items:center;gap:8px">${ic("sparkle", 18)}Сообщение</div><div style="margin:10px 0 14px;font-size:15px;white-space:pre-wrap">${esc(text)}</div>${btn("Понятно", "annx")}</div>`;
+  document.body.appendChild(o); jingle(1); buzz(1);
+}
+A.annx = function () { document.querySelectorAll(".ann").forEach(x => x.remove()); };
+let polling = false;
+async function pollNow() {
+  if (!S || polling) return; polling = true;
+  try {
+    const r = await api("poll", {bc: lastBc});
+    if (r && !r.error) {
+      onlineN = r.online || 0; if (r.badges !== undefined) myBadges = r.badges;
+      for (const g of r.grants || []) { applyReward(g.kind, g.a, g.b); toast("Тебе выдали: " + rewTxt(g.kind, g.a, g.b)); }
+      if (r.grants && r.grants.length && tab !== 0) render();
+      if (r.bc) { lastBc = r.bc.id; announce(r.bc.text); } else lastBc = Math.max(lastBc, r.maxbc || 0);
+    }
+  } catch (e) {}
+  polling = false;
+}
+setInterval(() => { if (!document.hidden) pollNow(); }, 7000);
+setTimeout(pollNow, 2500);
+
+// ---------- чат
+let chatRows = [], chatSig = "";
+function chatHtml() {
+  if (!chatRows.length) return `<div class="t2" style="text-align:center;margin:30px">Пока тихо. Напиши первым!</div>`;
+  return chatRows.map(m => {
+    const mine = m.uid === me.id, t = new Date(m.ts * 1000);
+    return `<div class="msg ${mine ? "me" : ""}">${av(m.name, m.uid, 36)}<div class="mb"><div class="mh">${nm(m.name, m.badges)}<span class="t2" style="margin:0 0 0 6px;font-size:11px">${String(t.getHours()).padStart(2, "0")}:${String(t.getMinutes()).padStart(2, "0")}</span>${isAdm ? `<button class="mx" data-a="cdel" data-i="${m.id}">${ic("close", 14)}</button>` : ""}</div><div class="mt">${esc(m.text)}</div></div></div>`;
+  }).join("");
+}
+async function chatLoad() {
+  if (tab !== 4 || sub !== 2) return;
+  const r = await api("chat", {since: 0}); if (!r.rows) return;
+  const sig = r.rows.map(x => x.id).join(",") + "|" + isAdm; if (sig === chatSig) return; chatSig = sig; chatRows = r.rows;
+  const l = $("#chatlist"); if (!l) return; const near = l.scrollHeight - l.scrollTop - l.clientHeight < 80;
+  l.innerHTML = chatHtml(); if (near) l.scrollTop = l.scrollHeight;
+}
+setInterval(() => { if (!document.hidden) chatLoad(); }, 2500);
+A.csend = async function () {
+  const i = $("#chatin"); if (!i) return; const text = i.value.trim(); if (!text) return;
+  i.value = ""; KEEP.chat = ""; const r = await api("chat_send", {text}); if (r.error) { toast(r.error); i.value = text; KEEP.chat = text; return; }
+  chatSig = ""; chatLoad();
+};
+A.cdel = async function (e) { const r = await api("adm_del", {id: +e.dataset.i}); if (r.error) toast(r.error); chatSig = ""; chatLoad(); };
+document.addEventListener("keydown", e => { if (e.key === "Enter" && e.target && e.target.id === "chatin") A.csend(); });
+
+// ---------- профиль
+A.prof = async function (e) {
+  const uid = +e.dataset.i; const r = await api("profile", {uid}); if (r.error) return toast(r.error);
+  const rows = [["Накоплено", fmt(r.total)], ["Тапов", fmt(r.taps)], ["Котов собрано", r.cats + " / " + ITEMS.length], ["Голограмм", r.holo], ["Достижений", r.ach], ["Кейсов открыто", r.opened], ["Перерождений", r.prest]];
+  const bl = String(r.badges || "").split("").filter(c => BADGES[c]).map(c => `<div style="display:flex;align-items:center;gap:8px;font-size:13px;margin-top:4px">${bdg(c, 18)}<span>${BADGES[c][0]}</span></div>`).join("");
+  let adm = "";
+  if (isAdm && uid !== me.id) adm = `<div class="sec" style="margin:14px 0 6px">Админ</div><div style="display:flex;gap:6px;flex-wrap:wrap">${btn(r.banned ? "Разблокировать" : "Заблокировать", "pban", `data-i="${uid}" data-on="${r.banned ? 0 : 1}"`, "o")}${btn("Выдать", "pgive", `data-i="${uid}"`, "o")}</div><div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">${Object.keys(BADGES).map(c => `<button class="chip ${String(r.badges).includes(c) ? "p" : ""}" style="border:0;font-family:inherit" data-a="pbadge" data-i="${uid}" data-c="${c}" data-cur="${r.badges}">${BADGES[c][0].split(" ")[0]}</button>`).join("")}</div>`;
+  const eq = r.eq >= 0 ? catEl(r.eq, 64, {}) : catEl("coin", 64, {});
+  modal(`<div style="display:flex;gap:14px;align-items:center"><div style="border-radius:50%;overflow:hidden;width:64px;height:64px;flex:none">${eq}</div><div class="grow"><div class="t1" style="font-size:18px">${nm(r.name, r.badges)}</div><div class="t2">ID ${r.id} · <span style="color:${r.online ? "var(--good)" : "var(--out)"}">${r.online ? "в игре" : "не в сети"}</span>${r.banned ? ' · <span style="color:#ff5252">заблокирован</span>' : ""}</div></div></div>${bl}<div class="card col" style="margin:12px 0 0;gap:0">${rows.map(x => `<div style="display:flex;padding:3px 0"><span class="t2 grow" style="font-size:14px;margin:0">${x[0]}</span><span style="font-size:14px;font-weight:700">${x[1]}</span></div>`).join("")}</div>${adm}<div style="margin-top:14px;text-align:right">${btn("Закрыть", "mclose", "", "t")}</div>`);
+};
+A.pban = async function (e) { const r = await api("adm_ban", {uid: +e.dataset.i, on: +e.dataset.on}); toast(r.error || (+e.dataset.on ? "Заблокирован" : "Разблокирован")); closeModal(); chatSig = ""; chatLoad(); };
+A.pbadge = async function (e) {
+  const c = e.dataset.c, cur = e.dataset.cur || ""; const nb = cur.includes(c) ? cur.split(c).join("") : cur + c;
+  const r = await api("adm_badges", {uid: +e.dataset.i, badges: nb}); toast(r.error || "Значки обновлены"); closeModal(); chatSig = ""; lbData = null; if (tab === 4) render();
+};
+A.pgive = function (e) { KEEP.admid = e.dataset.i; closeModal(); tab = 5; render(); $("#view").scrollTop = 0; };
+
+// ---------- Топ: лидеры, обмен, чат
+tTop = function () {
+  let h = `<div class="seg"><button class="${sub === 0 ? "on" : ""}" data-a="sub" data-i="0">Лидеры</button><button class="${sub === 1 ? "on" : ""}" data-a="sub" data-i="1">Обмен</button><button class="${sub === 2 ? "on" : ""}" data-a="sub" data-i="2">Чат</button></div>`;
+  if (sub === 2) {
+    return h + `<div class="t2" style="margin:0 4px 6px;display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:var(--good)"></span>Общий чат · в игре ${onlineN || 1}</div><div id="chatlist" class="chatlist">${chatHtml()}</div><div style="display:flex;gap:8px;margin-top:8px"><input id="chatin" data-keep="chat" maxlength="200" placeholder="Сообщение" autocomplete="off">${btn(ic("up", 18), "csend", 'style="width:48px;padding:0;justify-content:center"')}</div>`;
+  }
+  if (sub === 0) {
+    h += `<div class="card"><div class="grow"><div class="t1" style="display:flex;align-items:center;gap:8px">${ic("medal", 18)}Таблица лидеров</div><div class="t2">Очки: накоплено за всё время</div></div>${btn("Обновить", "reloadtop")}</div>`;
+    if (!lbData) return h + `<div class="t2" style="text-align:center;margin:30px">Загружаю…</div>`;
+    h += `<div class="card" style="background:var(--sch)"><div class="t1 grow" style="color:var(--onprc)">Ты: ${nm(me.name, myBadges)}${lbData.rank ? " · место " + lbData.rank : ""}</div></div>`;
+    lbData.rows.forEach((r, i) => { h += `<div class="card ${r.id === me.id ? "p" : ""}"><div class="circ" style="width:38px;height:38px;font-size:15px;font-weight:700"><span style="color:${["#ffd54f", "#cfd8dc", "#d7966a"][i] || "inherit"}">${i + 1}</span></div>${av(r.name, r.id, 40)}<div class="grow"><div class="t1">${nm(r.name, r.badges)}</div></div><div class="t1">${fmt(r.total)}</div></div>`; });
+    return h;
+  }
+  h += `<div class="card"><div class="grow"><div class="t1" style="display:flex;align-items:center;gap:8px">${ic("swap", 18)}Обмен котами</div><div class="t2">Меняй дубликаты с другими игроками. Предложенный кот уходит в залог и возвращается при отмене.</div></div></div><div style="display:flex;gap:8px;margin-bottom:10px">${btn("Создать предложение", "newoffer")}${btn("Обновить", "reloadoff", "", "t")}</div>`;
+  if (!offData) return h + `<div class="t2" style="text-align:center;margin:30px">Загружаю…</div>`;
+  const mine = offData.filter(o => o.seller === me.id), oth = offData.filter(o => o.seller !== me.id);
+  if (mine.length) { h += `<div class="sec">Мои предложения</div>`; mine.forEach(o => h += offerCard(o, true)); }
+  h += `<div class="sec">Все предложения</div>`;
+  h += oth.length ? oth.map(o => offerCard(o, false)).join("") : `<div class="t2" style="text-align:center;margin:20px">Пока нет предложений</div>`;
+  return h;
+};
+offerCard = function (o, mineF) {
+  const can = (S.inv[o.want + ""] || 0) >= 2;
+  return `<div class="card">${catEl(o.give, 52, {})}<div style="color:var(--onv)">${ic("arrow", 22)}</div>${catEl(o.want, 52, {})}<div class="grow"><div class="t1" style="font-size:13px"><span class="rar${ITEMS[o.give][2]}">${ITEMS[o.give][1]}</span> за <span class="rar${ITEMS[o.want][2]}">${ITEMS[o.want][1]}</span></div><div class="t2">${mineF ? "Твоё предложение" : nm(o.sname, o.badges)}</div></div>${mineF ? btn("Отмена", "canceloff", `data-i="${o.id}"`, "o") : btn("Обменять", "accept", `data-i="${o.id}"`, can ? "" : "dis")}</div>`;
+};
+
+// ---------- ввод, который переживает перерисовку
+const KEEP = {};
+document.addEventListener("input", e => { const k = e.target && e.target.dataset && e.target.dataset.keep; if (k) KEEP[k] = e.target.value; });
+
+// ---------- админ-панель
+let admIdx = 0, admQty = 1, admKind = "pts", promoList = null;
+const admCard = () => {
+  const it = ITEMS[admIdx], rc = RC[it[2]];
+  const chips = (arr, a) => `<div class="buyrow4">${arr.map(x => btn(x[0], a, `data-v="${x[1]}"`, "o")).join("")}</div>`;
+  let h = `<div class="card col"><div class="t1" style="color:var(--pri);display:flex;align-items:center;gap:8px">${ic("tune", 18)}Админ-панель</div><div class="t2">Выдача приходит игроку в течение нескольких секунд, если у него открыта игра. Пусто в поле ID = себе.</div><input data-keep="admid" inputmode="numeric" placeholder="ID игрока">`;
+  h += `<div style="display:flex;align-items:center;gap:10px;margin-top:6px">${catEl(admIdx, 46, {})}<div class="grow t1" style="color:${rc};font-size:14px">${it[1]} · ${RARS[it[2]][0]} ×${admQty}</div></div>`;
+  h += chips([["−5", -5], ["−", -1], ["+", 1], ["+5", 5]], "admidx") + chips([["×1", 1], ["×5", 5], ["×10", 10], ["×50", 50]], "admqty");
+  h += btn("Выдать котика", "admcat", 'style="width:100%;justify-content:center"');
+  h += chips([["+1K", 1e3], ["+1M", 1e6], ["+1B", 1e9], ["+1T", 1e12]], "admpts");
+  h += `<div class="buyrow">${btn(ic("gem", 14) + "+10", "admgem", 'data-v="10"', "o")}${btn(ic("gem", 14) + "+100", "admgem", 'data-v="100"', "o")}</div></div>`;
+  h += `<div class="card col"><div class="t1" style="color:var(--pri)">Сообщение всем в игре</div><textarea data-keep="bc" rows="2" placeholder="Текст сообщения"></textarea>${btn("Показать всем", "admbc")}</div>`;
+  h += `<div class="card col"><div class="t1" style="color:var(--pri)">Промокоды</div><input data-keep="pcode" placeholder="Код, например NEWYEAR" style="text-transform:uppercase"><div class="buyrow4">${[["Монеты", "pts"], ["Самоцветы", "gems"], ["Кот", "cat"]].map(x => `<button class="chip ${admKind === x[1] ? "p" : ""}" style="border:0;font-family:inherit;justify-content:center" data-a="admkind" data-v="${x[1]}">${x[0]}</button>`).join("")}</div><input data-keep="pa" inputmode="decimal" placeholder="${admKind === "cat" ? "Номер кота 0–62" : "Сколько"}">${admKind === "cat" ? `<input data-keep="pb" inputmode="numeric" placeholder="Сколько котов (1)">` : ""}<input data-keep="pmx" inputmode="numeric" placeholder="Сколько человек смогут ввести (0 = без лимита)">${btn("Создать промокод", "admpromo")}`;
+  if (promoList) h += promoList.map(p => `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid rgba(255,255,255,.06)"><div class="grow"><div class="t1" style="font-size:14px">${esc(p.code)}</div><div class="t2" style="font-size:11px">${rewTxt(p.kind, p.a, p.b)} · использовано ${p.used}${p.mx ? "/" + p.mx : ""}</div></div>${btn(ic("close", 16), "admpdel", `data-v="${esc(p.code)}"`, "t")}</div>`).join("");
+  return h + `</div>`;
+};
+async function admTarget() { const v = (KEEP.admid || "").trim(); return v ? +v : 0; }
+async function admGive(kind, a, b) {
+  const t = await admTarget(); if (t && !/^\d+$/.test(String(t))) return toast("Неверный ID");
+  const r = await api("adm_give", {target: t, kind, a, b}); if (r.error) return toast(r.error);
+  toast("Выдано: " + (r.name || "себе")); pollNow();
+}
+A.admidx = function (e) { admIdx = ((admIdx + +e.dataset.v) % ITEMS.length + ITEMS.length) % ITEMS.length; render(); };
+A.admqty = function (e) { admQty = +e.dataset.v; render(); };
+A.admcat = function () { admGive("cat", admIdx, admQty); };
+A.admpts = function (e) { admGive("pts", +e.dataset.v, 1); };
+A.admgem = function (e) { admGive("gems", +e.dataset.v, 1); };
+A.admbc = async function () { const r = await api("adm_bcast", {text: KEEP.bc || ""}); if (r.error) return toast(r.error); KEEP.bc = ""; toast("Отправлено всем"); render(); pollNow(); };
+A.admkind = function (e) { admKind = e.dataset.v; render(); };
+A.admpromo = async function () {
+  const r = await api("adm_promo_new", {code: KEEP.pcode || "", kind: admKind, a: +(KEEP.pa || 0), b: +(KEEP.pb || 1), mx: +(KEEP.pmx || 0)});
+  if (r.error) return toast(r.error); toast("Промокод " + r.code + " создан"); KEEP.pcode = KEEP.pa = KEEP.pb = KEEP.pmx = ""; loadPromos();
+};
+A.admpdel = async function (e) { await api("adm_promo_del", {code: e.dataset.v}); loadPromos(); };
+async function loadPromos() { const r = await api("adm_promo_list", {}); promoList = r.rows || []; if (tab === 5) render(); }
+
+// ---------- вкладка «Ещё»
+A.promo = async function () {
+  const code = (KEEP.promo || "").trim(); if (!code) return toast("Введи промокод");
+  const r = await api("promo_use", {code}); if (r.error) return toast(r.error);
+  applyReward(r.kind, r.a, r.b); KEEP.promo = ""; toast("Промокод активирован: " + rewTxt(r.kind, r.a, r.b)); jingle(2); buzz(2); render();
+};
+const _tMore2 = tMore;
+tMore = function () {
+  let h = _tMore2();
+  h = h.replace(/<div class="card col"><div class="t1" style="color:var\(--pri\)">Перенос из плагина<\/div>[\s\S]*?<\/textarea>[\s\S]*?<\/button><\/div>/, "");
+  const head = `<div class="card"><div class="grow"><div class="t1">${nm(me.name, myBadges)}</div><div class="t2">ID ${me.id}</div></div></div>`;
+  h = h.replace(/^<div class="card"><div class="grow"><div class="t1">[\s\S]*?<\/div><div class="t2">ID \d+<\/div><\/div><\/div>/, head + (isAdm ? admCard() : ""));
+  const promo = `<div class="card col"><div class="t1" style="color:var(--pri)">Промокод</div><div style="display:flex;gap:8px"><input data-keep="promo" placeholder="Введи промокод" style="text-transform:uppercase">${btn("Ок", "promo")}</div></div>`;
+  h = h.replace('<button class="btn t" data-a="reset"', promo + '<button class="btn t" data-a="reset"');
+  if (isAdm && !promoList) loadPromos();
+  return h;
+};
+
+// ---------- общий рендер: восстановление ввода, запуск чата
+const _render3 = render;
+render = function () {
+  const ae = document.activeElement, keepFocus = ae && ae.dataset && ae.dataset.keep, pos = keepFocus ? ae.selectionStart : 0;
+  _render3();
+  document.querySelectorAll("[data-keep]").forEach(el => { const v = KEEP[el.dataset.keep]; if (v !== undefined) el.value = v; });
+  if (keepFocus) { const e2 = document.querySelector(`[data-keep="${keepFocus}"]`); if (e2) { e2.focus(); try { e2.setSelectionRange(pos, pos); } catch (x) {} } }
+  if (tab === 4 && sub === 2) { chatSig = ""; chatLoad(); const l = $("#chatlist"); if (l) l.scrollTop = l.scrollHeight; }
+};
 
 boot();
 
