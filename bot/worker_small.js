@@ -188,7 +188,9 @@ async function api(path, req, env) {
       const u = await getUser(db, t); if (!u) return J({error: "Игрок с таким ID не найден"});
       if (kind.startsWith("take")) {
         const a = num(Number(b.a)), m = Math.floor(num(Number(b.b))) || 1;
+        let was = null;
         const r = await mutate(db, t, s => {
+          was = {pts: num(s.pts), gems: num(s.gems), inv: Object.assign({}, s.inv)};
           let txt = "";
           if (kind === "takepts") { const x = a < 0 ? s.pts : m === 2 ? s.pts * Math.min(a, 100) / 100 : Math.min(s.pts, a); s.pts = Math.max(0, num(s.pts) - x); txt = "монеты"; }
           else if (kind === "takegems") { const x = a < 0 ? s.gems : Math.min(num(s.gems), a); s.gems = Math.max(0, num(s.gems) - x); txt = "самоцветы"; }
@@ -196,7 +198,7 @@ async function api(path, req, env) {
           s.tk = (s.tk || 0) + 1; s.tkm = txt;
         });
         if (r.error) return J({error: r.error});
-        return J({ok: true, name: u.name});
+        return J({ok: true, name: u.name, was: {pts: was.pts, gems: was.gems}, now: {pts: num(r.state.pts), gems: num(r.state.gems)}, srv: 3});
       }
       await db.prepare("INSERT INTO grants (uid,kind,a,b,ts) VALUES (?,?,?,?,?)").bind(t, kind, num(Number(b.a)), Math.floor(num(Number(b.b))) || 1, now).run();
       return J({ok: true, name: u.name});

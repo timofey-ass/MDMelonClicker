@@ -1023,7 +1023,7 @@ async function admTarget() { const v = (KEEP.admid || "").trim(); return v ? +v 
 async function admGive(kind, a, b) {
   const t = await admTarget(); if (t && !/^\d+$/.test(String(t))) return toast("Неверный ID");
   const r = await api("adm_give", {target: t, kind, a, b}); if (r.error) return toast(r.error);
-  toast(kind.startsWith("take") ? "Отобрано у: " + (r.name || "себя") : "Выдано: " + (r.name || "себе")); pollNow();
+  toast(kind.startsWith("take") ? "Отобрано у " + (r.name || "себя") + (r.now ? ": монеты " + fmt(r.was.pts) + " → " + fmt(r.now.pts) + ", самоцветы " + fmt(r.was.gems) + " → " + fmt(r.now.gems) : " (сервер старый!)") : "Выдано: " + (r.name || "себе")); pollNow();
 }
 A.admidx = function (e) { admIdx = ((admIdx + +e.dataset.v) % ITEMS.length + ITEMS.length) % ITEMS.length; render(); };
 A.admqty = function (e) { admQty = +e.dataset.v; render(); };
