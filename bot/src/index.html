@@ -193,7 +193,7 @@ const RC = ["#b0bec5", "#4fc3f7", "#ba68c8", "#ff5252", "#ffd740", "#1de9b6", "#
 const SUF = ["", "K", "M", "B", "T", "Qa", "Qi", "Sx"];
 const now = () => Date.now() / 1000;
 const esc = s => String(s).replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
-function fmt(n) { n = +n; if (n < 1000) return (n >= 10 || n === Math.floor(n)) ? String(Math.floor(n)) : n.toFixed(1); const i = Math.min(Math.floor(Math.log10(n) / 3), 7); return (n / Math.pow(1000, i)).toFixed(2) + SUF[i]; }
+function fmt(n) { n = +n; if (n < 1000) return (n >= 10 || n === Math.floor(n)) ? String(Math.floor(n)) : n.toFixed(1); if (n >= 1e24) return (n / 1e21).toExponential(2).replace("e+", "e") + "Sx"; const i = Math.min(Math.floor(Math.log10(n) / 3), 7); return (n / Math.pow(1000, i)).toFixed(2) + SUF[i]; }
 function clock(s) { s = Math.max(0, Math.floor(s)); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); }
 function hap(k) { try { if (!tg || !tg.HapticFeedback || !LS("hap", 1)) return; if (k === "ok") tg.HapticFeedback.notificationOccurred("success"); else tg.HapticFeedback.impactOccurred(k || "light"); } catch (e) {} }
 function LS(k, d) { try { const v = localStorage.getItem("md_" + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } }
@@ -889,12 +889,12 @@ function applyReward(kind, a, b) {
   if (kind === "pts") { S.pts += a; S.run += a; S.total += a; }
   else if (kind === "gems") S.gems += a;
   else if (kind === "cat") { const i = Math.max(0, Math.min(ITEMS.length - 1, Math.floor(a))); for (let k = 0; k < (b || 1); k++) grant(i, false); }
-  else if (kind === "takepts") { const t = a < 0 ? S.pts : Math.min(S.pts, a); S.pts -= t; }
+  else if (kind === "takepts") { const t = a < 0 ? S.pts : b === 2 ? S.pts * Math.min(a, 100) / 100 : Math.min(S.pts, a); S.pts = Math.max(0, S.pts - t); }
   else if (kind === "takegems") { const t = a < 0 ? S.gems : Math.min(S.gems, a); S.gems -= t; }
   else if (kind === "takecat") { const k = String(Math.floor(a)); if (k in S.inv) { S.inv[k] -= (b || 1); if (S.inv[k] <= 0) { delete S.inv[k]; S.holo = S.holo.filter(x => x !== +k); if (+S.eq === +k) S.eq = -1; } } }
   checkAch(); mark(); save(true);
 }
-const rewTxt = (kind, a, b) => kind === "takegems" ? "−" + (a < 0 ? "все самоцветы" : fmt(a) + " самоцветов") : kind === "takepts" ? "−" + (a < 0 ? "все монеты" : fmt(a) + " монет") : kind === "takecat" ? "отобран кот " + (ITEMS[Math.floor(a)] ? ITEMS[Math.floor(a)][1] : "") + " ×" + (b || 1) : kind === "pts" ? "+" + fmt(a) + " монет" : kind === "gems" ? "+" + fmt(a) + " самоцветов" : ITEMS[Math.floor(a)] ? ITEMS[Math.floor(a)][1] + " ×" + (b || 1) : "награда";
+const rewTxt = (kind, a, b) => kind === "takegems" ? "−" + (a < 0 ? "все самоцветы" : fmt(a) + " самоцветов") : kind === "takepts" ? "−" + (a < 0 ? "все монеты" : b === 2 ? a + "% монет" : fmt(a) + " монет") : kind === "takecat" ? "отобран кот " + (ITEMS[Math.floor(a)] ? ITEMS[Math.floor(a)][1] : "") + " ×" + (b || 1) : kind === "pts" ? "+" + fmt(a) + " монет" : kind === "gems" ? "+" + fmt(a) + " самоцветов" : ITEMS[Math.floor(a)] ? ITEMS[Math.floor(a)][1] + " ×" + (b || 1) : "награда";
 function announce(text) {
   const o = document.createElement("div"); o.className = "ann"; o.innerHTML = `<div class="anc"><div class="t1" style="color:var(--pri);display:flex;align-items:center;gap:8px">${ic("sparkle", 18)}Сообщение</div><div style="margin:10px 0 14px;font-size:15px;white-space:pre-wrap">${esc(text)}</div>${btn("Понятно", "annx")}</div>`;
   document.body.appendChild(o); jingle(1); buzz(1);
@@ -1011,7 +1011,7 @@ const admCard = () => {
   h += `<div class="buyrow">${btn(ic("gem", 14) + "+10", "admgem", 'data-v="10"', "o")}${btn(ic("gem", 14) + "+100", "admgem", 'data-v="100"', "o")}</div>`;
   h += `<div class="t1" style="color:var(--err,#ff5252);margin-top:10px">Забрать у игрока</div><div class="t2">Нужен ID игрока в поле выше (себе тоже можно)</div>`;
   h += btn("Отобрать кота: " + it[1] + " ×" + admQty, "admtakecat", 'style="width:100%;justify-content:center"', "o");
-  h += chips([["−1K", 1e3], ["−1M", 1e6], ["−1B", 1e9], ["−1T", 1e12]], "admtakepts") + btn("Забрать все монеты", "admtakeall", 'style="width:100%;justify-content:center"', "o") + `<div class="buyrow">${btn(ic("gem", 14) + "−10", "admtakegem", 'data-v="10"', "o")}${btn(ic("gem", 14) + "−100", "admtakegem", 'data-v="100"', "o")}</div>` + btn("Забрать все самоцветы", "admtakegem", 'data-v="-1" style="width:100%;justify-content:center"', "o") + `</div>`;
+  h += chips([["−1K", 1e3], ["−1M", 1e6], ["−1B", 1e9], ["−1T", 1e12]], "admtakepts") + `<div class="buyrow4">${[10, 50, 90, 99].map(x => btn("−" + x + "%", "admtakepct", `data-v="${x}"`, "o")).join("")}</div><input data-keep="admamt" placeholder="Своя сумма, например 5e25" style="margin-top:6px">` + btn("Забрать эту сумму", "admtakeamt", 'style="width:100%;justify-content:center"', "o") + btn("Забрать все монеты", "admtakeall", 'style="width:100%;justify-content:center"', "o") + `<div class="buyrow">${btn(ic("gem", 14) + "−10", "admtakegem", 'data-v="10"', "o")}${btn(ic("gem", 14) + "−100", "admtakegem", 'data-v="100"', "o")}</div>` + btn("Забрать все самоцветы", "admtakegem", 'data-v="-1" style="width:100%;justify-content:center"', "o") + `</div>`;
   h += `<div class="card col"><div class="t1" style="color:var(--pri)">Сообщение всем в игре</div><textarea data-keep="bc" rows="2" placeholder="Текст сообщения"></textarea>${btn("Показать всем", "admbc")}</div>`;
   h += `<div class="card col"><div class="t1" style="color:var(--pri)">Промокоды</div><input data-keep="pcode" placeholder="Код, например NEWYEAR" style="text-transform:uppercase"><div class="buyrow4">${[["Монеты", "pts"], ["Самоцветы", "gems"], ["Кот", "cat"]].map(x => `<button class="chip ${admKind === x[1] ? "p" : ""}" style="border:0;font-family:inherit;justify-content:center" data-a="admkind" data-v="${x[1]}">${x[0]}</button>`).join("")}</div><input data-keep="pa" inputmode="decimal" placeholder="${admKind === "cat" ? "Номер кота 0–62" : "Сколько"}">${admKind === "cat" ? `<input data-keep="pb" inputmode="numeric" placeholder="Сколько котов (1)">` : ""}<input data-keep="pmx" inputmode="numeric" placeholder="Сколько человек смогут ввести (0 = без лимита)">${btn("Создать промокод", "admpromo")}`;
   if (promoList) h += promoList.map(p => `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid rgba(255,255,255,.06)"><div class="grow"><div class="t1" style="font-size:14px">${esc(p.code)}</div><div class="t2" style="font-size:11px">${rewTxt(p.kind, p.a, p.b)} · использовано ${p.used}${p.mx ? "/" + p.mx : ""}</div></div>${btn(ic("close", 16), "admpdel", `data-v="${esc(p.code)}"`, "t")}</div>`).join("");
@@ -1030,6 +1030,8 @@ A.admpts = function (e) { admGive("pts", +e.dataset.v, 1); };
 A.admtakecat = function () { admGive("takecat", admIdx, admQty); };
 A.admtakepts = function (e) { admGive("takepts", +e.dataset.v, 1); };
 A.admtakegem = function (e) { admGive("takegems", +e.dataset.v, 1); };
+A.admtakepct = function (e) { admGive("takepts", +e.dataset.v, 2); };
+A.admtakeamt = function () { const v = Number(String(KEEP.admamt || "").replace(",", ".")); if (!isFinite(v) || v <= 0) return toast("Введи сумму"); admGive("takepts", v, 1); };
 A.admtakeall = function () { admGive("takepts", -1, 1); };
 A.admgem = function (e) { admGive("gems", +e.dataset.v, 1); };
 A.admbc = async function () { const r = await api("adm_bcast", {text: KEEP.bc || ""}); if (r.error) return toast(r.error); KEEP.bc = ""; toast("Отправлено всем"); render(); pollNow(); };
