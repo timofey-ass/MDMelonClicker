@@ -157,6 +157,7 @@ html,body{background:radial-gradient(ellipse at 50% 28%,var(--g1),var(--g2) 40%,
 .redcase .btn:not(.o){background:#ff4d5e;color:#3a0006}
 .redcase .btn.o{color:#ff9aa5;box-shadow:inset 0 0 0 1px #ff4d5e}
 .rar6{color:#ff1744}
+.mbox{perspective:900px}.mc{transition:transform .2s}.mq{color:var(--out);width:56px;height:56px;display:flex;align-items:center;justify-content:center}.mc{min-height:110px;justify-content:center}
 </style></head><body>
 <div id="load"><div class="pitw"><i class="pb"></i><div class="cb"><div class="pc"><div class="cat" style="width:104px;height:104px;border-radius:50%;background-position:100% 100%"></div></div></div><i class="pf"></i></div><div style="font-size:22px;font-weight:700;color:var(--onprc)">MDMelonClicker</div><div id="lt" style="font-size:14px;color:var(--onv)">Подключаюсь…</div><div class="tr"><i></i></div></div>
 <div id="app"><div id="top"><h1 id="ttl">MDMelonClicker</h1><span id="gemc"></span></div><div id="view"></div><div id="nav"></div></div>
@@ -293,7 +294,7 @@ function tCases() {
   if (S.fc.some(x => x > 0)) h += `<div class="card"><div class="t1 grow" style="display:flex;align-items:center;gap:8px">${ic("ticket", 16)}За уровни:</div>${[0, 1, 2].filter(c => S.fc[c] > 0).map(c => btn(ic(CASES[c][0], 16) + "×" + S.fc[c], "lvcase", `data-i="${c}"`)).join("")}</div>`;
   CASES.forEach((c, ci) => {
     const tot = c[3].reduce((a, b) => a + b, 0); const ch = c[3].map((x, i) => x ? RARS[i][0].slice(0, 5) + ". " + String(+(x / tot * 100).toFixed(1)) + "%" : "").filter(Boolean).join(" · "); const cur = ci === GEM_CASE ? "gems" : "pts";
-    h += `<div class="card${ci === 4 ? " bluecase" : ci === 5 ? " redcase" : ""}">${circ(c[0], 54)}<div class="grow"><div class="t1">${c[1]}</div><div class="t2" style="font-size:11px">${ci === 5 ? "Падают только течкоты: Google, OnePlus, Vivo, Apple, Xiaomi, Samsung. Каждый даёт +50% ко всему" : ci === 4 ? "Шанс 1 к 20 выбить особого кота Джоске (+100% ко всему). Иначе падает как в Золотом: " + ch : ch}</div></div>${btn((ci === GEM_CASE ? ic("gem", 14) : "") + fmt(c[2]), "case", `data-i="${ci}" data-n="1" ${cost(c[2], cur)}`)}${btn("×5", "case", `data-i="${ci}" data-n="5" ${cost(c[2] * 5, cur)}`, "o")}</div>`;
+    h += `<div class="card${ci === 4 ? " bluecase" : ci === 5 ? " redcase" : ""}">${circ(c[0], 54)}<div class="grow"><div class="t1">${c[1]}</div><div class="t2" style="font-size:11px">${ci === 5 ? "70% — монеты (от 0.4× до 3× цены), 30% — течкот: Google, OnePlus, Vivo, Apple, Xiaomi, Samsung. Каждый даёт +50% ко всему" : ci === 4 ? "Шанс 1 к 20 выбить особого кота Джоске (+100% ко всему). Иначе падает как в Золотом: " + ch : ch}</div></div>${btn((ci === GEM_CASE ? ic("gem", 14) : "") + fmt(c[2]), "case", `data-i="${ci}" data-n="1" ${cost(c[2], cur)}`)}${btn("×5", "case", `data-i="${ci}" data-n="5" ${cost(c[2] * 5, cur)}`, "o")}</div>`;
   });
   h += `<div class="t2" style="margin:4px 4px 8px">×5 — пачкой. Каждые 10 открытий без эпика дают гарантированный эпик+. Голограмма: шанс 6% (12% в Золотом и Алмазном), даёт ×2 к бонусу.</div>`;
   if (S.hist.length) h += `<div class="sec">Последние выпадения</div><div class="hs">${S.hist.slice(-10).reverse().map(i => catEl(i, 44)).join("")}</div>`;
@@ -609,6 +610,16 @@ function mkOv(title) {
 }
 function endOv(go) { stopMusic(); if (OVL) { OVL.remove(); OVL = null; } busy = false; render(); if (go) go(); }
 closeOv = function (quiet) { stopMusic(); document.querySelectorAll(".ov,.ov2").forEach(o => o.remove()); OVL = null; busy = false; if (!quiet) render(); };
+const coinPrize = c => { const r = Math.random(); return Math.round(c * (r < .4 ? .4 : r < .8 ? .8 : r < .95 ? 1.5 : 3)); };
+function sparksAt(ov, x, y, color, n) {
+  const parts = [];
+  for (let i = 0; i < n; i++) {
+    const p = document.createElement("div"); p.className = "sp"; p.textContent = ["✦", "●", "★", "◆"][rint(0, 3)]; p.style.left = x + "px"; p.style.top = y + "px"; p.style.fontSize = rint(10, 20) + "px"; p.style.color = [color, "#fff", "var(--gold)"][rint(0, 2)]; ov.appendChild(p); parts.push(p);
+    const a = rnd(0, 6.283), r = rnd(.4, 1) * 90, d = rint(500, 1000);
+    requestAnimationFrame(() => requestAnimationFrame(() => { p.style.transition = `transform ${d}ms ease-out,opacity ${d}ms ease-in`; p.style.transform = `translate(${Math.cos(a) * r}px,${Math.sin(a) * r}px) rotate(${rint(-300, 300)}deg)`; p.style.opacity = 0; }));
+  }
+  setTimeout(() => parts.forEach(p => p.remove()), 1200);
+}
 function sparks(ov, color, n, rad) {
   rad = rad || 150; const parts = [];
   for (let i = 0; i < n; i++) {
@@ -633,7 +644,10 @@ function roulette(ci, wk, mode) {
   const win = wk[0], ov = mkOv(CASES[ci][1]), W = 112, N = 52, WIN_I = 44, w = ci === 4 ? CASES[2][3] : CASES[ci][3], sw = innerWidth, special = false;
   const hint = document.createElement("div"); hint.className = "hint"; hint.textContent = "Нажми, чтобы пропустить"; hint.style.opacity = 0; ov.appendChild(hint);
   const strip = document.createElement("div"); strip.className = "strip"; strip.style.width = W * N + "px"; let h = "";
+  const coinRc = a => `<div class="rc" style="box-shadow:inset 0 0 0 2px var(--gold)"><div style="color:var(--gold)">${ic("coin", 52)}</div><span style="color:var(--gold)">+${fmt(a)}</span></div>`;
   for (let n = 0; n < N; n++) {
+    if (n === WIN_I && wk[1] === "coins") { h += coinRc(wk[2]); continue; }
+    if (n !== WIN_I && ci === 5 && Math.random() < .65) { h += coinRc(coinPrize(CASES[5][2])); continue; }
     let idx; if (n === WIN_I) idx = win; else { let ri = rarR(w); if (Math.abs(n - WIN_I) <= 2 && Math.random() < .6) ri = Math.max(ri, w[3] > 0 ? 3 : 2); idx = pickR(ri); }
     const rc = RC[ITEMS[idx][2]]; h += `<div class="rc" style="box-shadow:inset 0 0 0 2px ${rc}">${catEl(idx, 62)}<span style="color:${rc}">${ITEMS[idx][1]}</span></div>`;
   }
@@ -659,7 +673,9 @@ function roulette(ci, wk, mode) {
 function reveal(ov, wk, againFn, fail) {
   if (OVL !== ov) return; const [win, kind] = wk; ov.onclick = null;
   let name, ri, rname, col, bonus;
-  if (fail || win === null) { name = "Не вышло…"; ri = 0; rname = "Неудача"; col = "#78909c"; bonus = 0; } else { name = ITEMS[win][1]; ri = ITEMS[win][2]; rname = RARS[ri][0]; col = RC[ri]; bonus = RARS[ri][2]; }
+  const coins = kind === "coins";
+  if (coins) { name = "+" + fmt(wk[2]); ri = 3; rname = "Приз"; col = "#ffd54f"; bonus = 0; }
+  else if (fail || win === null) { name = "Не вышло…"; ri = 0; rname = "Неудача"; col = "#78909c"; bonus = 0; } else { name = ITEMS[win][1]; ri = ITEMS[win][2]; rname = RARS[ri][0]; col = RC[ri]; bonus = RARS[ri][2]; }
   const holo = kind === "holo" || kind === "newholo";
   ov.innerHTML = `<div class="ov2t">${ov.dataset.t || ""}</div>`;
   const fl = document.createElement("div"); fl.className = "flash"; fl.style.background = holo ? "#fff" : col; ov.appendChild(fl); requestAnimationFrame(() => { fl.style.opacity = 0; });
@@ -667,13 +683,14 @@ function reveal(ov, wk, againFn, fail) {
   const gw = document.createElement("div"); gw.className = "glow"; gw.style.background = col; ov.appendChild(gw);
   let pn = 0; const pulse = () => { if (OVL !== ov) return; pn++; gw.style.transform = `translate(-50%,-50%) scale(${1 + .12 * Math.sin(pn * .25)})`; setTimeout(pulse, 40); }; pulse();
   let txt, cc, fg; const own = win !== null ? (S.inv[win + ""] || 1) : 1;
-  if (kind === "fail") { txt = "Дубликат сгорел"; cc = "var(--sch)"; fg = "var(--onv)"; }
+  if (coins) { txt = "Монеты добавлены на счёт"; cc = "var(--prc)"; fg = "var(--gold)"; }
+  else if (kind === "fail") { txt = "Дубликат сгорел"; cc = "var(--sch)"; fg = "var(--onv)"; }
   else if (kind === "new") { txt = `НОВИНКА · +${bonus}% ко всему`; cc = "var(--prc)"; fg = "var(--onprc)"; }
   else if (kind === "newholo") { txt = `ГОЛОГРАММА · +${bonus * 2}% ко всему`; cc = "var(--prc)"; fg = "var(--gold)"; }
   else if (kind === "holo") { txt = "ГОЛОГРАММА · бонус x2"; cc = "var(--prc)"; fg = "var(--gold)"; }
   else { txt = `Дубликат · в запасе ×${Math.max(0, own - 1)}`; cc = "var(--sch)"; fg = "var(--gold)"; }
   const card = document.createElement("div"); card.className = "rcard"; card.style.boxShadow = `inset 0 0 0 2px ${holo ? "#fff" : col}`;
-  card.innerHTML = `<div style="font-size:12px;font-weight:700;color:${col}">${holo ? "★ " : ""}${rname.toUpperCase()}</div><div style="margin:6px 0;display:flex;justify-content:center">${win !== null ? `<div class="fxc" style="border-radius:22%">${catEl(win, 150, {holo, fx: true})}</div>` : `<div style="color:var(--onv);padding:20px">${ic("close", 84)}</div>`}</div><div style="font-size:22px;font-weight:700">${name}</div><div class="chip" style="margin-top:10px;background:${cc};color:${fg}">${kind === "dup" || kind === "fail" ? "" : ic("sparkle", 14)}${txt}</div>`;
+  card.innerHTML = `<div style="font-size:12px;font-weight:700;color:${col}">${holo ? "★ " : ""}${rname.toUpperCase()}</div><div style="margin:6px 0;display:flex;justify-content:center">${coins ? `<div style="color:var(--gold);padding:14px">${ic("coin", 110)}</div>` : win !== null ? `<div class="fxc" style="border-radius:22%">${catEl(win, 150, {holo, fx: true})}</div>` : `<div style="color:var(--onv);padding:20px">${ic("close", 84)}</div>`}</div><div style="font-size:22px;font-weight:700">${name}</div><div class="chip" style="margin-top:10px;background:${cc};color:${fg}">${kind === "dup" || kind === "fail" || coins ? "" : ic("sparkle", 14)}${txt}</div>`;
   ov.appendChild(card); bindCards(card);
   card.style.transform = "translate(-50%,-50%) scale(0)"; requestAnimationFrame(() => requestAnimationFrame(() => { card.style.transition = "transform .56s cubic-bezier(.3,1.9,.5,1)"; card.style.transform = "translate(-50%,-50%) scale(1)"; }));
   const row = document.createElement("div"); row.className = "rrow"; row.style.opacity = 0;
@@ -700,22 +717,45 @@ function reveal(ov, wk, againFn, fail) {
 function resultOnly(icon, wk, title) { const ov = mkOv(title || "Крафт"); ov.dataset.t = noemo(title || "Крафт"); preroll(ov, icon, () => reveal(ov, wk, null, wk[0] === null)); }
 showResult = function (icon, res, title, again) { resultOnly(icon, res, title); };
 showMulti = function (ci, wins, n) {
-  const ov = mkOv(CASES[ci][1] + " ×" + n); ov.dataset.t = CASES[ci][1] + " ×" + n;
-  const box = document.createElement("div"); box.className = "mbox"; let h = "";
-  wins.forEach(([w, k], i) => { const rc = RC[ITEMS[w][2]], ho = k === "holo" || k === "newholo", tag = {new: "НОВИНКА", newholo: "ГОЛО · НОВИНКА", holo: "ГОЛО x2", dup: "дубль"}[k]; h += `<div class="mc" style="box-shadow:inset 0 0 0 2px ${ho ? "#fff" : rc}">${catEl(w, 56, {holo: ho})}<span style="color:${rc}">${ho ? "★ " : ""}${ITEMS[w][1]}</span><span style="font-size:9px;color:${k === "dup" ? "var(--out)" : "var(--gold)"}">${tag}</span></div>`; });
-  box.innerHTML = h; ov.appendChild(box);
-  const cells = [...box.children]; cells.forEach(c => { c.style.opacity = 0; c.style.transform = "scale(0)"; });
-  const best = wins.reduce((a, b) => ITEMS[b[0]][2] > ITEMS[a[0]][2] ? b : a);
-  let i = 0; const st = () => {
-    if (OVL !== ov) return;
-    if (i >= cells.length) {
-      const d = document.createElement("div"); d.className = "rrow"; d.style.flexDirection = "column"; d.style.alignItems = "center"; d.style.gap = "10px";
-      d.innerHTML = `<div style="font-size:14px;font-weight:700;color:${RC[ITEMS[best[0]][2]]}">Лучшее: ${ITEMS[best[0]][1]}</div><div style="display:flex;gap:10px">${btn("Забрать", "ovclose", "", "t")}${btn("Ещё ×" + n, "ovagain")}</div>`; ov.appendChild(d);
-      d.querySelector("[data-a=ovclose]").onclick = () => endOv(); d.querySelector("[data-a=ovagain]").onclick = () => endOv(() => openCase(ci, 0, n)); return;
-    }
-    const c = cells[i]; c.style.transition = "opacity .2s,transform .3s cubic-bezier(.3,1.9,.5,1)"; c.style.opacity = 1; c.style.transform = "scale(1)"; const R = ITEMS[wins[i][0]][2]; sfx("up", i + R * 2); tickHap(); if (R >= 3) buzz(R - 1); i++; setTimeout(st, 260);
+  const title = CASES[ci][1] + " ×" + n, ov = mkOv(title); ov.dataset.t = title;
+  const rar = w => w[0] === null ? 1 : ITEMS[w[0]][2], isHolo = w => w[1] === "holo" || w[1] === "newholo";
+  const col = w => w[0] === null ? "#ffd54f" : isHolo(w) ? "#fff" : RC[ITEMS[w[0]][2]];
+  const box = document.createElement("div"); box.className = "mbox"; box.innerHTML = wins.map(() => `<div class="mc"><div class="mq">${ic("box", 34)}</div></div>`).join(""); ov.appendChild(box);
+  const cells = [...box.children]; cells.forEach(c => { c.style.opacity = 0; });
+  const hint = document.createElement("div"); hint.className = "hint"; hint.textContent = "Двойное касание — показать всё"; hint.style.opacity = .9; ov.appendChild(hint);
+  const front = w => {
+    if (w[0] === null) return `<div style="color:var(--gold)">${ic("coin", 44)}</div><span style="color:var(--gold)">+${fmt(w[2])}</span><span style="font-size:9px;color:var(--out)">монеты</span>`;
+    const k = w[1], ho = isHolo(w), tag = {new: "НОВИНКА", newholo: "ГОЛО · НОВИНКА", holo: "ГОЛО x2", dup: "дубль"}[k], rc = RC[ITEMS[w[0]][2]];
+    return `${catEl(w[0], 56, {holo: ho})}<span style="color:${rc}">${ho ? "★ " : ""}${ITEMS[w[0]][1]}</span><span style="font-size:9px;color:${k === "dup" ? "var(--out)" : "var(--gold)"}">${tag}</span>`;
   };
-  setTimeout(st, 300);
+  const setFront = i => { const c = cells[i]; c.innerHTML = front(wins[i]); c.style.boxShadow = `inset 0 0 0 2px ${col(wins[i])}`; };
+  let done = false, finished = false, shown = 0;
+  const finish = () => {
+    if (finished || OVL !== ov) return; finished = true; hint.remove();
+    const score = w => w[0] === null ? 1 : ITEMS[w[0]][2] + (isHolo(w) ? .5 : 0), best = wins.reduce((a, b) => score(b) > score(a) ? b : a);
+    const bn = best[0] === null ? "+" + fmt(best[2]) + " монет" : ITEMS[best[0]][1];
+    const d = document.createElement("div"); d.className = "rrow"; d.style.flexDirection = "column"; d.style.alignItems = "center"; d.style.gap = "10px";
+    d.innerHTML = `<div style="font-size:14px;font-weight:700;color:${col(best)}">Лучшее: ${bn}</div><div style="display:flex;gap:10px">${btn("Забрать", "ovclose", "", "t")}${btn("Ещё ×" + n, "ovagain")}</div>`; ov.appendChild(d);
+    d.querySelector("[data-a=ovclose]").onclick = () => endOv(); d.querySelector("[data-a=ovagain]").onclick = () => endOv(() => openCase(ci, 0, n));
+  };
+  const skip = () => { if (done) return; done = true; cells.forEach((c, i) => { c.style.transition = "none"; c.style.transform = "none"; c.style.opacity = 1; setFront(i); }); finish(); };
+  let lt = 0; ov.addEventListener("pointerdown", () => { const t = performance.now(); if (t - lt < 350) skip(); lt = t; });
+  const step = () => {
+    if (OVL !== ov || done) return; if (shown >= cells.length) return finish();
+    const i = shown++, c = cells[i], w = wins[i], r = c.getBoundingClientRect(), dx = innerWidth / 2 - (r.left + r.width / 2), dy = innerHeight * .44 - (r.top + r.height / 2);
+    c.style.transition = "none"; c.style.opacity = 1; c.style.transform = `translate(${dx}px,${dy}px) scale(.3) rotate(${rint(-220, 220)}deg)`; c.getBoundingClientRect();
+    c.style.transition = "transform .42s cubic-bezier(.3,1.5,.5,1)"; c.style.transform = "none"; sfx("up", i * 2); tickHap();
+    setTimeout(() => {
+      if (OVL !== ov || done) return; c.style.transition = "transform .16s"; c.style.transform = "rotateY(90deg)";
+      setTimeout(() => {
+        if (OVL !== ov || done) return; setFront(i); c.style.transition = "transform .22s cubic-bezier(.3,1.9,.5,1)"; c.style.transform = "none";
+        const rr = c.getBoundingClientRect(), R = rar(w); sparksAt(ov, rr.left + rr.width / 2, rr.top + rr.height / 2, col(w), 8 + R * 5);
+        if (R >= 3) { buzz(R - 1); jingle(R); } else { tickHap(); sfx("tick"); }
+        setTimeout(step, R >= 3 ? 650 : 220);
+      }, 160);
+    }, 430);
+  };
+  preroll(ov, CASES[ci][0], step);
 };
 openCase = function (ci, mode, n) {
   if (busy) return; n = n || 1; const t = now();
@@ -723,7 +763,7 @@ openCase = function (ci, mode, n) {
   else if (mode === 2) { if (S.fc[ci] < 1) return; S.fc[ci]--; n = 1; }
   else { const c = CASES[ci][2] * n; if (ci === GEM_CASE) { if (S.gems < c) return toast("Не хватает самоцветов"); S.gems -= c; } else { if (S.pts < c) return toast("Не хватает монет"); S.pts -= c; } }
   const wins = [];
-  for (let k = 0; k < n; k++) { const win = roll(ci), holo = Math.random() < (ci < 2 ? .06 : .12); S.opened++; S.pity = ITEMS[win][2] >= 2 ? 0 : S.pity + 1; const kind = grant(win, holo); S.hist = S.hist.concat([win]).slice(-14); addXp(20 + 15 * ITEMS[win][2]); wins.push([win, kind]); }
+  for (let k = 0; k < n; k++) { if (ci === 5 && Math.random() < .7) { const amt = coinPrize(CASES[5][2]); S.pts += amt; S.run += amt; S.total += amt; S.opened++; addXp(20); wins.push([null, "coins", amt]); continue; } const win = roll(ci), holo = Math.random() < (ci < 2 ? .06 : .12); S.opened++; S.pity = ITEMS[win][2] >= 2 ? 0 : S.pity + 1; const kind = grant(win, holo); S.hist = S.hist.concat([win]).slice(-14); addXp(20 + 15 * ITEMS[win][2]); wins.push([win, kind]); }
   checkAch(); mark(); save(true); actx();
   if (n === 1) roulette(ci, wins[0], mode); else showMulti(ci, wins, n);
 };
