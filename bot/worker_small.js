@@ -5,7 +5,7 @@ async function getHtml() {
   return r.text();
 }
 const ATLAS = "https://raw.githubusercontent.com/timofey-ass/MDMelonClicker/HEAD/mdcats2.jpg";
-const N_ITEMS = 64;
+const N_ITEMS = 70;
 const ADMIN = 1796286471;
 let ready = false;
 
