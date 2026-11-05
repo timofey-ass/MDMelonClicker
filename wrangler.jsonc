@@ -1,0 +1,9 @@
+{
+  "name": "raspy-term-3ab3",
+  "main": "bot/worker_small.js",
+  "compatibility_date": "2025-01-01",
+  "workers_dev": true,
+  "d1_databases": [
+    { "binding": "DB", "database_name": "mdclicker", "database_id": "ВСТАВЬ_ID_БАЗЫ_D1" }
+  ]
+}
