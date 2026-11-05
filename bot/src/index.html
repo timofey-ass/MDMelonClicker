@@ -160,7 +160,7 @@ const tg = window.Telegram && Telegram.WebApp;
 if (tg) { try { tg.ready(); tg.expand(); tg.setHeaderColor("#17110d"); tg.setBackgroundColor("#17110d"); tg.disableVerticalSwipes && tg.disableVerticalSwipes(); } catch (e) {} }
 const $ = s => document.querySelector(s);
 const {BUILDS, UPGR, ACH, RARS, ITEMS, CASES, SETS, PERKS, CAT_COST, SELL, UPCH, THEMES} = D;
-const JOSKE_IMG = "https://raw.githubusercontent.com/timofey-ass/MDMelonClicker/main/joske.jpg", JOSKE_MP3 = "https://raw.githubusercontent.com/timofey-ass/MDMelonClicker/main/joske.mp3";
+const JOSKE_IMG = "https://raw.githubusercontent.com/timofey-ass/MDMelonClicker/main/joske.jpg";
 const GEM_CASE = 3, FREE_EVERY = 4 * 3600;
 const EMO = {"👆": "tap", "💥": "crit", "🔥": "fire", "🐱": "cat", "🐾": "paw", "🥛": "milk", "🐟": "fish", "🏭": "factory", "🌀": "portal", "🚀": "rocket", "📦": "cube", "🎁": "box", "👑": "crown", "⚡": "bolt", "💎": "gem", "🧾": "swap", "⭐": "star", "🎟": "ticket"};
 const ic = (k, s, c) => `<svg class="ic" viewBox="0 0 24 24" width="${s || 20}" height="${s || 20}" fill="none" stroke="currentColor" stroke-width="2.04" stroke-linecap="round" stroke-linejoin="round"${c ? ` style="color:${c}"` : ""}>${IC[EMO[k] || k]}</svg>`;
@@ -596,26 +596,7 @@ setInterval(() => { if (S && !document.hidden) { if (Math.random() < .5) spawnFa
 
 // ---------- оверлеи кейсов
 let OVL = null, skipRoll = false;
-let jBuf = null, jSrc = null, jGain = null, jLoading = false, jAud2 = null;
-async function jPre() {
-  if (jBuf || jLoading) return; jLoading = true;
-  try { const r = await fetch(JOSKE_MP3); const ab = await r.arrayBuffer(); const c = actx(); jBuf = await c.decodeAudioData(ab); } catch (e) { jBuf = null; }
-  jLoading = false;
-}
-setTimeout(jPre, 3000);
-function jPlay(test) {
-  stopMusic(true); if (!LS("snd", 1)) { if (test) toast("Включи «Звуки кейсов»"); return; }
-  const c = actx(); if (!jBuf) { jPre(); if (test) toast("Музыка ещё загружается, попробуй через пару секунд"); }
-  try {
-    if (c && jBuf) { jSrc = c.createBufferSource(); jSrc.buffer = jBuf; jGain = c.createGain(); jGain.gain.value = .25; jSrc.connect(jGain); jGain.connect(c.destination); jSrc.start(0); return; }
-  } catch (e) { toast("Музыка не включилась: " + (e && e.name)); }
-  try { jAud2 = new Audio(JOSKE_MP3); jAud2.volume = .25; const p = jAud2.play(); if (p && p.catch) p.catch(e => toast("Музыка не включилась: " + (e && e.name))); } catch (e) {}
-}
-function stopMusic(fast) {
-  const c = AC;
-  if (jSrc && c) { const s = jSrc, g = jGain; jSrc = jGain = null; try { if (fast) s.stop(); else { g.gain.setValueAtTime(g.gain.value, c.currentTime); g.gain.linearRampToValueAtTime(0, c.currentTime + .7); s.stop(c.currentTime + .75); } } catch (e) {} }
-  if (jAud2) { try { jAud2.pause(); } catch (e) {} jAud2 = null; }
-}
+function stopMusic() {}
 function mkOv(title) {
   closeOv(true); const o = document.createElement("div"); o.className = "ov2"; o.dataset.t = noemo(title || ""); o.innerHTML = `<div class="ov2t">${noemo(title || "")}</div>`; document.body.appendChild(o); OVL = o; busy = true; skipRoll = false; return o;
 }
@@ -642,7 +623,7 @@ function preroll(ov, icon, then) {
   }; step();
 }
 function roulette(ci, wk, mode) {
-  const win = wk[0], ov = mkOv(CASES[ci][1]), W = 112, N = 52, WIN_I = 44, w = ci === 4 ? CASES[2][3] : CASES[ci][3], sw = innerWidth, special = win === 63;
+  const win = wk[0], ov = mkOv(CASES[ci][1]), W = 112, N = 52, WIN_I = 44, w = ci === 4 ? CASES[2][3] : CASES[ci][3], sw = innerWidth, special = false;
   const hint = document.createElement("div"); hint.className = "hint"; hint.textContent = "Нажми, чтобы пропустить"; hint.style.opacity = 0; ov.appendChild(hint);
   const strip = document.createElement("div"); strip.className = "strip"; strip.style.width = W * N + "px"; let h = "";
   for (let n = 0; n < N; n++) {
@@ -737,10 +718,8 @@ openCase = function (ci, mode, n) {
   const wins = [];
   for (let k = 0; k < n; k++) { const win = roll(ci), holo = Math.random() < (ci < 2 ? .06 : .12); S.opened++; S.pity = ITEMS[win][2] >= 2 ? 0 : S.pity + 1; const kind = grant(win, holo); S.hist = S.hist.concat([win]).slice(-14); addXp(20 + 15 * ITEMS[win][2]); wins.push([win, kind]); }
   checkAch(); mark(); save(true); actx();
-  if (wins.some(x => x[0] === 63)) jPlay();
   if (n === 1) roulette(ci, wins[0], mode); else showMulti(ci, wins, n);
 };
-A.mtest = function () { actx(); jPlay(true); setTimeout(() => stopMusic(), 5000); };
 A.ovclose = function () {}; A.ovagain = function () {};
 
 // ---------- шапка, вкладка «Игра»
@@ -778,7 +757,7 @@ tMore = function () {
   let h = `<div class="card"><div class="grow"><div class="t1">${esc(me.name || "Игрок")}</div><div class="t2">ID ${me.id}</div></div></div>`;
   const fn = ["Нет", "Снежинки", "Тыквы"], fv = [0, 1, 2]; SETS.forEach((x, i) => { if (S.sets.includes(x[0])) { fn.push(x[1]); fv.push(3 + i); } });
   h += `<div class="card col"><div class="t1" style="color:var(--pri)">Оформление</div>${optRow("Тема", THEMES.map(t => t[0]), "th", THEMES.map((_, i) => i), LS("th", 0))}${optRow("Падающий фон", fn, "fall", fv, LS("fall", 0))}</div>`;
-  h += `<div class="card col"><div class="t1" style="color:var(--pri)">Игра</div>${tog("Вибрация", "hap", LS("hap", 1))}${tog("Звуки кейсов", "snd", LS("snd", 1))}${btn("Проверить музыку Джоске", "mtest", "", "o")}</div>`;
+  h += `<div class="card col"><div class="t1" style="color:var(--pri)">Игра</div>${tog("Вибрация", "hap", LS("hap", 1))}${tog("Звуки кейсов", "snd", LS("snd", 1))}</div>`;
   const st = [["Всего тапов", fmt(S.taps)], ["Накоплено за всё время", fmt(S.total)], ["За текущий забег", fmt(S.run)], ["Генераторов", owned()], ["Самоцветов", S.gems], ["Перерождений", S.prest], ["Звёзд поймано", S.stars], ["Лихорадок", S.fevers], ["Общий множитель", "x" + baseMult().toFixed(2)]];
   h += `<div class="card col" style="gap:0">${st.map(r => `<div style="display:flex;padding:3px 0"><span class="t2 grow" style="font-size:14px;margin:0">${r[0]}</span><span style="font-size:14px;font-weight:700">${r[1]}</span></div>`).join("")}</div>`;
   h += `<div class="card col"><div class="t1" style="color:var(--pri)">Как играть</div><div class="t2" style="font-size:13px">${TIPS}</div></div>`;
