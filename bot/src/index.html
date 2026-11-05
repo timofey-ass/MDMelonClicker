@@ -141,6 +141,11 @@ html,body{background:radial-gradient(ellipse at 50% 28%,var(--g1),var(--g2) 40%,
 .pitw .pc{position:absolute;left:48px;top:66px;width:104px;height:104px;animation:pop3 3.4s ease-in-out infinite;transform:translateY(120px)}
 .pitw .pf{position:absolute;left:25px;right:25px;bottom:0;height:40px;border-radius:50%;background:#0d0705;clip-path:inset(50% 0 0 0);box-shadow:0 -2px 0 #2b1a10 inset}
 @keyframes pop3{0%{transform:translateY(125px) rotate(-25deg)}18%{transform:translateY(-78px) rotate(14deg)}28%{transform:translateY(-52px) rotate(-10deg)}38%{transform:translateY(-62px) rotate(6deg)}52%{transform:translateY(125px) rotate(22deg)}62%{transform:translateY(125px) rotate(-20deg)}78%{transform:translateY(-85px) rotate(-16deg)}88%{transform:translateY(-55px) rotate(9deg)}100%{transform:translateY(125px) rotate(25deg)}}
+
+.gcol{display:flex;flex-direction:column;height:100%;min-height:560px}
+.gcol #field{flex:1;height:auto;min-height:290px}
+.chips .chip{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--out) 45%,transparent);margin:0 3px}
+#coin .rr{position:absolute;inset:0;border-radius:50%;border:12px solid #fff;pointer-events:none;z-index:3}
 </style></head><body>
 <div id="load"><div class="pitw"><i class="pb"></i><div class="cb"><div class="pc"><div class="cat" style="width:104px;height:104px;border-radius:50%;background-position:100% 100%"></div></div></div><i class="pf"></i></div><div style="font-size:22px;font-weight:700;color:var(--onprc)">MDMelonClicker</div><div id="lt" style="font-size:14px;color:var(--onv)">Подключаюсь…</div><div class="tr"><i></i></div></div>
 <div id="app"><div id="top"><h1 id="ttl">MDMelonClicker</h1><span id="gemc"></span></div><div id="view"></div><div id="nav"></div></div>
@@ -713,12 +718,12 @@ A.ovclose = function () {}; A.ovagain = function () {};
 // ---------- шапка, вкладка «Игра»
 const chipI = (k, id) => `<span class="chip" id="${id}"></span>`;
 tGame = function () {
-  const eq = +S.eq, cat = eq >= 0 && (eq + "") in S.inv ? eq : "coin";
-  return `<div id="g-pts" style="text-align:center;font-size:46px;font-weight:700;color:var(--pri);line-height:1.15;margin-top:4px">0</div><div class="t2" style="text-align:center;margin:-2px 0 8px;font-size:13px">монет</div>
+  const eq = +S.eq, cat = eq >= 0 && (eq + "") in S.inv ? eq : "coin", rr = cat === "coin" ? "" : `<i class="rr" style="border-color:${RC[ITEMS[cat][2]]}"></i>`;
+  return `<div class="gcol"><div id="g-pts" style="text-align:center;font-size:46px;font-weight:700;color:var(--pri);line-height:1.15">0</div><div class="t2" style="text-align:center;margin:-2px 0 8px;font-size:13px">монет</div>
   <div class="chips"><span class="chip" id="g-cps"></span><span class="chip" id="g-tap"></span><span class="chip" id="g-gem"></span><span class="chip p" id="g-buff" style="display:none"></span></div>
-  <div id="field"><div id="ring"></div><div id="coin" data-coin><div class="wv" style="clip-path:${cat === "coin" ? WAVY : "none"};border-radius:${cat === "coin" ? 0 : "50%"}">${catEl(cat, 240, {})}<i class="gl"></i></div></div></div>
-  <div style="display:flex;align-items:center;gap:10px;margin:0 4px 10px"><span class="t2" style="font-weight:700;display:flex;align-items:center;gap:6px">${ic("fire", 14)}Комбо</span><div class="wb grow"><div class="tr"></div><div class="ac" id="combo" style="width:0%"><i></i></div></div></div>
-  <div class="card p" id="daily" style="display:none"><div class="grow t1" style="display:flex;align-items:center;gap:8px">${ic("box", 18)}Ежедневный бонус готов</div>${btn("Забрать", "daily")}</div>`;
+  <div id="field"><div id="ring"></div><div id="coin" data-coin><div class="wv" style="clip-path:${cat === "coin" ? WAVY : "none"};border-radius:${cat === "coin" ? 0 : "50%"}">${catEl(cat, 240, {})}${rr}<i class="gl"></i></div></div></div>
+  <div style="display:flex;align-items:center;gap:10px;margin:0 4px 8px"><span class="t2" style="font-weight:700;display:flex;align-items:center;gap:6px;margin:0;min-width:96px">${ic("fire", 14)}<span id="clt">Комбо</span></span><div class="wb grow"><div class="tr"></div><div class="ac" id="combo" style="width:0%"><i></i></div></div></div>
+  <div class="card p" id="daily" style="display:none;margin-bottom:0"><div class="grow t1" style="display:flex;align-items:center;gap:8px">${ic("box", 18)}Ежедневный бонус готов</div>${btn("Забрать", "daily")}</div></div>`;
 };
 const _refresh0 = refresh;
 refresh = function (full) {
@@ -729,6 +734,10 @@ refresh = function (full) {
     s("g-pts", fmt(S.pts)); s("g-cps", ic("bolt", 14) + fmt(cps()) + "/с"); s("g-tap", ic("tap", 14) + fmt(tapValue())); s("g-gem", ic("gem", 14) + S.gems);
     const b = []; for (const [nm, u] of [["Жар", fever], ["Буст", S.boost], ["Звёзды", frenzy]]) if (u > t) b.push(nm + " " + clock(u - t));
     const e = $("#g-buff"); if (e) { e.textContent = b.join(" · "); e.style.display = b.length ? "" : "none"; }
+    const fv = t < fever, fr = fv ? Math.max(0, (fever - t) / (6 + S.fev)) : combo / 100, cb = $("#combo");
+    if (cb) { cb.style.width = Math.max(0, Math.min(1, fr)) * 100 + "%"; cb.firstChild.style.background = fv ? "var(--gold)" : ""; }
+    const cl = $("#clt"); if (cl) cl.textContent = fv ? "ЛИХОРАДКА" : "Комбо " + Math.floor(combo) + "%";
+    const rg = $("#ring"); if (rg) rg.style.borderColor = fv ? "var(--gold)" : "";
   }
 };
 const _render0 = render;
