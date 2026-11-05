@@ -89,6 +89,7 @@ async function api(path, req, env) {
     }
     const res = await db.prepare("UPDATE users SET state=?, rev=rev+1, total=?, name=?, upd=? WHERE id=? AND rev=?").bind(JSON.stringify(s), num(s.total), name, now, id, Number(b.rev)).run();
     if (res.meta.changes === 1) return J({rev: Number(b.rev) + 1});
+    if (!u.state) return J({reset: true, rev: u.rev});
     return J({conflict: true, state: JSON.parse(u.state), rev: u.rev});
   }
   if (path === "top") {
@@ -147,7 +148,7 @@ async function api(path, req, env) {
     const maxbc = (await db.prepare("SELECT COALESCE(MAX(id),0) AS m FROM bcast").first()).m;
     const online = (await db.prepare("SELECT COUNT(*) AS c FROM users WHERE seen>?").bind(now - 40).first()).c;
     const u = await getUser(db, id);
-    return J({grants: g, bc, maxbc, online, banned: !!(u && u.banned), badges: bd(id, u && u.badges)});
+    return J({grants: g, bc, maxbc, online, rev: u ? u.rev : 0, banned: !!(u && u.banned), badges: bd(id, u && u.badges)});
   }
   if (path === "chat") {
     const since = Number(b.since) || 0;
@@ -192,6 +193,13 @@ async function api(path, req, env) {
       const text = String(b.text || "").trim().slice(0, 300); if (!text) return J({error: "Пусто"});
       await db.prepare("INSERT INTO bcast (text,ts) VALUES (?,?)").bind(text, now).run();
       return J({ok: true});
+    }
+    if (path === "adm_reset") {
+      const t = Number(b.uid), u = await getUser(db, t); if (!u) return J({error: "Игрок не найден"});
+      await db.prepare("UPDATE users SET state=NULL, total=0, rev=rev+1, upd=? WHERE id=?").bind(now, t).run();
+      await db.prepare("UPDATE offers SET status='cancelled' WHERE seller=? AND status='open'").bind(t).run();
+      await db.prepare("INSERT INTO grants (uid,kind,a,b,ts) VALUES (?,?,?,?,?)").bind(t, "reset", 0, 1, now).run();
+      return J({ok: true, name: u.name});
     }
     if (path === "adm_del") { await db.prepare("DELETE FROM chat WHERE id=?").bind(Number(b.id)).run(); return J({ok: true}); }
     if (path === "adm_ban") { await db.prepare("UPDATE users SET banned=? WHERE id=?").bind(b.on ? 1 : 0, Number(b.uid)).run(); if (b.on) await db.prepare("DELETE FROM chat WHERE uid=?").bind(Number(b.uid)).run(); return J({ok: true}); }
