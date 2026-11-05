@@ -465,6 +465,7 @@ async function api(path, body) {
 async function save(force) {
   if (!S || saving || (!dirty && !force)) return; saving = true; S.ts = now();
   const r = await api("save", {rev, state: S}); saving = false;
+  if (r.reset) { S = defState(); snap = {inv: {}}; rev = r.rev; dirty = true; toast("Прогресс сброшен администратором"); render(); return save(true); }
   if (r.conflict) {
     const sv = r.state, m = Object.assign({}, sv.inv); for (const k in S.inv) { const d = (S.inv[k] || 0) - (snap.inv[k] || 0); m[k] = Math.max(0, (m[k] || 0) + d); }
     for (const k in snap.inv) if (!(k in S.inv)) m[k] = Math.max(0, (m[k] || 0) - snap.inv[k]);
@@ -886,7 +887,10 @@ async function pollNow() {
     const r = await api("poll", {bc: lastBc});
     if (r && !r.error) {
       onlineN = r.online || 0; if (r.badges !== undefined) myBadges = r.badges;
-      for (const g of r.grants || []) { applyReward(g.kind, g.a, g.b); toast("Тебе выдали: " + rewTxt(g.kind, g.a, g.b)); }
+      for (const g of r.grants || []) {
+        if (g.kind === "reset") { S = defState(); snap = {inv: {}}; rev = r.rev; dirty = true; fever = frenzy = 0; mark(); save(true); toast("Прогресс сброшен администратором"); render(); continue; }
+        applyReward(g.kind, g.a, g.b); toast("Тебе выдали: " + rewTxt(g.kind, g.a, g.b));
+      }
       if (r.grants && r.grants.length && tab !== 0) render();
       if (r.bc) { lastBc = r.bc.id; announce(r.bc.text); } else lastBc = Math.max(lastBc, r.maxbc || 0);
     }
@@ -927,7 +931,7 @@ A.prof = async function (e) {
   const rows = [["Накоплено", fmt(r.total)], ["Тапов", fmt(r.taps)], ["Котов собрано", r.cats + " / " + ITEMS.length], ["Голограмм", r.holo], ["Достижений", r.ach], ["Кейсов открыто", r.opened], ["Перерождений", r.prest]];
   const bl = String(r.badges || "").split("").filter(c => BADGES[c]).map(c => `<div style="display:flex;align-items:center;gap:8px;font-size:13px;margin-top:4px">${bdg(c, 18)}<span>${BADGES[c][0]}</span></div>`).join("");
   let adm = "";
-  if (isAdm && uid !== me.id) adm = `<div class="sec" style="margin:14px 0 6px">Админ</div><div style="display:flex;gap:6px;flex-wrap:wrap">${btn(r.banned ? "Разблокировать" : "Заблокировать", "pban", `data-i="${uid}" data-on="${r.banned ? 0 : 1}"`, "o")}${btn("Выдать", "pgive", `data-i="${uid}"`, "o")}</div><div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">${Object.keys(BADGES).map(c => `<button class="chip ${String(r.badges).includes(c) ? "p" : ""}" style="border:0;font-family:inherit" data-a="pbadge" data-i="${uid}" data-c="${c}" data-cur="${r.badges}">${BADGES[c][0].split(" ")[0]}</button>`).join("")}</div>`;
+  if (isAdm) adm = `<div class="sec" style="margin:14px 0 6px">Админ</div><div style="display:flex;gap:6px;flex-wrap:wrap">${uid !== me.id ? btn(r.banned ? "Разблокировать" : "Заблокировать", "pban", `data-i="${uid}" data-on="${r.banned ? 0 : 1}"`, "o") + btn("Выдать", "pgive", `data-i="${uid}"`, "o") : ""}${btn("Сбросить прогресс", "preset", `data-i="${uid}"`, "o")}</div><div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">${Object.keys(BADGES).map(c => `<button class="chip ${String(r.badges).includes(c) ? "p" : ""}" style="border:0;font-family:inherit" data-a="pbadge" data-i="${uid}" data-c="${c}" data-cur="${r.badges}">${BADGES[c][0].split(" ")[0]}</button>`).join("")}</div>`;
   const eq = r.eq >= 0 ? catEl(r.eq, 64, {}) : catEl("coin", 64, {});
   modal(`<div style="display:flex;gap:14px;align-items:center"><div style="border-radius:50%;overflow:hidden;width:64px;height:64px;flex:none">${eq}</div><div class="grow"><div class="t1" style="font-size:18px">${nm(r.name, r.badges)}</div><div class="t2">ID ${r.id} · <span style="color:${r.online ? "var(--good)" : "var(--out)"}">${r.online ? "в игре" : "не в сети"}</span>${r.banned ? ' · <span style="color:#ff5252">заблокирован</span>' : ""}</div></div></div>${bl}<div class="card col" style="margin:12px 0 0;gap:0">${rows.map(x => `<div style="display:flex;padding:3px 0"><span class="t2 grow" style="font-size:14px;margin:0">${x[0]}</span><span style="font-size:14px;font-weight:700">${x[1]}</span></div>`).join("")}</div>${adm}<div style="margin-top:14px;text-align:right">${btn("Закрыть", "mclose", "", "t")}</div>`);
 };
@@ -935,6 +939,12 @@ A.pban = async function (e) { const r = await api("adm_ban", {uid: +e.dataset.i,
 A.pbadge = async function (e) {
   const c = e.dataset.c, cur = e.dataset.cur || ""; const nb = cur.includes(c) ? cur.split(c).join("") : cur + c;
   const r = await api("adm_badges", {uid: +e.dataset.i, badges: nb}); toast(r.error || "Значки обновлены"); closeModal(); chatSig = ""; lbData = null; if (tab === 4) render();
+};
+let rstArm = 0;
+A.preset = async function (e) {
+  if (rstArm !== e.dataset.i) { rstArm = e.dataset.i; e.textContent = "Точно сбросить? Нажми ещё раз"; setTimeout(() => { rstArm = 0; }, 4000); return; }
+  rstArm = 0; const r = await api("adm_reset", {uid: +e.dataset.i}); if (r.error) return toast(r.error);
+  toast("Прогресс сброшен: " + (r.name || "")); closeModal(); lbData = null; chatSig = ""; pollNow(); if (tab === 4) render();
 };
 A.pgive = function (e) { KEEP.admid = e.dataset.i; closeModal(); tab = 5; render(); $("#view").scrollTop = 0; };
 
