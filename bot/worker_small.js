@@ -184,7 +184,7 @@ async function api(path, req, env) {
     if (!adm) return J({error: "Нет доступа"}, 403);
     if (path === "adm_give") {
       const t = Number(b.target) || id, kind = String(b.kind);
-      if (!["pts", "gems", "cat", "takepts", "takecat"].includes(kind)) return J({error: "Неверный тип"});
+      if (!["pts", "gems", "cat", "takepts", "takecat", "takegems"].includes(kind)) return J({error: "Неверный тип"});
       const u = await getUser(db, t); if (!u) return J({error: "Игрок с таким ID не найден"});
       await db.prepare("INSERT INTO grants (uid,kind,a,b,ts) VALUES (?,?,?,?,?)").bind(t, kind, num(Number(b.a)), Math.floor(num(Number(b.b))) || 1, now).run();
       return J({ok: true, name: u.name});
