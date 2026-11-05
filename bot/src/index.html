@@ -596,7 +596,10 @@ setInterval(() => { if (S && !document.hidden) { if (Math.random() < .5) spawnFa
 
 // ---------- оверлеи кейсов
 let OVL = null, skipRoll = false, jAud = null;
-function jPlay() { stopMusic(true); if (!LS("snd", 1)) return; try { jAud = new Audio(JOSKE_MP3); jAud.volume = .25; jAud.play().catch(() => {}); } catch (e) {} }
+let jBlob = null;
+function jPre() { if (jBlob) return; fetch(JOSKE_MP3).then(r => r.arrayBuffer()).then(b => { jBlob = URL.createObjectURL(new Blob([b], {type: "audio/mpeg"})); }).catch(() => {}); }
+setTimeout(jPre, 3000);
+function jPlay() { stopMusic(true); if (!LS("snd", 1)) return; try { jAud = new Audio(jBlob || JOSKE_MP3); jAud.volume = .25; const p = jAud.play(); if (p && p.catch) p.catch(e => toast("Музыка не включилась: " + (e && e.name))); } catch (e) { toast("Музыка не включилась"); } }
 function stopMusic(fast) { const a = jAud; if (!a) return; jAud = null; if (fast) { try { a.pause(); } catch (e) {} return; } let v = a.volume; const t = setInterval(() => { v -= .03; if (v <= 0) { clearInterval(t); try { a.pause(); } catch (e) {} } else a.volume = v; }, 60); }
 function mkOv(title) {
   closeOv(true); const o = document.createElement("div"); o.className = "ov2"; o.dataset.t = noemo(title || ""); o.innerHTML = `<div class="ov2t">${noemo(title || "")}</div>`; document.body.appendChild(o); OVL = o; busy = true; skipRoll = false; return o;
