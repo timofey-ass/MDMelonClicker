@@ -186,6 +186,18 @@ async function api(path, req, env) {
       const t = Number(b.target) || id, kind = String(b.kind);
       if (!["pts", "gems", "cat", "takepts", "takecat", "takegems"].includes(kind)) return J({error: "Неверный тип"});
       const u = await getUser(db, t); if (!u) return J({error: "Игрок с таким ID не найден"});
+      if (kind.startsWith("take")) {
+        const a = num(Number(b.a)), m = Math.floor(num(Number(b.b))) || 1;
+        const r = await mutate(db, t, s => {
+          let txt = "";
+          if (kind === "takepts") { const x = a < 0 ? s.pts : m === 2 ? s.pts * Math.min(a, 100) / 100 : Math.min(s.pts, a); s.pts = Math.max(0, num(s.pts) - x); txt = "монеты"; }
+          else if (kind === "takegems") { const x = a < 0 ? s.gems : Math.min(num(s.gems), a); s.gems = Math.max(0, num(s.gems) - x); txt = "самоцветы"; }
+          else { const k = String(Math.floor(a)); if (!(k in s.inv)) return "У игрока нет этого кота"; s.inv[k] -= m; if (s.inv[k] <= 0) { delete s.inv[k]; s.holo = (s.holo || []).filter(x => x !== +k); if (+s.eq === +k) s.eq = -1; } txt = "кот"; }
+          s.tk = (s.tk || 0) + 1; s.tkm = txt;
+        });
+        if (r.error) return J({error: r.error});
+        return J({ok: true, name: u.name});
+      }
       await db.prepare("INSERT INTO grants (uid,kind,a,b,ts) VALUES (?,?,?,?,?)").bind(t, kind, num(Number(b.a)), Math.floor(num(Number(b.b))) || 1, now).run();
       return J({ok: true, name: u.name});
     }

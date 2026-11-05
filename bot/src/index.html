@@ -486,6 +486,7 @@ async function save(force) {
     const sv = r.state, m = Object.assign({}, sv.inv); for (const k in S.inv) { const d = (S.inv[k] || 0) - (snap.inv[k] || 0); m[k] = Math.max(0, (m[k] || 0) + d); }
     for (const k in snap.inv) if (!(k in S.inv)) m[k] = Math.max(0, (m[k] || 0) - snap.inv[k]);
     for (const k in m) if (m[k] <= 0) delete m[k];
+    if ((sv.tk || 0) !== (S.tk || 0)) { S.pts = Math.min(S.pts, sv.pts); S.gems = Math.min(S.gems, sv.gems); S.tk = sv.tk; toast("Администратор забрал: " + (sv.tkm || "")); }
     S.inv = m; S.holo = Array.from(new Set(S.holo.concat(sv.holo || []))).filter(i => (i + "") in m); rev = r.rev; snap = {inv: Object.assign({}, sv.inv)}; dirty = true; toast("Данные обновлены после обмена"); return save(true);
   }
   if (r.error) return; rev = r.rev; if (S) { dirty = false; snap = cloneInv(); }
@@ -906,6 +907,7 @@ async function pollNow() {
   try {
     const r = await api("poll", {bc: lastBc});
     if (r && !r.error) {
+      if (r.rev && r.rev > rev && !saving) { dirty = true; save(true); }
       onlineN = r.online || 0; if (r.badges !== undefined) myBadges = r.badges;
       for (const g of r.grants || []) {
         if (g.kind === "reset") { S = defState(); snap = {inv: {}}; rev = r.rev; dirty = true; fever = frenzy = 0; mark(); save(true); toast("Прогресс сброшен администратором"); render(); continue; }
