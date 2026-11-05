@@ -874,9 +874,11 @@ function applyReward(kind, a, b) {
   if (kind === "pts") { S.pts += a; S.run += a; S.total += a; }
   else if (kind === "gems") S.gems += a;
   else if (kind === "cat") { const i = Math.max(0, Math.min(ITEMS.length - 1, Math.floor(a))); for (let k = 0; k < (b || 1); k++) grant(i, false); }
+  else if (kind === "takepts") { const t = a < 0 ? S.pts : Math.min(S.pts, a); S.pts -= t; }
+  else if (kind === "takecat") { const k = String(Math.floor(a)); if (k in S.inv) { S.inv[k] -= (b || 1); if (S.inv[k] <= 0) { delete S.inv[k]; S.holo = S.holo.filter(x => x !== +k); if (+S.eq === +k) S.eq = -1; } } }
   checkAch(); mark(); save(true);
 }
-const rewTxt = (kind, a, b) => kind === "pts" ? "+" + fmt(a) + " монет" : kind === "gems" ? "+" + fmt(a) + " самоцветов" : ITEMS[Math.floor(a)] ? ITEMS[Math.floor(a)][1] + " ×" + (b || 1) : "награда";
+const rewTxt = (kind, a, b) => kind === "takepts" ? "−" + (a < 0 ? "все монеты" : fmt(a) + " монет") : kind === "takecat" ? "отобран кот " + (ITEMS[Math.floor(a)] ? ITEMS[Math.floor(a)][1] : "") + " ×" + (b || 1) : kind === "pts" ? "+" + fmt(a) + " монет" : kind === "gems" ? "+" + fmt(a) + " самоцветов" : ITEMS[Math.floor(a)] ? ITEMS[Math.floor(a)][1] + " ×" + (b || 1) : "награда";
 function announce(text) {
   const o = document.createElement("div"); o.className = "ann"; o.innerHTML = `<div class="anc"><div class="t1" style="color:var(--pri);display:flex;align-items:center;gap:8px">${ic("sparkle", 18)}Сообщение</div><div style="margin:10px 0 14px;font-size:15px;white-space:pre-wrap">${esc(text)}</div>${btn("Понятно", "annx")}</div>`;
   document.body.appendChild(o); jingle(1); buzz(1);
@@ -891,7 +893,7 @@ async function pollNow() {
       onlineN = r.online || 0; if (r.badges !== undefined) myBadges = r.badges;
       for (const g of r.grants || []) {
         if (g.kind === "reset") { S = defState(); snap = {inv: {}}; rev = r.rev; dirty = true; fever = frenzy = 0; mark(); save(true); toast("Прогресс сброшен администратором"); render(); continue; }
-        applyReward(g.kind, g.a, g.b); toast("Тебе выдали: " + rewTxt(g.kind, g.a, g.b));
+        applyReward(g.kind, g.a, g.b); toast((g.kind[0] === "t" && g.kind.startsWith("take") ? "Администратор забрал: " : "Тебе выдали: ") + rewTxt(g.kind, g.a, g.b));
       }
       if (r.grants && r.grants.length && tab !== 0) render();
       if (r.bc) { lastBc = r.bc.id; announce(r.bc.text); } else lastBc = Math.max(lastBc, r.maxbc || 0);
@@ -990,7 +992,10 @@ const admCard = () => {
   h += chips([["−5", -5], ["−", -1], ["+", 1], ["+5", 5]], "admidx") + chips([["×1", 1], ["×5", 5], ["×10", 10], ["×50", 50]], "admqty");
   h += btn("Выдать котика", "admcat", 'style="width:100%;justify-content:center"');
   h += chips([["+1K", 1e3], ["+1M", 1e6], ["+1B", 1e9], ["+1T", 1e12]], "admpts");
-  h += `<div class="buyrow">${btn(ic("gem", 14) + "+10", "admgem", 'data-v="10"', "o")}${btn(ic("gem", 14) + "+100", "admgem", 'data-v="100"', "o")}</div></div>`;
+  h += `<div class="buyrow">${btn(ic("gem", 14) + "+10", "admgem", 'data-v="10"', "o")}${btn(ic("gem", 14) + "+100", "admgem", 'data-v="100"', "o")}</div>`;
+  h += `<div class="t1" style="color:var(--err,#ff5252);margin-top:10px">Забрать у игрока</div><div class="t2">Нужен ID игрока в поле выше (себе тоже можно)</div>`;
+  h += btn("Отобрать кота: " + it[1] + " ×" + admQty, "admtakecat", 'style="width:100%;justify-content:center"', "o");
+  h += chips([["−1K", 1e3], ["−1M", 1e6], ["−1B", 1e9], ["−1T", 1e12]], "admtakepts") + btn("Забрать все монеты", "admtakeall", 'style="width:100%;justify-content:center"', "o") + `</div>`;
   h += `<div class="card col"><div class="t1" style="color:var(--pri)">Сообщение всем в игре</div><textarea data-keep="bc" rows="2" placeholder="Текст сообщения"></textarea>${btn("Показать всем", "admbc")}</div>`;
   h += `<div class="card col"><div class="t1" style="color:var(--pri)">Промокоды</div><input data-keep="pcode" placeholder="Код, например NEWYEAR" style="text-transform:uppercase"><div class="buyrow4">${[["Монеты", "pts"], ["Самоцветы", "gems"], ["Кот", "cat"]].map(x => `<button class="chip ${admKind === x[1] ? "p" : ""}" style="border:0;font-family:inherit;justify-content:center" data-a="admkind" data-v="${x[1]}">${x[0]}</button>`).join("")}</div><input data-keep="pa" inputmode="decimal" placeholder="${admKind === "cat" ? "Номер кота 0–62" : "Сколько"}">${admKind === "cat" ? `<input data-keep="pb" inputmode="numeric" placeholder="Сколько котов (1)">` : ""}<input data-keep="pmx" inputmode="numeric" placeholder="Сколько человек смогут ввести (0 = без лимита)">${btn("Создать промокод", "admpromo")}`;
   if (promoList) h += promoList.map(p => `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid rgba(255,255,255,.06)"><div class="grow"><div class="t1" style="font-size:14px">${esc(p.code)}</div><div class="t2" style="font-size:11px">${rewTxt(p.kind, p.a, p.b)} · использовано ${p.used}${p.mx ? "/" + p.mx : ""}</div></div>${btn(ic("close", 16), "admpdel", `data-v="${esc(p.code)}"`, "t")}</div>`).join("");
@@ -1000,12 +1005,15 @@ async function admTarget() { const v = (KEEP.admid || "").trim(); return v ? +v 
 async function admGive(kind, a, b) {
   const t = await admTarget(); if (t && !/^\d+$/.test(String(t))) return toast("Неверный ID");
   const r = await api("adm_give", {target: t, kind, a, b}); if (r.error) return toast(r.error);
-  toast("Выдано: " + (r.name || "себе")); pollNow();
+  toast(kind.startsWith("take") ? "Отобрано у: " + (r.name || "себя") : "Выдано: " + (r.name || "себе")); pollNow();
 }
 A.admidx = function (e) { admIdx = ((admIdx + +e.dataset.v) % ITEMS.length + ITEMS.length) % ITEMS.length; render(); };
 A.admqty = function (e) { admQty = +e.dataset.v; render(); };
 A.admcat = function () { admGive("cat", admIdx, admQty); };
 A.admpts = function (e) { admGive("pts", +e.dataset.v, 1); };
+A.admtakecat = function () { admGive("takecat", admIdx, admQty); };
+A.admtakepts = function (e) { admGive("takepts", +e.dataset.v, 1); };
+A.admtakeall = function () { admGive("takepts", -1, 1); };
 A.admgem = function (e) { admGive("gems", +e.dataset.v, 1); };
 A.admbc = async function () { const r = await api("adm_bcast", {text: KEEP.bc || ""}); if (r.error) return toast(r.error); KEEP.bc = ""; toast("Отправлено всем"); render(); pollNow(); };
 A.admkind = function (e) { admKind = e.dataset.v; render(); };
