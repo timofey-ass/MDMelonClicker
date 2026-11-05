@@ -5,7 +5,7 @@ async function getHtml() {
   return r.text();
 }
 const ATLAS = "https://raw.githubusercontent.com/timofey-ass/MDMelonClicker/HEAD/mdcats2.jpg";
-const N_ITEMS = 72;
+const N_ITEMS = 73;
 const ADMIN = 1796286471;
 let ready = false;
 
@@ -214,6 +214,15 @@ async function api(path, req, env) {
       await db.prepare("UPDATE offers SET status='cancelled' WHERE seller=? AND status='open'").bind(t).run();
       await db.prepare("INSERT INTO grants (uid,kind,a,b,ts) VALUES (?,?,?,?,?)").bind(t, "reset", 0, 1, now).run();
       return J({ok: true, name: u.name});
+    }
+    if (path === "adm_resetall") {
+      await db.prepare("UPDATE users SET state=NULL, total=0, rev=rev+1, upd=?").bind(now).run();
+      await db.prepare("UPDATE offers SET status='cancelled' WHERE status='open'").run();
+      await db.prepare("DELETE FROM grants").run();
+      await db.prepare("INSERT INTO grants (uid,kind,a,b,ts) SELECT id,'reset',0,2,? FROM users").bind(now).run();
+      await db.prepare("INSERT INTO grants (uid,kind,a,b,ts) SELECT id,'cat',72,1,? FROM users").bind(now).run();
+      const c = (await db.prepare("SELECT COUNT(*) AS c FROM users").first()).c;
+      return J({ok: true, count: c});
     }
     if (path === "adm_del") { await db.prepare("DELETE FROM chat WHERE id=?").bind(Number(b.id)).run(); return J({ok: true}); }
     if (path === "adm_ban") { await db.prepare("UPDATE users SET banned=? WHERE id=?").bind(b.on ? 1 : 0, Number(b.uid)).run(); if (b.on) await db.prepare("DELETE FROM chat WHERE uid=?").bind(Number(b.uid)).run(); return J({ok: true}); }
