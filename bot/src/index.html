@@ -224,8 +224,10 @@ const owned = () => S.b.reduce((a, b) => a + b, 0);
 function collBonus() { let t = 0; for (const k in S.inv) { const i = +k; if (i < ITEMS.length) { const b = RARS[ITEMS[i][2]][2]; t += S.holo.includes(i) ? b * 2 : b; } } return t; }
 function baseMult() { return 1 + .10 * S.gt + .02 * S.ach.length + collBonus() / 100 + SETS.filter(x => S.sets.includes(x[0])).reduce((a, x) => a + x[3], 0) / 100; }
 function factor() { const t = now(); let f = baseMult(); if (t < S.boost) f *= 2; if (t < fever) f *= 2; if (t < frenzy) f *= 3; return f; }
-function cps() { return BUILDS.reduce((a, b, i) => a + b[3] * S.b[i], 0) * factor() * (1 + .1 * perk("cps")); }
-function tapValue() { return (1 + S.click + .02 * cps() / Math.max(factor(), 1)) * factor() * (1 + .1 * perk("tap")) * (("70" in S.inv) ? 1e21 : 1); }
+const nerf = x => x <= 1e3 ? x : 1e3 * Math.pow(x / 1e3, .75);
+function cpsRaw() { return BUILDS.reduce((a, b, i) => a + b[3] * S.b[i], 0) * factor() * (1 + .1 * perk("cps")); }
+function cps() { return nerf(cpsRaw()); }
+function tapValue() { return nerf((1 + S.click + .02 * cpsRaw() / Math.max(factor(), 1)) * factor() * (1 + .1 * perk("tap"))) * (("70" in S.inv) ? 1e21 : 1); }
 function bCost(i, n) { return BUILDS[i][2] * Math.pow(1.15, S.b[i]) * (Math.pow(1.15, n) - 1) / .15; }
 function bCount(i) { if (qty === 1) return 1; if (qty === 10) return 10; let n = 0; while (n < 500 && bCost(i, n + 1) <= S.pts) n++; return Math.max(1, n); }
 const UK = ["click", "crit", "fev"];
