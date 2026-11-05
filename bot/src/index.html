@@ -228,7 +228,7 @@ function factor() { const t = now(); let f = baseMult(); if (t < S.boost) f *= 2
 const nerf = x => x <= 1e3 ? x : 1e3 * Math.pow(x / 1e3, .75);
 function cpsRaw() { return BUILDS.reduce((a, b, i) => a + b[3] * S.b[i], 0) * factor() * (1 + .1 * perk("cps")); }
 function cps() { return nerf(cpsRaw()); }
-function tapValue() { return nerf((1 + S.click + .02 * cpsRaw() / Math.max(factor(), 1)) * factor() * (1 + .1 * perk("tap"))) * (("70" in S.inv) ? 1e21 : 1) * (("72" in S.inv) ? 300 : 1); }
+function tapValue() { return nerf((1 + S.click + .02 * cpsRaw() / Math.max(factor(), 1)) * factor() * (1 + .1 * perk("tap"))) * (("70" in S.inv) ? 1e21 : 1) * (("72" in S.inv) ? 100 : 1); }
 function bCost(i, n) { return BUILDS[i][2] * Math.pow(1.15, S.b[i]) * (Math.pow(1.15, n) - 1) / .15; }
 function bCount(i) { if (qty === 1) return 1; if (qty === 10) return 10; let n = 0; while (n < 500 && bCost(i, n + 1) <= S.pts) n++; return Math.max(1, n); }
 const UK = ["click", "crit", "fev"];
@@ -313,7 +313,7 @@ function tCases() {
   if (S.fc.some(x => x > 0)) h += `<div class="card"><div class="t1 grow" style="display:flex;align-items:center;gap:8px">${ic("ticket", 16)}За уровни:</div>${[0, 1, 2].filter(c => S.fc[c] > 0).map(c => btn(ic(CASES[c][0], 16) + "×" + S.fc[c], "lvcase", `data-i="${c}"`)).join("")}</div>`;
   CASES.forEach((c, ci) => {
     const tot = c[3].reduce((a, b) => a + b, 0); const ch = c[3].map((x, i) => x ? RARS[i][0].slice(0, 5) + ". " + String(+(x / tot * 100).toFixed(1)) + "%" : "").filter(Boolean).join(" · "); const cur = ci === GEM_CASE ? "gems" : "pts";
-    h += `<div class="card${ci === 4 ? " bluecase" : ci === 5 ? " redcase" : ""}">${circ(c[0], 54)}<div class="grow"><div class="t1">${c[1]}</div><div class="t2" style="font-size:11px">${ci === 5 ? "70% — монеты (от 0.4× до 3× цены), 30% — течкот: Google, OnePlus, Vivo, Apple, Xiaomi, Samsung. Каждый даёт +50% ко всему" : ci === 4 ? "Шанс 2% выбить Королевского арбуза (×300 к тапу), 5% — особого кота Джоске (+100% ко всему). Иначе падает как в Золотом: " + ch : ch}</div></div>${btn((ci === GEM_CASE ? ic("gem", 14) : "") + fmt(c[2]), "case", `data-i="${ci}" data-n="1" ${cost(c[2], cur)}`)}${btn("×5", "case", `data-i="${ci}" data-n="5" ${cost(c[2] * 5, cur)}`, "o")}</div>`;
+    h += `<div class="card${ci === 4 ? " bluecase" : ci === 5 ? " redcase" : ""}">${circ(c[0], 54)}<div class="grow"><div class="t1">${c[1]}</div><div class="t2" style="font-size:11px">${ci === 5 ? "70% — монеты (от 0.4× до 3× цены), 30% — течкот: Google, OnePlus, Vivo, Apple, Xiaomi, Samsung. Каждый даёт +50% ко всему" : ci === 4 ? "Шанс 2% выбить Королевского арбуза (×100 к тапу), 5% — особого кота Джоске (+100% ко всему). Иначе падает как в Золотом: " + ch : ch}</div></div>${btn((ci === GEM_CASE ? ic("gem", 14) : "") + fmt(c[2]), "case", `data-i="${ci}" data-n="1" ${cost(c[2], cur)}`)}${btn("×5", "case", `data-i="${ci}" data-n="5" ${cost(c[2] * 5, cur)}`, "o")}</div>`;
   });
   h += `<div class="t2" style="margin:4px 4px 8px">×5 — пачкой. Каждые 10 открытий без эпика дают гарантированный эпик+. Голограмма: шанс 6% (12% в Золотом и Алмазном), даёт ×2 к бонусу.</div>`;
   if (S.hist.length) h += `<div class="sec">Последние выпадения</div><div class="hs">${S.hist.slice(-10).reverse().map(i => catEl(i, 44)).join("")}</div>`;
@@ -322,7 +322,7 @@ function tCases() {
   h += `<div class="sec">Коллекция · нажми на кота, чтобы поставить его на монету</div>`;
   for (let ri = RARS.length - 1; ri >= 0; ri--) {
     const ids = ITEMS.map((it, i) => it[2] === ri && (i < 70 || i >= 72 || (i + "") in S.inv) ? i : -1).filter(i => i >= 0); if (!ids.length) continue;
-    h += `<div style="font-size:11px;font-weight:700;color:${RC[ri]};margin:8px 4px 4px">${RARS[ri][0]} · ${ri === 8 ? "×300 к тапу" : ri === 7 ? "×1 секстилион к одному тапу" : "+" + RARS[ri][2] + "% за предмет"}</div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">`;
+    h += `<div style="font-size:11px;font-weight:700;color:${RC[ri]};margin:8px 4px 4px">${RARS[ri][0]} · ${ri === 8 ? "×100 к тапу" : ri === 7 ? "×1 секстилион к одному тапу" : "+" + RARS[ri][2] + "% за предмет"}</div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">`;
     for (const idx of ids) { const o = S.inv[idx + ""] || 0, ho = S.holo.includes(idx), isq = +S.eq === idx;
       h += `<div class="cell${o ? " fxc" : ""}" ${o ? `data-a="equip" data-i="${idx}"` : ""} style="${isq || ho ? `box-shadow:inset 0 0 0 2px ${ho ? "#fff" : RC[ri]}` : ""}">${o ? catEl(idx, 52, {holo: ho, fx: true}) : `<div class="q">?</div>`}<span style="color:${o ? RC[ri] : "var(--out)"}">${o ? (ho ? "★ " : "") + ITEMS[idx][1] : "???"}</span>${o > 1 ? `<span style="color:var(--onv);font-weight:500">×${o}</span>` : ""}</div>`; }
     h += `</div>`;
@@ -913,7 +913,7 @@ async function pollNow() {
       onlineN = r.online || 0; if (r.badges !== undefined) myBadges = r.badges;
       if (r.rev && r.rev > rev && !saving && !(r.grants && r.grants.length)) { dirty = true; save(true); }
       for (const g of r.grants || []) {
-        if (g.kind === "reset") { S = defState(); snap = {inv: {}}; rev = r.rev; dirty = true; fever = frenzy = 0; mark(); save(true); toast("Прогресс сброшен администратором"); render(); if (g.b === 2) announce("Из-за баланса игры нам пришлось сбросить прогресс всем игрокам. В качестве утешительного приза ты получаешь кота «Королевский арбуз»: он даёт ×300 к монетам за тап. Его также можно выбить в Особом кейсе (шанс 2%). Прости и удачной игры!"); continue; }
+        if (g.kind === "reset") { S = defState(); snap = {inv: {}}; rev = r.rev; dirty = true; fever = frenzy = 0; mark(); save(true); toast("Прогресс сброшен администратором"); render(); if (g.b === 2) announce("Из-за баланса игры нам пришлось сбросить прогресс всем игрокам. В качестве утешительного приза ты получаешь кота «Королевский арбуз»: он даёт ×100 к монетам за тап. Его также можно выбить в Особом кейсе (шанс 2%). Прости и удачной игры!"); continue; }
         applyReward(g.kind, g.a, g.b); toast((g.kind[0] === "t" && g.kind.startsWith("take") ? "Администратор забрал: " : "Тебе выдали: ") + rewTxt(g.kind, g.a, g.b));
       }
       if (r.grants && r.grants.length && tab !== 0) render();
