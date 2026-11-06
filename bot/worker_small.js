@@ -39,11 +39,13 @@ async function init(db) {
     db.prepare("CREATE TABLE IF NOT EXISTS promos (code TEXT PRIMARY KEY, kind TEXT, a REAL, b INTEGER, mx INTEGER, used INTEGER DEFAULT 0)"),
     db.prepare("CREATE TABLE IF NOT EXISTS promo_uses (code TEXT, uid INTEGER, PRIMARY KEY(code, uid))"),
     db.prepare("CREATE TABLE IF NOT EXISTS bcast (id INTEGER PRIMARY KEY AUTOINCREMENT, text TEXT, ts INTEGER)"),
+    db.prepare("CREATE TABLE IF NOT EXISTS kv (k TEXT PRIMARY KEY, v TEXT)"),
     db.prepare("CREATE TABLE IF NOT EXISTS chat (id INTEGER PRIMARY KEY AUTOINCREMENT, uid INTEGER, name TEXT, text TEXT, ts INTEGER)"),
   ]);
   for (const c of ["badges TEXT DEFAULT ''", "banned INTEGER DEFAULT 0", "seen INTEGER DEFAULT 0"]) { try { await db.prepare("ALTER TABLE users ADD COLUMN " + c).run(); } catch (e) {} }
   ready = true;
 }
+function tidy(s) { if (Array.isArray(s.holo)) s.holo = s.holo.filter(i => (i + "") in s.inv); if (s.eq !== undefined && +s.eq >= 0 && !((s.eq + "") in s.inv)) s.eq = -1; }
 const num = x => (typeof x === "number" && isFinite(x)) ? x : 0;
 function clean(s) {
   if (!s || typeof s !== "object" || Array.isArray(s)) return null;
@@ -104,10 +106,10 @@ async function api(path, req, env) {
   }
   if (path === "offer") {
     const give = Number(b.give), want = Number(b.want);
-    if (!Number.isInteger(give) || !Number.isInteger(want) || give < 0 || want < 0 || give >= N_ITEMS || want >= N_ITEMS || give === want) return J({error: "Неверные коты"});
+    if (!Number.isInteger(give) || !Number.isInteger(want) || give < 0 || want < 0 || give === 70 || give === 71 || want === 70 || want === 71 || give >= N_ITEMS || want >= N_ITEMS || give === want) return J({error: "Неверные коты"});
     const cnt = (await db.prepare("SELECT COUNT(*) AS c FROM offers WHERE seller=? AND status='open'").bind(id).first()).c;
     if (cnt >= 5) return J({error: "Не больше 5 предложений"});
-    const r = await mutate(db, id, s => { if (inv(s, give) < 2) return "Нужен дубликат"; add(s, give, -1); });
+    const r = await mutate(db, id, s => { if (inv(s, give) < 1) return "У тебя нет этого кота"; add(s, give, -1); tidy(s); });
     if (r.error) return J(r);
     await db.prepare("INSERT INTO offers (seller,sname,give,want,ts) VALUES (?,?,?,?,?)").bind(id, name, give, want, now).run();
     return J(r);
@@ -125,7 +127,7 @@ async function api(path, req, env) {
     if (o.seller === id) return J({error: "Это твоё предложение"});
     const c = await db.prepare("UPDATE offers SET status='done', buyer=? WHERE id=? AND status='open'").bind(id, o.id).run();
     if (c.meta.changes !== 1) return J({error: "Кто-то уже обменял"});
-    const r = await mutate(db, id, s => { if (inv(s, o.want) < 2) return "Нужен дубликат: кота " + o.want; add(s, o.want, -1); add(s, o.give, 1); });
+    const r = await mutate(db, id, s => { if (inv(s, o.want) < 1) return "У тебя нет нужного кота"; add(s, o.want, -1); add(s, o.give, 1); tidy(s); });
     if (r.error) { await db.prepare("UPDATE offers SET status='open', buyer=NULL WHERE id=?").bind(o.id).run(); return J(r); }
     await mutate(db, o.seller, s => { add(s, o.want, 1); });
     return J(r);
@@ -169,7 +171,7 @@ async function api(path, req, env) {
     const uid = Number(b.uid); const u = await getUser(db, uid); if (!u) return J({error: "Игрок не найден"});
     const s = u.state ? JSON.parse(u.state) : {};
     const cats = Object.keys(s.inv || {}).length;
-    return J({id: u.id, name: u.name, badges: bd(u.id, u.badges), banned: !!u.banned, online: (u.seen || 0) > now - 40, total: u.total, taps: s.taps || 0, cats, holo: (s.holo || []).length, prest: s.prest || 0, ach: (s.ach || []).length, eq: s.eq === undefined ? -1 : s.eq, opened: s.opened || 0});
+    return J({id: u.id, name: u.name, badges: bd(u.id, u.badges), banned: !!u.banned, online: (u.seen || 0) > now - 40, total: u.total, taps: s.taps || 0, cats, holo: (s.holo || []).length, prest: s.prest || 0, ach: (s.ach || []).length, eq: s.eq === undefined ? -1 : s.eq, opened: s.opened || 0, bn: Number.isInteger(s.bn) ? s.bn : 0, offers: (await db.prepare("SELECT id,give,want FROM offers WHERE seller=? AND status='open' ORDER BY id DESC LIMIT 5").bind(u.id).all()).results});
   }
   if (path === "promo_use") {
     const code = String(b.code || "").trim().toUpperCase().slice(0, 32); if (!code) return J({error: "Введи промокод"});
@@ -246,8 +248,37 @@ async function tgcall(env, method, body) {
 async function secret(env) { return hex(await crypto.subtle.digest("SHA-256", enc("md:" + env.BOT_TOKEN))).slice(0, 32); }
 
 const DEMO = "<script>window.__DEV=1;(function(){var f=window.fetch;var seed={pts:1500000,run:1500000,total:3000000,gems:12,taps:1234,b:[12,8,5,3,1,0,0],inv:{\"3\":1,\"10\":1,\"22\":1,\"40\":1,\"64\":1,\"73\":1,\"80\":1,\"63\":1}};var rows=[[1,\"Мурка\",9.5e9],[2,\"Барсик\",4.2e8],[3,\"Демо\",3e6]].map(function(r){return{id:r[0],name:r[1],total:r[2],badges:\"\"}});var m={auth:{id:3,name:\"Демо\",state:seed,rev:1,admin:false,badges:\"\"},save:{ok:true,rev:1},poll:{grants:[],bc:null,maxbc:0,online:5,rev:1,badges:\"\"},top:{rows:rows,rank:3},offers:{offers:[]},chat:{rows:[{id:1,uid:1,name:\"Мурка\",text:\"Привет! Кто трейд?\",ts:0,badges:\"b\"},{id:2,uid:2,name:\"Барсик\",text:\"Выбил Королевского арбуза!\",ts:0,badges:\"\"}]}};window.fetch=function(u,o){u=String(u);if(u.indexOf(\"/api/\")===0){return Promise.resolve(new Response(JSON.stringify(m[u.slice(5)]||{}),{headers:{\"content-type\":\"application/json\"}}))}return f.apply(this,arguments)}})()</script>";
+const ANN = ["5.9.2", ["Обмен: теперь можно менять любых котов, а не только дубликаты (последний кот уходит из инвентаря)", "Новый экран выбора кота для обмена: крупные карточки по редкостям", "Профиль: баннеры на выбор и список твоих активных обменов", "Выключатели анимаций клика и открытия кейсов (Ещё → Игра)", "Перерождение: 1 000 000 за забег = 1 самоцвет, дальше линейно", "Цены кейсов: Особый — 250 млн, Течкот — 101 млн", "Каждое обновление теперь приходит сообщением в бота"]];
+let annBusy = false;
+async function announce(env, origin) {
+  if (annBusy || !env.DB || !env.BOT_TOKEN) return;
+  annBusy = true;
+  try {
+    const db = env.DB; await init(db);
+    const cur = await db.prepare("SELECT v FROM kv WHERE k='annver'").first();
+    if (!cur) await db.prepare("INSERT OR IGNORE INTO kv (k,v) VALUES ('annver','5.9.1')").run();
+    if (cur && cur.v === ANN[0]) return;
+    const nowS = Math.floor(Date.now() / 1000);
+    await db.prepare("INSERT OR IGNORE INTO kv (k,v) VALUES ('annlock','0')").run();
+    const lk = await db.prepare("UPDATE kv SET v=? WHERE k='annlock' AND CAST(v AS INTEGER)<?").bind(String(nowS + 30), nowS).run();
+    if (lk.meta.changes !== 1) return;
+    const lastv = await db.prepare("SELECT v FROM kv WHERE k='annto'").first();
+    if (!lastv || lastv.v !== ANN[0]) { await db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES ('annto',?)").bind(ANN[0]).run(); await db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES ('annpos','0')").run(); }
+    const pos = Number((await db.prepare("SELECT v FROM kv WHERE k='annpos'").first()).v) || 0;
+    const rows = (await db.prepare("SELECT id FROM users WHERE id>? AND banned=0 ORDER BY id LIMIT 40").bind(pos).all()).results;
+    if (!rows.length) { await db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES ('annver',?)").bind(ANN[0]).run(); return; }
+    const text = "🍉 Обновление v" + ANN[0] + "\n\n" + ANN[1].map(x => "• " + x).join("\n");
+    const markup = {inline_keyboard: [[{text: "Играть", web_app: {url: origin}}]]};
+    for (let i = 0; i < rows.length; i += 10) {
+      await Promise.all(rows.slice(i, i + 10).map(r => tgcall(env, "sendMessage", {chat_id: r.id, text, reply_markup: markup}).catch(() => {})));
+    }
+    await db.prepare("UPDATE kv SET v=? WHERE k='annpos'").bind(String(rows[rows.length - 1].id)).run();
+    await db.prepare("UPDATE kv SET v='0' WHERE k='annlock'").run();
+  } catch (e) {} finally { annBusy = false; }
+}
 export default {
-  async fetch(req, env) {
+  async fetch(req, env, ctx) {
+    if (ctx && ctx.waitUntil && req.method === "POST" && new URL(req.url).pathname === "/api/poll") ctx.waitUntil(announce(env, new URL(req.url).origin));
     const url = new URL(req.url), p = url.pathname;
     try {
       if (p === "/" || p === "/index.html") return new Response(await getHtml(), {headers: {"content-type": "text/html;charset=utf-8", "cache-control": "no-store"}});

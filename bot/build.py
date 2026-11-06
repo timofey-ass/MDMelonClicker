@@ -5,11 +5,12 @@ head=open('app_head.html').read(); js=open('app.js').read().replace('/*PART3*/',
 ic=open("icons.json").read()
 html=head+"<script>const D="+json.dumps(d,ensure_ascii=False)+";const IC="+ic+";\n"+js+"\n</script></body></html>\n"
 open('index.html','w').write(html)
-w=open('worker_tpl.js').read().replace('__HTML__',json.dumps(html,ensure_ascii=False).replace('</','<\\/'))
+TPL=open('worker_tpl.js').read().replace('__ANN__',json.dumps(d['CHANGES'][0],ensure_ascii=False))
+w=TPL.replace('__HTML__',json.dumps(html,ensure_ascii=False).replace('</','<\\/'))
 open('worker.js','w').write(w)
 print(len(html),len(w))
 
-sm=open('worker_tpl.js').read().replace('const HTML = __HTML__;','''const HTML_URL = "https://raw.githubusercontent.com/timofey-ass/MDMelonClicker/main/bot/src/index.html";
+sm=TPL.replace('const HTML = __HTML__;','''const HTML_URL = "https://raw.githubusercontent.com/timofey-ass/MDMelonClicker/main/bot/src/index.html";
 async function getHtml() {
   const r = await fetch(HTML_URL, {cf: {cacheTtl: 30, cacheEverything: true}});
   if (!r.ok) throw new Error("html " + r.status);
