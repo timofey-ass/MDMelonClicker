@@ -1,6 +1,6 @@
 const HTML = __HTML__;
 const ATLAS = "https://raw.githubusercontent.com/timofey-ass/MDMelonClicker/HEAD/mdcats2.jpg";
-const N_ITEMS = 93;
+const N_ITEMS = 103;
 const ADMIN = 1796286471;
 let ready = false;
 
