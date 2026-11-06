@@ -17,6 +17,7 @@ api = async function (path, body) {
 const BADGES = {
   c: ["Создатель MDMC", "#ffd54f", `<path d="M3 18h18l-1.5-10-4.5 4-3-7-3 7-4.5-4z" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>`],
   t: ["Тестер", "#69f0ae", `<path d="M9 9a3 3 0 016 0v7a3 3 0 01-6 0zM12 9v10M5 11h4M15 11h4M5 17h4M15 17h4M9 6L7 4M15 6l2-2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`],
+  g: ["Гений", "#b388ff", `<path d="M9 18h6M10 21h4M12 3a6 6 0 00-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0012 3z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`],
   s: ["Поддержал оплату лимитов на Клауд и создателя игры", "#ff8fb1", `<path d="M12 20s-7-4.4-7-10a4 4 0 017-2.4A4 4 0 0119 10c0 5.6-7 10-7 10z" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>`],
 };
 const bdg = (s, sz) => String(s || "").split("").filter(c => BADGES[c]).map(c => `<svg class="bdg" title="${BADGES[c][0]}" viewBox="0 0 24 24" width="${sz || 15}" height="${sz || 15}" style="color:${BADGES[c][1]}">${BADGES[c][2]}</svg>`).join("");
@@ -53,7 +54,7 @@ async function pollNow() {
   try {
     const r = await api("poll", {bc: lastBc});
     if (r && !r.error) {
-      onlineN = r.online || 0; if (r.badges !== undefined) myBadges = r.badges;
+      onlineN = r.online || 0; if (r.uc !== undefined && r.uc !== ucN) { try { await loadUcats(); } catch (e) {} } if (r.badges !== undefined) myBadges = r.badges;
       if (r.rev && r.rev > rev && !saving && !(r.grants && r.grants.length)) { dirty = true; save(true); }
       for (const g of r.grants || []) {
         if (g.kind === "reset") { S = defState(); snap = {inv: {}}; rev = r.rev; dirty = true; fever = frenzy = 0; mark(); save(true); toast("Прогресс сброшен администратором"); render(); if (g.b === 2) announce("Из-за баланса игры нам пришлось сбросить прогресс всем игрокам. В качестве утешительного приза ты получаешь кота «Королевский арбуз»: он увеличивает заработок за каждый тап в 40 раз. Его также можно выбить в Особом кейсе (шанс 2%). Прости и удачной игры!"); continue; }
@@ -368,14 +369,15 @@ A.mnu = function (e) {
   const k = e.dataset.k;
   if (k === "back") { moreSub = 0; tab = 5; }
   else if (k === "lead" || k === "trade" || k === "chat") { tab = 4; sub = k === "lead" ? 0 : k === "trade" ? 1 : 2; }
-  else { tab = 5; moreSub = {set: 1, info: 2, adm: 3}[k]; }
+  else { tab = 5; moreSub = {set: 1, info: 2, adm: 3, ws: 4}[k]; if (k === "ws") wsLoad(); }
   render(); $("#view").scrollTop = 0;
 };
 const _tTopOld = tTop; tTop = function () { return mback + _tTopOld(); };
 const _tab0 = A.tab; A.tab = function (e) { moreSub = 0; return _tab0(e); };
 tMore = function () {
   const head = `<div class="card"><div class="grow"><div class="t1">${nm(me.name, myBadges)}</div><div class="t2">ID ${me.id}</div></div></div>`;
-  if (moreSub === 0) return head + `<div class="t2" style="margin:12px 4px 0;font-weight:700">Сообщество</div>` + mbtn("podium", "Лидеры", "lead") + mbtn("swap", "Обмен", "trade") + mbtn("cat", "Чат", "chat") + `<div style="height:10px"></div>` + mbtn("tune", "Настройки", "set") + mbtn("check", "Информация", "info") + (isAdm ? mbtn("crown", "Админка", "adm", "adm") : "");
+  if (moreSub === 0) return head + `<div class="t2" style="margin:12px 4px 0;font-weight:700">Сообщество</div>` + mbtn("podium", "Лидеры", "lead") + mbtn("swap", "Обмен", "trade") + mbtn("cat", "Чат", "chat") + mbtn("cube", "Мастерская", "ws") + `<div style="height:10px"></div>` + mbtn("tune", "Настройки", "set") + mbtn("check", "Информация", "info") + (isAdm ? mbtn("crown", "Админка", "adm", "adm") : "");
+  if (moreSub === 4) return mback + tWorkshop();
   if (moreSub === 3 && isAdm) { if (!promoList) loadPromos(); return mback + admCard(); }
   if (moreSub === 2) {
     const st = [["Всего тапов", fmt(S.taps)], ["Накоплено за всё время", fmt(S.total)], ["За текущий забег", fmt(S.run)], ["Генераторов", owned()], ["Самоцветов", S.gems], ["Перерождений", S.prest], ["Звёзд поймано", S.stars], ["Лихорадок", S.fevers], ["Общий множитель", "x" + baseMult().toFixed(2)]];
@@ -389,3 +391,92 @@ tMore = function () {
     `<div class="card col"><div class="t1" style="color:var(--pri)">Промокод</div><div style="display:flex;gap:8px"><input data-keep="promo" placeholder="Введи промокод" style="text-transform:uppercase">${btn("Ок", "promo")}</div></div>` +
     `<button class="btn t" data-a="reset" style="width:100%;justify-content:center;margin-top:4px">Сбросить весь прогресс</button>`;
 };
+
+// ---------- пользовательские коты и мастерская
+const BASE_N = ITEMS.length; let ucN = 0;
+async function loadUcats() {
+  const r = await api("ucats", {}); if (!r || !r.rows) return;
+  ITEMS.length = BASE_N;
+  r.rows.forEach(x => { ITEMS[x.idx] = ["", x.name, x.rar, x.uid, x.uname, x.id]; });
+  for (let i = BASE_N; i < ITEMS.length; i++) if (!ITEMS[i]) ITEMS[i] = ["", "?", 0, 0, "", 0];
+  ucN = r.rows.length;
+}
+const _catEl1 = catEl;
+catEl = function (idx, size, extra) {
+  const h = _catEl1(idx, size, extra);
+  if (typeof idx === "number" && idx >= BASE_N && ITEMS[idx]) return h.replace(/background-image:url\([^)]*\)/, `background-image:url(/ucat/${ITEMS[idx][5]}.jpg)`);
+  return h;
+};
+A.catinfo = function (e) {
+  const i = +e.dataset.i, it = ITEMS[i]; if (!it) return; const o = S.inv[i + ""] || 0, ho = S.holo.includes(i), r = it[2];
+  const bonus = r === 8 ? "×40 к тапу" : r === 7 ? "×1 секстилион к одному тапу" : "+" + RARS[r][2] + "% ко всему за предмет" + (ho ? " (×1.5 голограмма)" : "");
+  const cr = i >= BASE_N ? `<span data-a="prof" data-i="${it[3]}" style="color:var(--pri);text-decoration:underline;font-weight:700">${esc(it[4] || "Игрок")}</span>` : `<span style="font-weight:700">MDMelon</span>`;
+  const row = (k, v) => `<div style="display:flex;justify-content:space-between;gap:10px;padding:4px 0"><span class="t2" style="margin:0;font-size:14px">${k}</span><span style="font-size:14px;text-align:right">${v}</span></div>`;
+  const mo = modal(`<div style="text-align:center"><div class="t1" style="font-size:22px;color:${RC[r]}">${ho ? "★ " : ""}${esc(it[1])}</div><div style="margin:14px auto;width:220px;max-width:70vw">${catEl(i, 220, {holo: ho})}</div></div>` +
+    row("Редкость", `<span style="color:${RC[r]};font-weight:700">${RARS[r][0]}</span>`) + row("Бонус", bonus) + row("У тебя", o ? "×" + o + (ho ? " · голограмма" : "") : "нет") + row("Создатель", cr) +
+    `<div style="display:flex;gap:10px;margin-top:14px">${btn("Закрыть", "mclose", "", "t")}${o ? btn(+S.eq === i ? "Снять с монеты" : "На монету", "catequip", `data-i="${i}"`) : ""}</div>`);
+  mo.style.alignItems = "center"; const c = mo.firstChild; c.style.borderRadius = "28px"; c.style.width = "calc(100% - 32px)"; c.style.padding = "20px 18px"; c.style.animation = "catpop .25s ease-out";
+};
+A.catequip = function (e) { closeModal(); A.equip(e); };
+
+let wsSub = 0, wsRar = 0, wsImg = "", wsMine = null, wsPend = null, ideaData = null; const wsAR = {};
+async function wsLoad() {
+  const m = await api("uc_mine", {}); wsMine = m.rows || [];
+  if (isAdm) { const q = await api("uc_pending", {}); wsPend = q.rows || []; (wsPend).forEach(x => { if (KEEP["wn" + x.id] === undefined) KEEP["wn" + x.id] = x.name; }); }
+  ideaData = await api("idea_list", {});
+  if (tab === 5 && moreSub === 4) render();
+}
+const wsRarChips = (cur, act, id) => `<div style="display:flex;gap:6px;flex-wrap:wrap;margin:6px 0">${RARS.slice(0, 7).map((R, r) => `<button class="chip ${cur === r ? "p" : ""}" style="border:0;font-family:inherit;color:${cur === r ? "" : RC[r]}" data-a="${act}" data-v="${r}" data-i="${id}">${R[0]}</button>`).join("")}</div>`;
+const STT = {new: "На проверке", ok: "Одобрено", rej: "Отклонено"};
+function tWorkshop() {
+  let h = `<div class="seg"><button class="${wsSub === 0 ? "on" : ""}" data-a="wssub" data-i="0">Коты</button><button class="${wsSub === 1 ? "on" : ""}" data-a="wssub" data-i="1">Идеи</button></div>`;
+  if (wsSub === 0) {
+    h += `<div class="card col"><div class="t1" style="color:var(--pri)">Предложить кота</div><div class="t2" style="font-size:12px">Загрузи картинку, придумай название и предложи редкость. Админ проверит и может изменить название и редкость. Если одобрят, кот появится в игре с твоим именем создателя.</div><input data-keep="wsname" placeholder="Название кота" maxlength="24">${wsRarChips(wsRar, "wsrar", 0)}<div style="display:flex;align-items:center;gap:10px"><label class="btn o" for="wsfile">${wsImg ? "Другая картинка" : "Выбрать картинку"}</label><input type="file" id="wsfile" accept="image/*" hidden>${wsImg ? `<img src="${wsImg}" style="width:72px;height:72px;border-radius:14px;object-fit:cover">` : ""}</div>${btn("Отправить на проверку", "wssend")}</div>`;
+    if (isAdm) {
+      h += `<div class="sec">Заявки на модерации${wsPend ? " · " + wsPend.length : ""}</div>`;
+      if (!wsPend) h += `<div class="t2" style="text-align:center;margin:12px">Загружаю…</div>`;
+      else if (!wsPend.length) h += `<div class="t2" style="text-align:center;margin:12px">Заявок нет</div>`;
+      else wsPend.forEach(x => { const cr = wsAR[x.id] !== undefined ? wsAR[x.id] : x.rar; h += `<div class="card col"><div style="display:flex;gap:12px;align-items:center"><img src="/ucat/${x.id}.jpg" style="width:84px;height:84px;border-radius:16px;object-fit:cover;flex:none"><div class="grow"><div class="t2" style="margin:0;font-size:12px">от <b>${esc(x.uname)}</b></div><div class="t2" style="margin:2px 0 0;font-size:12px">Предложил: ${esc(x.name)} · <span style="color:${RC[x.rar]}">${RARS[x.rar][0]}</span></div></div></div><input data-keep="wn${x.id}" placeholder="Название" maxlength="24">${wsRarChips(cr, "wsadr", x.id)}<div style="display:flex;gap:8px">${btn("Отклонить", "ucno", `data-i="${x.id}"`, "o")}${btn("Одобрить", "ucok", `data-i="${x.id}"`)}</div></div>`; });
+    }
+    if (wsMine && wsMine.length) { h += `<div class="sec">Мои заявки</div>` + wsMine.map(x => `<div class="card"><div class="grow"><div class="t1" style="font-size:14px">${esc(x.name)}</div><div class="t2" style="font-size:12px">${RARS[x.rar][0]}</div></div><span class="chip ${x.status === "ok" ? "p" : ""}">${STT[x.status] || x.status}</span></div>`).join(""); }
+    const ucs = ITEMS.map((it, i) => i >= BASE_N ? i : -1).filter(i => i >= 0);
+    h += `<div class="sec">Коты игроков${ucs.length ? " · " + ucs.length : ""}</div>`;
+    h += ucs.length ? `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">${ucs.map(i => `<div class="cell" data-a="catinfo" data-i="${i}" style="padding:8px 4px">${catEl(i, 76, {})}<span style="color:${RC[ITEMS[i][2]]}">${esc(ITEMS[i][1])}</span><span style="color:var(--onv);font-weight:500">${esc(ITEMS[i][4])}</span></div>`).join("")}</div>` : `<div class="t2" style="text-align:center;margin:12px">Пока нет котов от игроков. Будь первым!</div>`;
+  } else {
+    h += `<div class="card col"><div class="t1" style="color:var(--pri)">Предложить идею</div><div class="t2" style="font-size:12px">Если админ добавит твою идею в игру, ты получишь значок «Гений».</div><textarea data-keep="idea" rows="3" maxlength="300" placeholder="Что добавить в игру?"></textarea>${btn("Отправить идею", "ideasend")}</div>`;
+    const d = ideaData;
+    if (!d) return h + `<div class="t2" style="text-align:center;margin:12px">Загружаю…</div>`;
+    if (isAdm && d.pend && d.pend.length) h += `<div class="sec">Идеи на рассмотрении · ${d.pend.length}</div>` + d.pend.map(x => `<div class="card col"><div class="t2" style="margin:0;font-size:12px">от <b>${esc(x.uname)}</b></div><div style="font-size:14px;white-space:pre-wrap">${esc(x.text)}</div><div style="display:flex;gap:8px">${btn("Отклонить", "ideano", `data-i="${x.id}"`, "o")}${btn("Добавить · Гений", "ideaok", `data-i="${x.id}"`)}</div></div>`).join("");
+    if (d.mine && d.mine.length) h += `<div class="sec">Мои идеи</div>` + d.mine.map(x => `<div class="card"><div class="grow t2" style="margin:0;font-size:13px;white-space:pre-wrap">${esc(x.text)}</div><span class="chip">${STT[x.status] || x.status}</span></div>`).join("");
+    h += `<div class="sec">Добавленные идеи</div>` + (d.ok && d.ok.length ? d.ok.map(x => `<div class="card">${bdg("g", 20)}<div class="grow"><div style="font-size:14px;white-space:pre-wrap">${esc(x.text)}</div><div class="t2" style="margin:2px 0 0;font-size:11px">${esc(x.uname)}</div></div></div>`).join("") : `<div class="t2" style="text-align:center;margin:12px">Пока ни одной</div>`);
+  }
+  return h;
+}
+A.wssub = function (e) { wsSub = +e.dataset.i; render(); };
+A.wsrar = function (e) { wsRar = +e.dataset.v; render(); };
+A.wsadr = function (e) { wsAR[+e.dataset.i] = +e.dataset.v; render(); };
+A.wssend = async function () {
+  if (!wsImg) return toast("Выбери картинку");
+  const r = await api("uc_submit", {name: KEEP.wsname || "", rar: wsRar, img: wsImg}); if (r.error) return toast(r.error);
+  toast("Заявка отправлена на проверку"); wsImg = ""; KEEP.wsname = ""; wsLoad(); render();
+};
+A.ucok = async function (e) {
+  const id = +e.dataset.i, x = (wsPend || []).find(q => q.id === id); if (!x) return;
+  const r = await api("uc_approve", {id, name: KEEP["wn" + id] || x.name, rar: wsAR[id] !== undefined ? wsAR[id] : x.rar}); if (r.error) return toast(r.error);
+  toast("Кот одобрен"); await wsLoad(); await loadUcats(); render();
+};
+A.ucno = async function (e) { const r = await api("uc_reject", {id: +e.dataset.i}); if (r.error) return toast(r.error); toast("Заявка отклонена"); wsLoad(); };
+A.ideasend = async function () { const r = await api("idea_submit", {text: KEEP.idea || ""}); if (r.error) return toast(r.error); toast("Идея отправлена"); KEEP.idea = ""; wsLoad(); render(); };
+A.ideaok = async function (e) { const r = await api("idea_ok", {id: +e.dataset.i}); if (r.error) return toast(r.error); toast("Идея добавлена, игроку выдан значок Гений"); wsLoad(); };
+A.ideano = async function (e) { const r = await api("idea_rej", {id: +e.dataset.i}); if (r.error) return toast(r.error); toast("Идея отклонена"); wsLoad(); };
+document.addEventListener("change", e => {
+  const f = e.target; if (!f || f.id !== "wsfile" || !f.files || !f.files[0]) return;
+  const url = URL.createObjectURL(f.files[0]), im = new Image();
+  im.onload = () => {
+    const c = document.createElement("canvas"); c.width = c.height = 320; const g = c.getContext("2d"), s = Math.min(im.width, im.height);
+    g.drawImage(im, (im.width - s) / 2, (im.height - s) / 2, s, s, 0, 0, 320, 320);
+    let q = .85, d = c.toDataURL("image/jpeg", q); while (d.length > 150000 && q > .3) { q -= .1; d = c.toDataURL("image/jpeg", q); }
+    URL.revokeObjectURL(url); wsImg = d; render();
+  };
+  im.onerror = () => toast("Не удалось открыть картинку"); im.src = url;
+});

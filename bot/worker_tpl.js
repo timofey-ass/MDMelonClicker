@@ -34,6 +34,8 @@ async function init(db) {
     db.prepare("CREATE TABLE IF NOT EXISTS promos (code TEXT PRIMARY KEY, kind TEXT, a REAL, b INTEGER, mx INTEGER, used INTEGER DEFAULT 0)"),
     db.prepare("CREATE TABLE IF NOT EXISTS promo_uses (code TEXT, uid INTEGER, PRIMARY KEY(code, uid))"),
     db.prepare("CREATE TABLE IF NOT EXISTS bcast (id INTEGER PRIMARY KEY AUTOINCREMENT, text TEXT, ts INTEGER)"),
+    db.prepare("CREATE TABLE IF NOT EXISTS ucats (id INTEGER PRIMARY KEY AUTOINCREMENT, uid INTEGER, uname TEXT, name TEXT, rar INTEGER, img TEXT, status TEXT DEFAULT 'new', idx INTEGER, ts INTEGER)"),
+    db.prepare("CREATE TABLE IF NOT EXISTS ideas (id INTEGER PRIMARY KEY AUTOINCREMENT, uid INTEGER, uname TEXT, text TEXT, status TEXT DEFAULT 'new', ts INTEGER)"),
     db.prepare("CREATE TABLE IF NOT EXISTS kv (k TEXT PRIMARY KEY, v TEXT)"),
     db.prepare("CREATE TABLE IF NOT EXISTS chat (id INTEGER PRIMARY KEY AUTOINCREMENT, uid INTEGER, name TEXT, text TEXT, ts INTEGER)"),
   ]);
@@ -100,8 +102,9 @@ async function api(path, req, env) {
     return J({offers: o});
   }
   if (path === "offer") {
+    const nUc = (await db.prepare("SELECT COUNT(*) AS c FROM ucats WHERE status='ok'").first()).c;
     const give = Number(b.give), want = Number(b.want);
-    if (!Number.isInteger(give) || !Number.isInteger(want) || give < 0 || want < 0 || give === 70 || give === 71 || want === 70 || want === 71 || give >= N_ITEMS || want >= N_ITEMS || give === want) return J({error: "Неверные коты"});
+    if (!Number.isInteger(give) || !Number.isInteger(want) || give < 0 || want < 0 || give === 70 || give === 71 || want === 70 || want === 71 || give >= N_ITEMS + nUc || want >= N_ITEMS + nUc || give === want) return J({error: "Неверные коты"});
     const cnt = (await db.prepare("SELECT COUNT(*) AS c FROM offers WHERE seller=? AND status='open'").bind(id).first()).c;
     if (cnt >= 5) return J({error: "Не больше 5 предложений"});
     const r = await mutate(db, id, s => { if (inv(s, give) < 1) return "У тебя нет этого кота"; add(s, give, -1); tidy(s); });
@@ -137,6 +140,72 @@ async function api(path, req, env) {
     const n = await getUser(db, id); return J({state: s, rev: n.rev});
   }
   const adm = id === ADMIN;
+  const adm0 = id === ADMIN;
+  const tg0 = (uid, text) => env.BOT_TOKEN ? tgcall(env, "sendMessage", {chat_id: uid, text}).catch(() => {}) : null;
+  if (path === "ucats") {
+    const rows = (await db.prepare("SELECT id,idx,name,rar,uid,uname FROM ucats WHERE status='ok' ORDER BY idx").all()).results;
+    return J({rows});
+  }
+  if (path === "uc_submit") {
+    const nm = String(b.name || "").trim().replace(/\s+/g, " ").slice(0, 24), rar = Math.floor(Number(b.rar)), img = String(b.img || "");
+    if (nm.length < 2) return J({error: "Название от 2 символов"});
+    if (!(rar >= 0 && rar <= 6)) return J({error: "Неверная редкость"});
+    if (!img.startsWith("data:image/jpeg;base64,") || img.length > 220000) return J({error: "Нужна картинка (JPEG до ~150 КБ)"});
+    const cnt = (await db.prepare("SELECT COUNT(*) AS c FROM ucats WHERE uid=? AND status='new'").bind(id).first()).c;
+    if (cnt >= 3) return J({error: "Не больше 3 заявок на проверке"});
+    await db.prepare("INSERT INTO ucats (uid,uname,name,rar,img,ts) VALUES (?,?,?,?,?,?)").bind(id, name, nm, rar, img.slice(23), now).run();
+    if (!adm0) tg0(ADMIN, "🐱 Новая заявка в мастерскую от " + name + ": " + nm);
+    return J({ok: true});
+  }
+  if (path === "uc_mine") {
+    const rows = (await db.prepare("SELECT id,name,rar,status FROM ucats WHERE uid=? ORDER BY id DESC LIMIT 20").bind(id).all()).results;
+    return J({rows});
+  }
+  if (path === "uc_pending" && adm0) {
+    const rows = (await db.prepare("SELECT id,uid,uname,name,rar FROM ucats WHERE status='new' ORDER BY id LIMIT 30").all()).results;
+    return J({rows});
+  }
+  if (path === "uc_approve" && adm0) {
+    const nm = String(b.name || "").trim().replace(/\s+/g, " ").slice(0, 24), rar = Math.floor(Number(b.rar)), c = await db.prepare("SELECT * FROM ucats WHERE id=? AND status='new'").bind(Number(b.id)).first();
+    if (!c) return J({error: "Заявка не найдена"}); if (nm.length < 2 || !(rar >= 0 && rar <= 6)) return J({error: "Неверные данные"});
+    const idx = N_ITEMS + (await db.prepare("SELECT COUNT(*) AS c FROM ucats WHERE status='ok'").first()).c;
+    const r = await db.prepare("UPDATE ucats SET status='ok', name=?, rar=?, idx=? WHERE id=? AND status='new'").bind(nm, rar, idx, c.id).run();
+    if (r.meta.changes !== 1) return J({error: "Уже обработано"});
+    await db.prepare("INSERT INTO grants (uid,kind,a,b,ts) VALUES (?,?,?,?,?)").bind(c.uid, "cat", idx, 1, now).run();
+    tg0(c.uid, "✅ Твой кот «" + nm + "» одобрен и добавлен в игру! Он уже у тебя в коллекции.");
+    return J({ok: true, idx});
+  }
+  if (path === "uc_reject" && adm0) {
+    const c = await db.prepare("SELECT * FROM ucats WHERE id=? AND status='new'").bind(Number(b.id)).first(); if (!c) return J({error: "Заявка не найдена"});
+    await db.prepare("UPDATE ucats SET status='rej', img='' WHERE id=?").bind(c.id).run();
+    tg0(c.uid, "❌ Кот «" + c.name + "» не прошёл модерацию мастерской.");
+    return J({ok: true});
+  }
+  if (path === "idea_submit") {
+    const tx = String(b.text || "").trim().slice(0, 300);
+    if (tx.length < 5) return J({error: "Опиши идею подробнее (от 5 символов)"});
+    const cnt = (await db.prepare("SELECT COUNT(*) AS c FROM ideas WHERE uid=? AND status='new'").bind(id).first()).c;
+    if (cnt >= 5) return J({error: "Не больше 5 идей на рассмотрении"});
+    await db.prepare("INSERT INTO ideas (uid,uname,text,ts) VALUES (?,?,?,?)").bind(id, name, tx, now).run();
+    if (!adm0) tg0(ADMIN, "💡 Новая идея от " + name + ": " + tx);
+    return J({ok: true});
+  }
+  if (path === "idea_list") {
+    const ok = (await db.prepare("SELECT id,uname,text FROM ideas WHERE status='ok' ORDER BY id DESC LIMIT 20").all()).results;
+    const mine = (await db.prepare("SELECT id,text,status FROM ideas WHERE uid=? AND status!='ok' ORDER BY id DESC LIMIT 10").bind(id).all()).results;
+    const pend = adm0 ? (await db.prepare("SELECT id,uid,uname,text FROM ideas WHERE status='new' ORDER BY id LIMIT 30").all()).results : [];
+    return J({ok, mine, pend});
+  }
+  if ((path === "idea_ok" || path === "idea_rej") && adm0) {
+    const i = await db.prepare("SELECT * FROM ideas WHERE id=? AND status='new'").bind(Number(b.id)).first(); if (!i) return J({error: "Идея не найдена"});
+    await db.prepare("UPDATE ideas SET status=? WHERE id=?").bind(path === "idea_ok" ? "ok" : "rej", i.id).run();
+    if (path === "idea_ok") {
+      const u = await getUser(db, i.uid); const cur = String((u && u.badges) || "");
+      if (u && !cur.includes("g")) await db.prepare("UPDATE users SET badges=? WHERE id=?").bind((cur + "g").slice(0, 4), i.uid).run();
+      tg0(i.uid, "💡 Твою идею добавили в игру! Тебе выдан значок «Гений».");
+    }
+    return J({ok: true});
+  }
   if (path === "poll") {
     await db.prepare("UPDATE users SET seen=? WHERE id=?").bind(now, id).run();
     const g = (await db.prepare("SELECT id,kind,a,b FROM grants WHERE uid=? ORDER BY id LIMIT 50").bind(id).all()).results;
@@ -145,7 +214,8 @@ async function api(path, req, env) {
     const maxbc = (await db.prepare("SELECT COALESCE(MAX(id),0) AS m FROM bcast").first()).m;
     const online = (await db.prepare("SELECT COUNT(*) AS c FROM users WHERE seen>?").bind(now - 40).first()).c;
     const u = await getUser(db, id);
-    return J({grants: g, bc, maxbc, online, rev: u ? u.rev : 0, banned: !!(u && u.banned), badges: bd(id, u && u.badges)});
+    const uc = (await db.prepare("SELECT COUNT(*) AS c FROM ucats WHERE status='ok'").first()).c;
+    return J({uc, grants: g, bc, maxbc, online, rev: u ? u.rev : 0, banned: !!(u && u.banned), badges: bd(id, u && u.badges)});
   }
   if (path === "chat") {
     const since = Number(b.since) || 0;
@@ -223,7 +293,7 @@ async function api(path, req, env) {
     }
     if (path === "adm_del") { await db.prepare("DELETE FROM chat WHERE id=?").bind(Number(b.id)).run(); return J({ok: true}); }
     if (path === "adm_ban") { await db.prepare("UPDATE users SET banned=? WHERE id=?").bind(b.on ? 1 : 0, Number(b.uid)).run(); if (b.on) await db.prepare("DELETE FROM chat WHERE uid=?").bind(Number(b.uid)).run(); return J({ok: true}); }
-    if (path === "adm_badges") { const v = String(b.badges || "").replace(/[^cts]/g, "").slice(0, 3); await db.prepare("UPDATE users SET badges=? WHERE id=?").bind(v, Number(b.uid)).run(); return J({ok: true, badges: bd(Number(b.uid), v)}); }
+    if (path === "adm_badges") { const v = String(b.badges || "").replace(/[^ctsg]/g, "").slice(0, 4); await db.prepare("UPDATE users SET badges=? WHERE id=?").bind(v, Number(b.uid)).run(); return J({ok: true, badges: bd(Number(b.uid), v)}); }
     if (path === "adm_promo_new") {
       const code = String(b.code || "").trim().toUpperCase().replace(/[^A-Z0-9_А-Я-]/g, "").slice(0, 32), kind = String(b.kind);
       if (!code || !["pts", "gems", "cat"].includes(kind)) return J({error: "Неверные данные"});
@@ -281,6 +351,14 @@ export default {
       if (p === "/atlas.jpg") {
         const r = await fetch(ATLAS, {cf: {cacheTtl: 86400, cacheEverything: true}});
         return new Response(r.body, {status: r.status, headers: {"content-type": "image/jpeg", "cache-control": "public,max-age=86400"}});
+      }
+      const um = p.match(/^\/ucat\/(\d+)\.jpg$/);
+      if (um && env.DB) {
+        await init(env.DB);
+        const c = await env.DB.prepare("SELECT img FROM ucats WHERE id=? AND status!='rej'").bind(Number(um[1])).first();
+        if (!c || !c.img) return new Response("no", {status: 404});
+        const bin = atob(c.img), arr = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+        return new Response(arr, {headers: {"content-type": "image/jpeg", "cache-control": "public,max-age=86400"}});
       }
       if (p.startsWith("/api/") && req.method === "POST") return await api(p.slice(5), req, env);
       if (p === "/setup") {
