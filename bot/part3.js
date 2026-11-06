@@ -299,3 +299,39 @@ toast = function (t) {
 };
 const _fl0 = floatTxt;
 floatTxt = function (txt, color, size, x, y) { if (x === undefined) return; _fl0(txt, color, size, x, y); };
+
+// ---------- арбуз-талисман с подсказками
+const MAS_URL = ADM_IMG.replace("admin/0.jpg", "mascot.png?v=1");
+const MAS_TIPS = [
+  "Тапай монету подряд — комбо включает лихорадку и удваивает тапы!",
+  "Лови золотые звёзды, они дают хороший бонус.",
+  "Генераторы приносят монеты сами, даже когда ты не в игре.",
+  "Каждые 25 самоцветов дают +10% ко всему навсегда.",
+  "Ненужные дубли можно продать или обменять с другими игроками.",
+  "Собери целый набор котов — получишь +5% ко всему.",
+  "Заходи каждый день: ежедневный бонус растёт с серией.",
+  "В «Наградах» есть недельные задания — там самоцветы.",
+  "Анимации можно отключить в «Ещё» → «Игра».",
+  "Перерождение: 1 000 000 за забег = 1 самоцвет.",
+  "В профиле игрока можно выбрать баннер и посмотреть его обмены.",
+  "Копить миллиарды невыгодно: свыше 1 млрд идёт небольшой налог."
+];
+let masEl = null, masT = 0, masSide = 0, masLast = -1;
+function masClose() { if (!masEl) return; const e = masEl; masEl = null; const sp = e.querySelector(".msp"); if (sp) sp.style.backgroundPositionX = "0px"; e.querySelector(".mbub").style.opacity = 0; e.style.transform = "translateX(" + (e.dataset.s === "0" ? "-130%" : "130%") + ")"; setTimeout(() => e.remove(), 700); }
+function masNext(ms) { clearTimeout(masT); masT = setTimeout(masShow, ms); }
+function masShow() {
+  if (!LS("mas", 1) || tab !== 0 || OVL || document.hidden || document.querySelector(".mdl") || masEl) return masNext(8000);
+  let tips = MAS_TIPS.slice(); try { if (pendingGems() >= 1) tips.push("Можно переродиться: получишь " + pendingGems() + " самоцв.", "Можно переродиться: получишь " + pendingGems() + " самоцв."); } catch (e) {}
+  let k; do { k = Math.floor(Math.random() * tips.length); } while (tips.length > 1 && k === masLast); masLast = k;
+  const s = masSide = 1 - masSide, el = document.createElement("div"); el.id = "mas"; el.dataset.s = s;
+  el.style.cssText = "position:fixed;bottom:calc(76px + env(safe-area-inset-bottom));" + (s ? "right:6px;flex-direction:row-reverse;" : "left:6px;") + "z-index:30;display:flex;align-items:flex-end;gap:6px;transition:transform .6s cubic-bezier(.2,.9,.3,1.2);transform:translateX(" + (s ? "130%" : "-130%") + ");max-width:92vw";
+  el.innerHTML = `<div class="msp" style="flex:none;width:96px;height:102px;background:url(${MAS_URL}) 0 0/384px 102px no-repeat;background-position-x:-192px;filter:drop-shadow(0 4px 8px #0006)"></div><div class="mbub" style="background:var(--on);color:var(--surf);font-size:13px;font-weight:600;line-height:1.3;padding:9px 12px;border-radius:14px ${s ? "14px 4px 14px" : "14px 14px 4px"};max-width:210px;margin-bottom:34px;opacity:0;transition:opacity .3s">${tips[k]}</div>`;
+  el.onclick = () => { masClose(); masNext(25000); };
+  document.body.appendChild(el); masEl = el;
+  requestAnimationFrame(() => requestAnimationFrame(() => { el.style.transform = "translateX(0)"; }));
+  const sp = el.querySelector(".msp"), fr = n => { sp.style.backgroundPositionX = (-96 * n) + "px"; };
+  setTimeout(() => { if (masEl !== el) return; el.querySelector(".mbub").style.opacity = 1; let f = 1, n = 0; const tk = setInterval(() => { if (masEl !== el) return clearInterval(tk); fr(f = f === 1 ? 2 : 1); if (++n > 12) { clearInterval(tk); fr(2); } }, 260); }, 650);
+  setTimeout(() => { if (masEl === el) { masClose(); masNext(40000 + Math.random() * 30000); } }, 650 + 3500 + tips[k].length * 60);
+}
+setInterval(() => { if (masEl && (tab !== 0 || OVL)) { masClose(); masNext(20000); } }, 600);
+masNext(12000);
