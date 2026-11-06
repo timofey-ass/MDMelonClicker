@@ -126,7 +126,7 @@ A.admresetall = async function (e) {
   rstAll = 0; const r = await api("adm_resetall", {}); if (r.error) return toast(r.error);
   toast("Сброшено игроков: " + r.count); lbData = null; chatSig = ""; pollNow();
 };
-A.pgive = function (e) { KEEP.admid = e.dataset.i; closeModal(); tab = 5; render(); $("#view").scrollTop = 0; };
+A.pgive = function (e) { KEEP.admid = e.dataset.i; closeModal(); tab = 5; moreSub = 3; render(); $("#view").scrollTop = 0; };
 
 // ---------- Топ: лидеры, обмен, чат
 tTop = function () {
@@ -162,16 +162,17 @@ document.addEventListener("input", e => { const k = e.target && e.target.dataset
 let admIdx = 0, admQty = 1, admKind = "pts", promoList = null;
 const admCard = () => {
   const it = ITEMS[admIdx], rc = RC[it[2]];
+  const chips3 = (arr, a) => `<div class="buyrow3">${arr.map(x => btn(x[0], a, `data-v="${x[1]}"`, "o")).join("")}</div>`;
   const chips = (arr, a) => `<div class="buyrow4">${arr.map(x => btn(x[0], a, `data-v="${x[1]}"`, "o")).join("")}</div>`;
   let h = `<div class="card col"><div class="t1" style="color:var(--pri);display:flex;align-items:center;gap:8px">${ic("tune", 18)}Админ-панель</div><div class="t2">Выдача приходит игроку в течение нескольких секунд, если у него открыта игра. Пусто в поле ID = себе.</div><input data-keep="admid" inputmode="numeric" placeholder="ID игрока">`;
   h += `<div style="display:flex;align-items:center;gap:10px;margin-top:6px">${catEl(admIdx, 46, {})}<div class="grow t1" style="color:${rc};font-size:14px">${it[1]} · ${RARS[it[2]][0]} ×${admQty}</div></div>`;
-  h += chips([["−5", -5], ["−", -1], ["+", 1], ["+5", 5]], "admidx") + chips([["×1", 1], ["×5", 5], ["×10", 10], ["×50", 50]], "admqty");
+  h += chips3([["−", -1], ["+", 1], ["+5", 5]], "admidx") + chips3([["×1", 1], ["×5", 5], ["×10", 10]], "admqty");
   h += btn("Выдать котика", "admcat", 'style="width:100%;justify-content:center"');
-  h += chips([["+1K", 1e3], ["+1M", 1e6], ["+1B", 1e9], ["+1T", 1e12]], "admpts");
+  h += chips3([["+1M", 1e6], ["+1B", 1e9], ["+1T", 1e12]], "admpts");
   h += `<div class="buyrow">${btn(ic("gem", 14) + "+10", "admgem", 'data-v="10"', "o")}${btn(ic("gem", 14) + "+100", "admgem", 'data-v="100"', "o")}</div>`;
   h += `<div class="t1" style="color:var(--err,#ff5252);margin-top:10px">Забрать у игрока</div><div class="t2">Нужен ID игрока в поле выше (себе тоже можно)</div>`;
   h += btn("Отобрать кота: " + it[1] + " ×" + admQty, "admtakecat", 'style="width:100%;justify-content:center"', "o");
-  h += chips([["−1K", 1e3], ["−1M", 1e6], ["−1B", 1e9], ["−1T", 1e12]], "admtakepts") + `<div class="buyrow4">${[10, 50, 90, 99].map(x => btn("−" + x + "%", "admtakepct", `data-v="${x}"`, "o")).join("")}</div><input data-keep="admamt" placeholder="Своя сумма, например 5e25" style="margin-top:6px">` + btn("Забрать эту сумму", "admtakeamt", 'style="width:100%;justify-content:center"', "o") + btn("Забрать все монеты", "admtakeall", 'style="width:100%;justify-content:center"', "o") + `<div class="buyrow">${btn(ic("gem", 14) + "−10", "admtakegem", 'data-v="10"', "o")}${btn(ic("gem", 14) + "−100", "admtakegem", 'data-v="100"', "o")}</div>` + btn("Забрать все самоцветы", "admtakegem", 'data-v="-1" style="width:100%;justify-content:center"', "o") + `</div>`;
+  h += `<div class="buyrow3">${[10, 50, 99].map(x => btn("−" + x + "%", "admtakepct", `data-v="${x}"`, "o")).join("")}</div><input data-keep="admamt" placeholder="Своя сумма, например 5e25" style="margin-top:6px">` + btn("Забрать эту сумму", "admtakeamt", 'style="width:100%;justify-content:center"', "o") + btn("Забрать все монеты", "admtakeall", 'style="width:100%;justify-content:center"', "o") + `` + btn("Забрать все самоцветы", "admtakegem", 'data-v="-1" style="width:100%;justify-content:center"', "o") + `</div>`;
   h += `<div class="card col"><div class="t1" style="color:var(--pri)">Сообщение всем в игре</div><textarea data-keep="bc" rows="2" placeholder="Текст сообщения"></textarea>${btn("Показать всем", "admbc")}</div>`;
   h += `<div class="card col"><div class="t1" style="color:var(--pri)">Промокоды</div><input data-keep="pcode" placeholder="Код, например NEWYEAR" style="text-transform:uppercase"><div class="buyrow4">${[["Монеты", "pts"], ["Самоцветы", "gems"], ["Кот", "cat"]].map(x => `<button class="chip ${admKind === x[1] ? "p" : ""}" style="border:0;font-family:inherit;justify-content:center" data-a="admkind" data-v="${x[1]}">${x[0]}</button>`).join("")}</div><input data-keep="pa" inputmode="decimal" placeholder="${admKind === "cat" ? "Номер кота 0–62" : "Сколько"}">${admKind === "cat" ? `<input data-keep="pb" inputmode="numeric" placeholder="Сколько котов (1)">` : ""}<input data-keep="pmx" inputmode="numeric" placeholder="Сколько человек смогут ввести (0 = без лимита)">${btn("Создать промокод", "admpromo")}`;
   if (promoList) h += promoList.map(p => `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid rgba(255,255,255,.06)"><div class="grow"><div class="t1" style="font-size:14px">${esc(p.code)}</div><div class="t2" style="font-size:11px">${rewTxt(p.kind, p.a, p.b)} · использовано ${p.used}${p.mx ? "/" + p.mx : ""}</div></div>${btn(ic("close", 16), "admpdel", `data-v="${esc(p.code)}"`, "t")}</div>`).join("");
@@ -319,10 +320,10 @@ const MAS_TIPS = [
   "Копить миллиарды невыгодно: свыше 1 млрд идёт небольшой налог."
 ];
 let masEl = null, masT = 0, masSide = 0, masBag = [], masQ = [], masRun = 0;
-const masBlocked = () => !LS("mas", 1) || OVL || document.hidden || document.querySelector(".mdl");
+const masBlocked = () => OVL || document.hidden || document.querySelector(".mdl");
 function masClose() { const e = masEl; if (!e) return; masEl = null; masRun++; const sp = e.querySelector(".msp"); if (sp) sp.style.backgroundPositionX = "-192px"; e.querySelector(".mbub").style.opacity = 0; e.style.transform = "translateX(" + (e.dataset.s === "0" ? "-130%" : "130%") + ")"; setTimeout(() => e.remove(), 700); }
 function masNext(ms) { clearTimeout(masT); masT = setTimeout(masShow, ms); }
-function masPush(t) { if (!LS("mas", 1) || typeof t !== "string" || !t || t.length > 140 || masQ.includes(t)) return; masQ.push(t); if (masQ.length > 6) masQ.shift(); if (!masEl) masNext(400); }
+function masPush(t) { if (typeof t !== "string" || !t || t.length > 140 || masQ.includes(t)) return; masQ.push(t); if (masQ.length > 6) masQ.shift(); if (!masEl) masNext(400); }
 function masTip() {
   let tips = MAS_TIPS.slice(); try { if (pendingGems() >= 1) tips.push("Можно переродиться: получишь " + pendingGems() + " самоцв."); } catch (e) {}
   if (!masBag.length) { masBag = tips.map((x, i) => i); for (let i = masBag.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [masBag[i], masBag[j]] = [masBag[j], masBag[i]]; } }
@@ -351,10 +352,40 @@ function masShow() {
       if (!alive()) return; fr(2);
       for (const [d, n] of [[200, 0], [150, 2], [160, 0], [300, 2]]) { await wait(d); if (!alive()) return; fr(n); }
       await wait(500); if (!alive()) return;
-      if (!masQ.length) { masClose(); masNext(10000 + Math.random() * 10000); return; }
+      if (!masQ.length) { masClose(); masNext(90000 + Math.random() * 60000); return; }
     }
   })();
 }
 setInterval(() => { if (masEl && masBlocked()) { masClose(); masNext(5000); } }, 600);
 (function () { const t0 = toast; toast = function (t) { masPush(t); return t0.apply(this, arguments); }; })();
-masNext(6000);
+masNext(20000);
+
+// ---------- «Ещё»: меню из пяти кнопок
+let moreSub = 0;
+const mbtn = (icon, label, k, cls) => `<button class="mbtn ${cls || ""}" data-a="mnu" data-k="${k}">${ic(icon, 24)}<span class="grow">${label}</span>${ic("arrow", 20)}</button>`;
+const mback = `<button class="btn t" data-a="mnu" data-k="back" style="margin:0 0 8px">← Ещё</button>`;
+A.mnu = function (e) {
+  const k = e.dataset.k;
+  if (k === "back") { moreSub = 0; tab = 5; }
+  else if (k === "lead" || k === "trade" || k === "chat") { tab = 4; sub = k === "lead" ? 0 : k === "trade" ? 1 : 2; }
+  else { tab = 5; moreSub = {set: 1, info: 2, adm: 3}[k]; }
+  render(); $("#view").scrollTop = 0;
+};
+const _tTopOld = tTop; tTop = function () { return mback + _tTopOld(); };
+const _tab0 = A.tab; A.tab = function (e) { moreSub = 0; return _tab0(e); };
+tMore = function () {
+  const head = `<div class="card"><div class="grow"><div class="t1">${nm(me.name, myBadges)}</div><div class="t2">ID ${me.id}</div></div></div>`;
+  if (moreSub === 0) return head + `<div class="t2" style="margin:12px 4px 0;font-weight:700">Сообщество</div>` + mbtn("podium", "Лидеры", "lead") + mbtn("swap", "Обмен", "trade") + mbtn("cat", "Чат", "chat") + `<div style="height:10px"></div>` + mbtn("tune", "Настройки", "set") + mbtn("check", "Информация", "info") + (isAdm ? mbtn("crown", "Админка", "adm", "adm") : "");
+  if (moreSub === 3 && isAdm) { if (!promoList) loadPromos(); return mback + admCard(); }
+  if (moreSub === 2) {
+    const st = [["Всего тапов", fmt(S.taps)], ["Накоплено за всё время", fmt(S.total)], ["За текущий забег", fmt(S.run)], ["Генераторов", owned()], ["Самоцветов", S.gems], ["Перерождений", S.prest], ["Звёзд поймано", S.stars], ["Лихорадок", S.fevers], ["Общий множитель", "x" + baseMult().toFixed(2)]];
+    return mback + `<div class="card col" style="gap:0">${st.map(r => `<div style="display:flex;padding:3px 0"><span class="t2 grow" style="font-size:14px;margin:0">${r[0]}</span><span style="font-size:14px;font-weight:700">${r[1]}</span></div>`).join("")}</div>` +
+      `<div class="card col"><div class="t1" style="color:var(--pri)">Как играть</div><div class="t2" style="font-size:13px">${TIPS}</div></div>` +
+      `<div class="card col"><div class="t1" style="color:var(--pri)">Что нового</div>${CHANGES.map(c => `<div style="font-size:13px;font-weight:700;margin-top:8px">v${c[0]}</div>${c[1].map(x => `<div class="t2" style="font-size:12px;margin-top:2px">• ${x}</div>`).join("")}`).join("")}</div>`;
+  }
+  const fn = ["Нет", "Снежинки", "Тыквы"], fv = [0, 1, 2]; SETS.forEach((x, i) => { if (S.sets.includes(x[0])) { fn.push(x[1]); fv.push(3 + i); } });
+  return mback + `<div class="card col"><div class="t1" style="color:var(--pri)">Оформление</div>${optRow("Тема", THEMES.map(t => t[0]), "th", THEMES.map((_, i) => i), LS("th", 0))}${optRow("Падающий фон", fn, "fall", fv, LS("fall", 0))}</div>` +
+    `<div class="card col"><div class="t1" style="color:var(--pri)">Игра</div>${tog("Вибрация", "hap", LS("hap", 1))}${tog("Звуки кейсов", "snd", LS("snd", 1))}${tog("Анимации клика", "fxt", LS("fxt", 1))}${tog("Анимации открытия кейсов", "fxc", LS("fxc", 1))}</div>` +
+    `<div class="card col"><div class="t1" style="color:var(--pri)">Промокод</div><div style="display:flex;gap:8px"><input data-keep="promo" placeholder="Введи промокод" style="text-transform:uppercase">${btn("Ок", "promo")}</div></div>` +
+    `<button class="btn t" data-a="reset" style="width:100%;justify-content:center;margin-top:4px">Сбросить весь прогресс</button>`;
+};

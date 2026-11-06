@@ -74,9 +74,10 @@ const SELLGEM = [0, 0, 0, 0, 0, 0, 0];
 
 // ---------- ui helpers
 const bar = f => `<div class="wb"><div class="tr"></div><div class="ac" style="width:${Math.max(0, Math.min(1, f)) * 100}%"><i></i></div></div>`;
-const NAV = [["Игра", "game"], ["Магазин", "bag"], ["Кейсы", "box"], ["Награды", "cup"], ["Топ", "podium"], ["Ещё", "tune"]];
-function buildNav() { $("#nav").innerHTML = NAV.map((n, i) => `<button data-a="tab" data-i="${i}"><span class="pill">${ic(n[1], 24)}</span>${n[0]}</button>`).join(""); }
-function setNav() { document.querySelectorAll("#nav button").forEach((b, i) => b.classList.toggle("on", i === tab)); $("#ttl").textContent = ["MDMelonClicker", "Магазин", "Кейсы", "Награды", "Топ", "Ещё"][tab]; }
+const NAV = [["Игра", "game"], ["Магазин", "bag"], ["Кейсы", "box"], ["Награды", "cup"], ["Топ", "podium"], ["Ещё", "tune"], ["Казино", "ticket"]];
+const NAVT = [0, 1, 2, 3, 6, 5];
+function buildNav() { $("#nav").innerHTML = NAVT.map(i => NAV[i]).map((n, k) => `<button data-a="tab" data-i="${NAVT[k]}"><span class="pill">${ic(n[1], 24)}</span>${n[0]}</button>`).join(""); }
+function setNav() { document.querySelectorAll("#nav button").forEach((b, k) => b.classList.toggle("on", NAVT[k] === tab || (tab === 4 && NAVT[k] === 5))); $("#ttl").textContent = ["MDMelonClicker", "Магазин", "Кейсы", "Награды", "Сообщество", "Ещё", "Казино"][tab]; }
 const btn = (txt, a, attrs, cls) => `<button class="btn ${cls || ""}" data-a="${a}" ${attrs || ""}>${txt}</button>`;
 const cost = (c, cur) => `data-cost="${c}" data-cur="${cur || "pts"}"`;
 const circ = (icon, sz) => `<div class="circ" style="${sz ? `width:${sz}px;height:${sz}px` : ""}">${ic(icon, Math.round((sz || 46) * .56))}</div>`;
@@ -85,7 +86,7 @@ function row(icon, t1, t2, rightHtml, click) { return `<div class="card ${click 
 // ---------- render
 function render() {
   if (!S) return; setNav(); const v = $("#view"), st = v.scrollTop;
-  v.innerHTML = [tGame, tShop, tCases, tAch, tTop, tMore][tab]();
+  v.innerHTML = [tGame, tShop, tCases, tAch, tTop, tMore, tCasino][tab]();
   v.scrollTop = st; refresh(true);
   if (tab === 4) { if (sub === 0 && !lbData) loadTop(); if (sub === 1 && !offData) loadOffers(); }
 }
@@ -187,6 +188,7 @@ function offerCard(o, mineF) {
   const can = (S.inv[o.want + ""] || 0) >= 1;
   return `<div class="card">${catEl(o.give, 52, {})}<div style="color:var(--onv)">${ic("arrow", 22)}</div>${catEl(o.want, 52, {})}<div class="grow"><div class="t1" style="font-size:13px"><span class="rar${ITEMS[o.give][2]}">${ITEMS[o.give][1]}</span> за <span class="rar${ITEMS[o.want][2]}">${ITEMS[o.want][1]}</span></div><div class="t2">${mineF ? "Твоё предложение" : esc(o.sname || "Игрок")}</div></div>${mineF ? btn("Отмена", "canceloff", `data-i="${o.id}"`, "o") : btn("Обменять", "accept", `data-i="${o.id}"`, can ? "" : "dis")}</div>`;
 }
+function tCasino() { return `<div class="card col" style="align-items:center;text-align:center;padding:36px 16px"><div style="font-size:54px">🎰</div><div class="t1" style="font-size:20px">Казино</div><div class="t2">Скоро здесь что-то появится</div></div>`; }
 function tMore() {
   let h = `<div class="card"><div class="grow"><div class="t1">${esc(me.name || "Игрок")}</div><div class="t2">ID ${me.id}</div></div></div>`;
   h += `<div class="sec">Тема</div><div class="hs">${THEMES.map((t, i) => `<button class="chip ${LS("th", 0) === i ? "p" : ""}" style="border:0;font-family:inherit" data-a="theme" data-i="${i}">${t[0]}</button>`).join("")}</div>`;
@@ -662,7 +664,7 @@ tMore = function () {
   let h = `<div class="card"><div class="grow"><div class="t1">${esc(me.name || "Игрок")}</div><div class="t2">ID ${me.id}</div></div></div>`;
   const fn = ["Нет", "Снежинки", "Тыквы"], fv = [0, 1, 2]; SETS.forEach((x, i) => { if (S.sets.includes(x[0])) { fn.push(x[1]); fv.push(3 + i); } });
   h += `<div class="card col"><div class="t1" style="color:var(--pri)">Оформление</div>${optRow("Тема", THEMES.map(t => t[0]), "th", THEMES.map((_, i) => i), LS("th", 0))}${optRow("Падающий фон", fn, "fall", fv, LS("fall", 0))}</div>`;
-  h += `<div class="card col"><div class="t1" style="color:var(--pri)">Игра</div>${tog("Вибрация", "hap", LS("hap", 1))}${tog("Звуки кейсов", "snd", LS("snd", 1))}${tog("Анимации клика", "fxt", LS("fxt", 1))}${tog("Анимации открытия кейсов", "fxc", LS("fxc", 1))}${tog("Подсказки арбуза", "mas", LS("mas", 1))}</div>`;
+  h += `<div class="card col"><div class="t1" style="color:var(--pri)">Игра</div>${tog("Вибрация", "hap", LS("hap", 1))}${tog("Звуки кейсов", "snd", LS("snd", 1))}${tog("Анимации клика", "fxt", LS("fxt", 1))}${tog("Анимации открытия кейсов", "fxc", LS("fxc", 1))}</div>`;
   const st = [["Всего тапов", fmt(S.taps)], ["Накоплено за всё время", fmt(S.total)], ["За текущий забег", fmt(S.run)], ["Генераторов", owned()], ["Самоцветов", S.gems], ["Перерождений", S.prest], ["Звёзд поймано", S.stars], ["Лихорадок", S.fevers], ["Общий множитель", "x" + baseMult().toFixed(2)]];
   h += `<div class="card col" style="gap:0">${st.map(r => `<div style="display:flex;padding:3px 0"><span class="t2 grow" style="font-size:14px;margin:0">${r[0]}</span><span style="font-size:14px;font-weight:700">${r[1]}</span></div>`).join("")}</div>`;
   h += `<div class="card col"><div class="t1" style="color:var(--pri)">Как играть</div><div class="t2" style="font-size:13px">${TIPS}</div></div>`;
