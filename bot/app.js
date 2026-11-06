@@ -141,12 +141,12 @@ function tCases() {
   if (S.hist.length) h += `<div class="sec">Последние выпадения</div><div class="hs">${S.hist.slice(-10).reverse().map(i => catEl(i, 44)).join("")}</div>`;
   h += `<div class="sec">Запас дубликатов</div>`;
   RARS.forEach((R, r) => { if (r > 6) return; const d = dupCount(r); h += `<div class="card"><div class="grow"><div class="t1" style="color:${RC[r]}">${R[0]} ×${d}</div><div class="t2" style="font-size:11px">${r < 4 ? `Контракт: 5 → 1 выше · Апгрейд: 1 дубль, шанс ${Math.round(UPCH[r] * 100)}%` : "Только продажа"}</div></div>${r < 4 ? `<button class="chip ${d >= 5 ? "" : "dis"}" style="border:0;font-family:inherit" data-a="contract" data-i="${r}">5→1</button><button class="chip ${d >= 1 ? "" : "dis"}" style="border:0;font-family:inherit" data-a="upgrade" data-i="${r}">Апгрейд</button>` : ""}<button class="chip ${d >= 1 ? "" : "dis"}" style="border:0;font-family:inherit;color:var(--gold)" data-a="sell" data-i="${r}">${ic("coin", 14)}${fmt(d * sellVal(r))}${SELLGEM[r] ? " +" + d * SELLGEM[r] + "💎" : ""}</button></div>`; });
-  h += `<div class="sec">Коллекция · нажми на кота, чтобы поставить его на монету</div>`;
+  h += `<div class="sec">Коллекция · нажми на кота, чтобы посмотреть инфо</div>`;
   for (let ri = RARS.length - 1; ri >= 0; ri--) {
     const ids = ITEMS.map((it, i) => it[2] === ri && (i < 70 || i >= 72 || (i + "") in S.inv) ? i : -1).filter(i => i >= 0); if (!ids.length) continue;
     h += `<div style="font-size:11px;font-weight:700;color:${RC[ri]};margin:8px 4px 4px">${RARS[ri][0]} · ${ri === 8 ? "×40 к тапу" : ri === 7 ? "×1 секстилион к одному тапу" : "+" + RARS[ri][2] + "% за предмет"}</div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">`;
     for (const idx of ids) { const o = S.inv[idx + ""] || 0, ho = S.holo.includes(idx), isq = +S.eq === idx;
-      h += `<div class="cell${o ? " fxc" : ""}" ${o ? `data-a="equip" data-i="${idx}"` : ""} style="${isq || ho ? `box-shadow:inset 0 0 0 2px ${ho ? "#fff" : RC[ri]}` : ""}">${o ? catEl(idx, 52, {holo: ho, fx: true}) : `<div class="q">?</div>`}<span style="color:${o ? RC[ri] : "var(--out)"}">${o ? (ho ? "★ " : "") + ITEMS[idx][1] : "???"}</span>${o > 1 ? `<span style="color:var(--onv);font-weight:500">×${o}</span>` : ""}</div>`; }
+      h += `<div class="cell${o ? " fxc" : ""}" ${o ? `data-a="catinfo" data-i="${idx}"` : ""} style="${isq || ho ? `box-shadow:inset 0 0 0 2px ${ho ? "#fff" : RC[ri]}` : ""}">${o ? catEl(idx, 52, {holo: ho, fx: true}) : `<div class="q">?</div>`}<span style="color:${o ? RC[ri] : "var(--out)"}">${o ? (ho ? "★ " : "") + ITEMS[idx][1] : "???"}</span>${o > 1 ? `<span style="color:var(--onv);font-weight:500">×${o}</span>` : ""}</div>`; }
     h += `</div>`;
   }
   return h;
@@ -342,7 +342,7 @@ async function boot() {
   if (!tg || !tg.initData) { $("#lt").textContent = "Открой игру из бота в Телеграме"; if (!window.__DEV) return; }
   const t0 = Date.now(); const r = await api("auth", {});
   if (r.error) { $("#lt").textContent = r.error + ". Нужен интернет."; $("#load .tr").style.display = "none"; return; }
-  me = {id: r.id, name: r.name}; S = fixState(r.state || defState()); rev = r.rev || 0; snap = cloneInv(); dirty = !r.state; checkAch();
+  me = {id: r.id, name: r.name}; try { await loadUcats(); } catch (e) {} S = fixState(r.state || defState()); rev = r.rev || 0; snap = cloneInv(); dirty = !r.state; checkAch();
   setTimeout(() => { $("#load").remove(); render(); }, Math.max(0, 1300 - (Date.now() - t0)));
 }
 // ============ PART 2: порт геймплея и эффектов плагина ============
