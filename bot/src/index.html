@@ -1193,35 +1193,46 @@ const MAS_TIPS = [
   "В профиле игрока можно выбрать баннер и посмотреть его обмены.",
   "Копить миллиарды невыгодно: свыше 1 млрд идёт небольшой налог."
 ];
-let masEl = null, masT = 0, masSide = 0, masBag = [];
-function masClose() { if (!masEl) return; const e = masEl; masEl = null; const sp = e.querySelector(".msp"); if (sp) sp.style.backgroundPositionX = "-192px"; e.querySelector(".mbub").style.opacity = 0; e.style.transform = "translateX(" + (e.dataset.s === "0" ? "-130%" : "130%") + ")"; setTimeout(() => e.remove(), 700); }
+let masEl = null, masT = 0, masSide = 0, masBag = [], masQ = [], masRun = 0;
+const masBlocked = () => !LS("mas", 1) || OVL || document.hidden || document.querySelector(".mdl");
+function masClose() { const e = masEl; if (!e) return; masEl = null; masRun++; const sp = e.querySelector(".msp"); if (sp) sp.style.backgroundPositionX = "-192px"; e.querySelector(".mbub").style.opacity = 0; e.style.transform = "translateX(" + (e.dataset.s === "0" ? "-130%" : "130%") + ")"; setTimeout(() => e.remove(), 700); }
 function masNext(ms) { clearTimeout(masT); masT = setTimeout(masShow, ms); }
-function masShow() {
-  if (!LS("mas", 1) || tab !== 0 || OVL || document.hidden || document.querySelector(".mdl") || masEl) return masNext(8000);
-  let tips = MAS_TIPS.slice(); try { if (pendingGems() >= 1) tips.push("Можно переродиться: получишь " + pendingGems() + " самоцв.", "Можно переродиться: получишь " + pendingGems() + " самоцв."); } catch (e) {}
+function masPush(t) { if (!LS("mas", 1) || typeof t !== "string" || !t || t.length > 140 || masQ.includes(t)) return; masQ.push(t); if (masQ.length > 6) masQ.shift(); if (!masEl) masNext(400); }
+function masTip() {
+  let tips = MAS_TIPS.slice(); try { if (pendingGems() >= 1) tips.push("Можно переродиться: получишь " + pendingGems() + " самоцв."); } catch (e) {}
   if (!masBag.length) { masBag = tips.map((x, i) => i); for (let i = masBag.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [masBag[i], masBag[j]] = [masBag[j], masBag[i]]; } }
-  const k = masBag.pop(), txt = tips[k] || tips[0];
+  return tips[masBag.pop()] || tips[0];
+}
+function masShow() {
+  if (masEl) return;
+  if (masBlocked()) return masNext(4000);
   const s = masSide = 1 - masSide, el = document.createElement("div"); el.id = "mas"; el.dataset.s = s;
   el.style.cssText = "position:fixed;bottom:calc(76px + env(safe-area-inset-bottom));" + (s ? "right:6px;flex-direction:row-reverse;" : "left:6px;") + "z-index:30;display:flex;align-items:flex-end;gap:6px;transition:transform .6s cubic-bezier(.2,.9,.3,1.2);transform:translateX(" + (s ? "130%" : "-130%") + ");max-width:92vw";
-  el.innerHTML = `<div class="msp" style="flex:none;width:96px;height:102px;background:url(${MAS_URL}) 0 0/384px 102px no-repeat;background-position-x:-192px;filter:drop-shadow(0 4px 8px #0006)"></div><div class="mbub" style="background:var(--on);color:var(--surf);font-size:13px;font-weight:600;line-height:1.3;padding:9px 12px;border-radius:14px ${s ? "14px 4px 14px" : "14px 14px 4px"};max-width:210px;margin-bottom:34px;opacity:0;transition:opacity .3s">${txt}</div>`;
-  el.onclick = () => { masClose(); masNext(25000); };
-  document.body.appendChild(el); masEl = el;
+  el.innerHTML = `<div class="msp" style="flex:none;width:96px;height:102px;background:url(${MAS_URL}) 0 0/384px 102px no-repeat;background-position-x:-192px;filter:drop-shadow(0 4px 8px #0006)"></div><div class="mbub" style="background:var(--on);color:var(--surf);font-size:13px;font-weight:600;line-height:1.3;padding:9px 12px;border-radius:14px ${s ? "14px 4px 14px" : "14px 14px 4px"};max-width:210px;margin-bottom:34px;opacity:0;transition:opacity .25s"></div>`;
+  el.onclick = () => { masQ = []; masClose(); masNext(20000); };
+  document.body.appendChild(el); masEl = el; const run = ++masRun;
   requestAnimationFrame(() => requestAnimationFrame(() => { el.style.transform = "translateX(0)"; }));
-  const sp = el.querySelector(".msp"), fr = n => { sp.style.backgroundPositionX = (-96 * n) + "px"; };
-  const talk = 1500 + txt.length * 55;
-  setTimeout(() => {
-    if (masEl !== el) return; el.querySelector(".mbub").style.opacity = 1; let f = 1; fr(1);
-    const tk = setInterval(() => { if (masEl !== el) return clearInterval(tk); fr(f = f === 1 ? 2 : 1); }, 230 + Math.random() * 60);
-    setTimeout(() => {
-      clearInterval(tk); if (masEl !== el) return; fr(2);
-      const seq = [[200, 0], [150, 2], [160, 0], [450, 2]]; let t = 0;
-      seq.forEach(([d, n]) => { t += d; setTimeout(() => { if (masEl === el) fr(n); }, t); });
-      setTimeout(() => { if (masEl === el) { masClose(); masNext(35000 + Math.random() * 25000); } }, t + 700);
-    }, talk);
-  }, 650);
+  const sp = el.querySelector(".msp"), bub = el.querySelector(".mbub"), fr = n => { sp.style.backgroundPositionX = (-96 * n) + "px"; }, alive = () => masEl === el && masRun === run;
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+  (async () => {
+    await wait(650);
+    let first = true;
+    while (alive()) {
+      const msg = masQ.length ? masQ.shift() : masTip(), isTip = !masQ.length && !first && false;
+      if (!first) { bub.style.opacity = 0; await wait(280); if (!alive()) return; }
+      bub.textContent = msg; bub.style.opacity = 1; first = false;
+      let f = 1; fr(1); const end = Date.now() + 1300 + msg.length * 50;
+      while (alive() && Date.now() < end) { await wait(230 + Math.random() * 60); if (alive()) fr(f = f === 1 ? 2 : 1); }
+      if (!alive()) return; fr(2);
+      for (const [d, n] of [[200, 0], [150, 2], [160, 0], [300, 2]]) { await wait(d); if (!alive()) return; fr(n); }
+      await wait(500); if (!alive()) return;
+      if (!masQ.length) { masClose(); masNext(10000 + Math.random() * 10000); return; }
+    }
+  })();
 }
-setInterval(() => { if (masEl && (tab !== 0 || OVL)) { masClose(); masNext(20000); } }, 600);
-masNext(12000);
+setInterval(() => { if (masEl && masBlocked()) { masClose(); masNext(5000); } }, 600);
+(function () { const t0 = toast; toast = function (t) { masPush(t); return t0.apply(this, arguments); }; })();
+masNext(6000);
 
 boot();
 
