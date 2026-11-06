@@ -578,7 +578,7 @@ setTheme = function (i) {
 const RB = ["#ff6b9d", "#ffb86b", "#fff06b", "#8cff6b", "#6bffd9", "#6ba8ff", "#a86bff", "#ff6bd9"];
 function catEl(idx, size, extra) {
   const k = idx === "coin" ? 63 : idx, c = k % 8, r = Math.floor(k / 8), ho = extra && extra.holo;
-  const gl = ho || (ITEMS[idx] && ITEMS[idx][2] >= 5), bgs = idx >= 73 ? `background-image:url(${ADM_IMG.replace("admin/0.jpg", "new/" + (idx - 73) + ".jpg")});background-size:cover;background-position:center` : idx >= 70 ? `background-image:url(${ADM_IMG.replace("0.jpg", (idx - 70) + ".jpg")});background-size:cover;background-position:center` : idx >= 64 ? `background-image:url(${TECH_IMG(idx - 64)});background-size:cover;background-position:center` : idx === 63 ? `background-image:url(${JOSKE_IMG});background-size:cover;background-position:center` : `background-position:${c / 7 * 100}% ${r / 7 * 100}%`;
+  const gl = ho || (ITEMS[idx] && ITEMS[idx][2] >= 5), bgs = idx >= 73 ? `background-image:url(${ADM_IMG.replace("admin/0.jpg", "new/" + (idx - 73) + ".jpg?v=2")});background-size:cover;background-position:center` : idx >= 70 ? `background-image:url(${ADM_IMG.replace("0.jpg", (idx - 70) + ".jpg")});background-size:cover;background-position:center` : idx >= 64 ? `background-image:url(${TECH_IMG(idx - 64)});background-size:cover;background-position:center` : idx === 63 ? `background-image:url(${JOSKE_IMG});background-size:cover;background-position:center` : `background-position:${c / 7 * 100}% ${r / 7 * 100}%`;
   return `<div class="cat${ho ? " h" : ""}${gl ? " g" : ""}" style="width:${size}px;height:${size}px;${bgs}">${extra && extra.fx ? `<i class="gl2${ho ? " rb" : ""}"></i>` : ""}</div>`;
 }
 function bindCards(root) {
