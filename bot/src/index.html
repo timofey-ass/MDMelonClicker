@@ -249,8 +249,8 @@ function roll(ci) { if (ci === 4) { const q = Math.random(); if (q < .02) return
 function grant(idx, holo) { const k = idx + ""; const have = S.inv[k] || 0; S.inv[k] = have + 1; if (have === 0) { if (holo) { S.holo.push(idx); return "newholo"; } return "new"; } if (holo && !S.holo.includes(idx)) { S.holo.push(idx); return "holo"; } return "dup"; }
 const dupCount = r => Object.keys(S.inv).reduce((a, k) => a + (ITEMS[+k][2] === r ? Math.max(0, S.inv[k] - 1) : 0), 0);
 function takeDups(r, n) { for (const k of Object.keys(S.inv).sort((a, b) => S.inv[b] - S.inv[a])) { if (ITEMS[+k][2] !== r || n <= 0) continue; const t = Math.min(n, Math.max(0, S.inv[k] - 1)); S.inv[k] -= t; n -= t; } }
-const sellVal = r => (5000 + cps() * 90) * SELL[r];
-const SELLGEM = [0, 0, 0, 0, 1, 2, 3];
+const sellVal = r => (1000 + cps() * 10) * SELL[r];
+const SELLGEM = [0, 0, 0, 0, 0, 0, 0];
 
 // ---------- ui helpers
 const bar = f => `<div class="wb"><div class="tr"></div><div class="ac" style="width:${Math.max(0, Math.min(1, f)) * 100}%"><i></i></div></div>`;
