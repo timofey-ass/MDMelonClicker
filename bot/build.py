@@ -5,7 +5,7 @@ head=open('app_head.html').read(); js=open('app.js').read().replace('/*PART3*/',
 ic=open("icons.json").read()
 html=head+"<script>const D="+json.dumps(d,ensure_ascii=False)+";const IC="+ic+";\n"+js+"\n</script></body></html>\n"
 open('index.html','w').write(html)
-TPL=open('worker_tpl.js').read().replace('__ANN__',json.dumps(d['CHANGES'][0],ensure_ascii=False))
+TPL=open('worker_tpl.js').read().replace('__ANN__',json.dumps([c for c in d['CHANGES'] if c[0]==d.get('ANNV',d['CHANGES'][0][0])][0],ensure_ascii=False))
 w=TPL.replace('__HTML__',json.dumps(html,ensure_ascii=False).replace('</','<\\/'))
 open('worker.js','w').write(w)
 print(len(html),len(w))
