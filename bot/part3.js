@@ -303,6 +303,8 @@ floatTxt = function (txt, color, size, x, y) { if (x === undefined) return; _fl0
 // ---------- арбуз-талисман с подсказками
 const MAS_URL = ADM_IMG.replace("admin/0.jpg", "mascot.png?v=1");
 const MAS_TIPS = [
+  "Генераторы приносят монеты сами. Лови золотые звёзды!",
+  "Накопив миллион за забег, делай перерождение за самоцветы.",
   "Тапай монету подряд — комбо включает лихорадку и удваивает тапы!",
   "Лови золотые звёзды, они дают хороший бонус.",
   "Генераторы приносят монеты сами, даже когда ты не в игре.",
@@ -316,22 +318,32 @@ const MAS_TIPS = [
   "В профиле игрока можно выбрать баннер и посмотреть его обмены.",
   "Копить миллиарды невыгодно: свыше 1 млрд идёт небольшой налог."
 ];
-let masEl = null, masT = 0, masSide = 0, masLast = -1;
-function masClose() { if (!masEl) return; const e = masEl; masEl = null; const sp = e.querySelector(".msp"); if (sp) sp.style.backgroundPositionX = "0px"; e.querySelector(".mbub").style.opacity = 0; e.style.transform = "translateX(" + (e.dataset.s === "0" ? "-130%" : "130%") + ")"; setTimeout(() => e.remove(), 700); }
+let masEl = null, masT = 0, masSide = 0, masBag = [];
+function masClose() { if (!masEl) return; const e = masEl; masEl = null; const sp = e.querySelector(".msp"); if (sp) sp.style.backgroundPositionX = "-192px"; e.querySelector(".mbub").style.opacity = 0; e.style.transform = "translateX(" + (e.dataset.s === "0" ? "-130%" : "130%") + ")"; setTimeout(() => e.remove(), 700); }
 function masNext(ms) { clearTimeout(masT); masT = setTimeout(masShow, ms); }
 function masShow() {
   if (!LS("mas", 1) || tab !== 0 || OVL || document.hidden || document.querySelector(".mdl") || masEl) return masNext(8000);
   let tips = MAS_TIPS.slice(); try { if (pendingGems() >= 1) tips.push("Можно переродиться: получишь " + pendingGems() + " самоцв.", "Можно переродиться: получишь " + pendingGems() + " самоцв."); } catch (e) {}
-  let k; do { k = Math.floor(Math.random() * tips.length); } while (tips.length > 1 && k === masLast); masLast = k;
+  if (!masBag.length) { masBag = tips.map((x, i) => i); for (let i = masBag.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [masBag[i], masBag[j]] = [masBag[j], masBag[i]]; } }
+  const k = masBag.pop(), txt = tips[k] || tips[0];
   const s = masSide = 1 - masSide, el = document.createElement("div"); el.id = "mas"; el.dataset.s = s;
   el.style.cssText = "position:fixed;bottom:calc(76px + env(safe-area-inset-bottom));" + (s ? "right:6px;flex-direction:row-reverse;" : "left:6px;") + "z-index:30;display:flex;align-items:flex-end;gap:6px;transition:transform .6s cubic-bezier(.2,.9,.3,1.2);transform:translateX(" + (s ? "130%" : "-130%") + ");max-width:92vw";
-  el.innerHTML = `<div class="msp" style="flex:none;width:96px;height:102px;background:url(${MAS_URL}) 0 0/384px 102px no-repeat;background-position-x:-192px;filter:drop-shadow(0 4px 8px #0006)"></div><div class="mbub" style="background:var(--on);color:var(--surf);font-size:13px;font-weight:600;line-height:1.3;padding:9px 12px;border-radius:14px ${s ? "14px 4px 14px" : "14px 14px 4px"};max-width:210px;margin-bottom:34px;opacity:0;transition:opacity .3s">${tips[k]}</div>`;
+  el.innerHTML = `<div class="msp" style="flex:none;width:96px;height:102px;background:url(${MAS_URL}) 0 0/384px 102px no-repeat;background-position-x:-192px;filter:drop-shadow(0 4px 8px #0006)"></div><div class="mbub" style="background:var(--on);color:var(--surf);font-size:13px;font-weight:600;line-height:1.3;padding:9px 12px;border-radius:14px ${s ? "14px 4px 14px" : "14px 14px 4px"};max-width:210px;margin-bottom:34px;opacity:0;transition:opacity .3s">${txt}</div>`;
   el.onclick = () => { masClose(); masNext(25000); };
   document.body.appendChild(el); masEl = el;
   requestAnimationFrame(() => requestAnimationFrame(() => { el.style.transform = "translateX(0)"; }));
   const sp = el.querySelector(".msp"), fr = n => { sp.style.backgroundPositionX = (-96 * n) + "px"; };
-  setTimeout(() => { if (masEl !== el) return; el.querySelector(".mbub").style.opacity = 1; let f = 1, n = 0; const tk = setInterval(() => { if (masEl !== el) return clearInterval(tk); fr(f = f === 1 ? 2 : 1); if (++n > 12) { clearInterval(tk); fr(2); } }, 260); }, 650);
-  setTimeout(() => { if (masEl === el) { masClose(); masNext(40000 + Math.random() * 30000); } }, 650 + 3500 + tips[k].length * 60);
+  const talk = 1500 + txt.length * 55;
+  setTimeout(() => {
+    if (masEl !== el) return; el.querySelector(".mbub").style.opacity = 1; let f = 1; fr(1);
+    const tk = setInterval(() => { if (masEl !== el) return clearInterval(tk); fr(f = f === 1 ? 2 : 1); }, 230 + Math.random() * 60);
+    setTimeout(() => {
+      clearInterval(tk); if (masEl !== el) return; fr(2);
+      const seq = [[200, 0], [150, 2], [160, 0], [450, 2]]; let t = 0;
+      seq.forEach(([d, n]) => { t += d; setTimeout(() => { if (masEl === el) fr(n); }, t); });
+      setTimeout(() => { if (masEl === el) { masClose(); masNext(35000 + Math.random() * 25000); } }, t + 700);
+    }, talk);
+  }, 650);
 }
 setInterval(() => { if (masEl && (tab !== 0 || OVL)) { masClose(); masNext(20000); } }, 600);
 masNext(12000);
