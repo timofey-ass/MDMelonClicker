@@ -321,7 +321,7 @@ const MAS_TIPS = [
   "Копить миллиарды невыгодно: свыше 1 млрд идёт небольшой налог."
 ];
 let masEl = null, masT = 0, masSide = 0, masBag = [], masQ = [], masRun = 0;
-const masBlocked = () => (tab === 6 && cz.sub === 2) || OVL || document.hidden || document.querySelector(".mdl");
+const masBlocked = () => (tab === 6 && cz.sub >= 2) || OVL || document.hidden || document.querySelector(".mdl");
 function masClose() { const e = masEl; if (!e) return; masEl = null; masRun++; const sp = e.querySelector(".msp"); if (sp) sp.style.backgroundPositionX = "-192px"; e.querySelector(".mbub").style.opacity = 0; e.style.transform = "translateX(" + (e.dataset.s === "0" ? "-130%" : "130%") + ")"; setTimeout(() => e.remove(), 700); }
 function masNext(ms) { clearTimeout(masT); masT = setTimeout(masShow, ms); }
 function masPush(t) { if (typeof t !== "string" || !t || t.length > 140 || masQ.includes(t)) return; masQ.push(t); if (masQ.length > 6) masQ.shift(); if (!masEl) masNext(400); }
@@ -595,6 +595,7 @@ A.czbet = function (e) {
 };
 A.czgo = async function (e) {
   if (cz.busy) return; cz.sub = +e.dataset.k;
+  if (cz.sub === 3) { cz.t = null; cz.tid = 0; cz.lobby = null; render(); p2Lobby(); return; }
   if (cz.sub === 2 && cz.phase !== 1) { const r = await api("cz_pk_state", {}); if (r && r.hand) { cz.phase = 1; cz.hand = r.hand; cz.pbet = r.bet; cz.hold = [false, false, false, false, false]; cz.res = null; toast("Продолжаем начатую раздачу"); } else { cz.phase = 0; cz.res = null; } }
   render(); czInfo(); $("#view").scrollTop = 0;
 };
@@ -602,7 +603,7 @@ tCasino = function () {
   const back = `<button class="btn t" data-a="czgo" data-k="0" style="margin:0 0 8px">← Казино</button>`;
   const jp = `<div class="czjpc"><div class="czjt">🎰 ДЖЕКПОТ</div><div class="czjp czjv">${cz.jp === null ? "…" : fmt(cz.jp)}</div><div id="czlast" class="czjs"></div></div>`;
   const bal = `<div class="card" style="padding:10px 16px"><span class="t2 grow" style="margin:0">Баланс</span><b id="czbal" style="font-size:18px">${fmt(S.pts)}</b></div>`;
-  if (cz.sub === 0) return jp + `<button class="mbtn" data-a="czgo" data-k="1"><span style="font-size:28px">🎡</span><span class="grow">Рулетка<div class="t2" style="margin:0;font-size:12px;font-weight:500">Красное и чёрное ×2, зелёное ×24 и сектор с джекпотом</div></span>${ic("arrow", 20)}</button><button class="mbtn" data-a="czgo" data-k="2" style="height:70px"><span style="font-size:28px">🃏</span><span class="grow">Покер<div class="t2" style="margin:0;font-size:12px;font-weight:500">Простой: 5 карт, одна замена, раздаёт арбуз</div></span>${ic("arrow", 20)}</button><div class="t2" style="margin:14px 6px;font-size:12px">Играть можно только на монеты. Выигрыш не идёт в таблицу лидеров и не считается за забег. Играй осторожно!</div>`;
+  if (cz.sub === 0) return jp + `<button class="mbtn" data-a="czgo" data-k="1"><span style="font-size:28px">🎡</span><span class="grow">Рулетка<div class="t2" style="margin:0;font-size:12px;font-weight:500">Красное и чёрное ×2, зелёное ×24 и сектор с джекпотом</div></span>${ic("arrow", 20)}</button><button class="mbtn" data-a="czgo" data-k="2" style="height:70px"><span style="font-size:28px">🃏</span><span class="grow">Покер<div class="t2" style="margin:0;font-size:12px;font-weight:500">Простой: 5 карт, одна замена, раздаёт арбуз</div></span>${ic("arrow", 20)}</button><button class="mbtn" data-a="czgo" data-k="3" style="height:70px"><span style="font-size:28px">👥</span><span class="grow">Покер на двоих<div class="t2" style="margin:0;font-size:12px;font-weight:500">Создай столик или сядь за чужой, победитель забирает банк</div></span>${ic("arrow", 20)}</button><div class="t2" style="margin:14px 6px;font-size:12px">Играть можно только на монеты. Выигрыш не идёт в таблицу лидеров и не считается за забег. Играй осторожно!</div>`;
   if (cz.sub === 1) {
     const stops = Array.from({length: ZN}, (_, i) => `${ZC[secCol(i)]} ${i * ZS}deg ${(i + 1) * ZS}deg`).join(",");
     const lab = (i, t) => `<span class="rlab" style="transform:rotate(${(i + .5) * ZS}deg) translateY(-104px)">${t}</span>`;
@@ -637,8 +638,8 @@ function pkSay(t, ms) {
   const b = $("#pkb"); if (b) b.textContent = t; const id = ++pkTalk; let f = 1; const end = Date.now() + (ms || 900);
   const tk = setInterval(() => { if (id !== pkTalk || Date.now() > end) { clearInterval(tk); if (id === pkTalk) pkFr(2); return; } pkFr(f = f === 1 ? 2 : 1); }, 220);
 }
-function pkFly(i, delay) {
-  const slot = document.querySelectorAll("#pkrow .pks")[i], m = $("#pkm"); if (!slot || !m) return;
+function pkFly(i, delay, row) {
+  const slot = document.querySelectorAll((row || "#pkrow") + " .pks")[i], m = $("#pkm"); if (!slot || !m) return;
   const w = slot.querySelector(".pkw"), mr = m.getBoundingClientRect(), sr = slot.getBoundingClientRect();
   const dx = mr.left + mr.width / 2 - (sr.left + sr.width / 2), dy = mr.top + mr.height * .7 - (sr.top + sr.height / 2);
   w.animate([{transform: `translate(${dx}px,${dy}px) scale(.4) rotate(-260deg)`, opacity: 0}, {opacity: 1, offset: .2}, {transform: "none", opacity: 1}], {duration: 580, delay, easing: "cubic-bezier(.2,.8,.3,1)", fill: "backwards"});
@@ -691,3 +692,93 @@ render = function () {
   if (tab === 6) { if (Date.now() - cz.jpAt > 4000) czInfo(); if (cz.sub === 2) { pkFr(2); } }
 };
 setInterval(() => { if (tab === 6 && !document.hidden) { const e = document.getElementById("czbal"); if (e) e.textContent = fmt(S.pts); } }, 700);
+
+// ---------- покер на двоих
+cz.tid = 0; cz.t = null; cz.lobby = null; cz.sig = ""; cz.shown = 0; cz.fin = 0;
+const _tCas = tCasino;
+tCasino = function () {
+  if (cz.sub < 3) return _tCas();
+  const back = `<button class="btn t" data-a="czgo" data-k="${cz.sub === 4 ? 3 : 0}" style="margin:0 0 8px">← ${cz.sub === 4 ? "К столикам" : "Казино"}</button>`;
+  const bal = `<div class="card" style="padding:10px 16px"><span class="t2 grow" style="margin:0">Баланс</span><b id="czbal" style="font-size:18px">${fmt(S.pts)}</b></div>`;
+  if (cz.sub === 3) {
+    const L = cz.lobby;
+    let h = back + bal + `<div class="card col"><div class="t1" style="color:var(--pri)">Создать столик</div><div class="t2" style="font-size:12px;margin:0">У каждого игрока одинаковая ставка. Каждому по 5 карт, одна замена, у кого комбинация старше — забирает банк (5% банка уходит в джекпот).</div>${czBetUi()}<button class="btn" data-a="p2create" style="width:100%;height:50px;justify-content:center">Создать и ждать соперника</button></div><div class="sec">Открытые столики${L ? " · " + L.rows.length : ""}</div>`;
+    if (!L) return h + `<div class="t2" style="text-align:center;margin:20px">Загружаю…</div>`;
+    h += L.rows.length ? L.rows.map(x => `<div class="card"><span style="font-size:24px">🃏</span><div class="grow"><div class="t1" style="font-size:15px">${esc(x.n1)}</div><div class="t2" style="margin:0;font-size:12px">Ставка ${fmt(x.stake)}</div></div>${btn("Сесть", "p2join", `data-i="${x.id}" data-s="${x.stake}"`, S.pts >= x.stake ? "" : "dis")}</div>`).join("") : `<div class="t2" style="text-align:center;margin:20px">Пока нет столиков. Создай первый и подожди соперника!</div>`;
+    return h;
+  }
+  const t = cz.t; if (!t) return back + `<div class="t2" style="text-align:center;margin:30px">Загружаю столик…</div>`;
+  const opp = t.status === "wait" ? "Ждём соперника…" : esc(t.seat === 1 ? t.n2 : t.n1), done = t.status === "done", showOpp = done && !cz.hideOpp;
+  const slotsOpp = [0, 1, 2, 3, 4].map(i => `<div class="pks${t.status === "wait" ? " ph" : ""}">${t.status === "wait" ? "" : `<div class="pkw">${showOpp ? pkCard(t.oppHand[i], false) : `<div class="pk3 back"><div class="pkf bk"></div><div class="pkf bk"></div></div>`}</div>`}</div>`).join("");
+  const my = t.hand, slotsMy = [0, 1, 2, 3, 4].map(i => `<div class="pks${cz.hold[i] && t.status === "play" && !t.myDone ? " h" : ""}" ${t.status === "play" && !t.myDone ? `data-a="p2hold" data-i="${i}"` : ""}>${my ? `<div class="pkw">${pkCard(my[i], cz.dealing)}</div>` : ""}<div class="pkh">ДЕРЖУ</div></div>`).join("");
+  let ctl = "", st = "";
+  if (t.status === "wait") { ctl = `<div class="t2" style="text-align:center;margin:14px">Ставка ${fmt(t.stake)}. Столик увидят все игроки, как только кто-то сядет, мы вас сообщим.</div><button class="btn o" data-a="p2cancel" style="width:100%;justify-content:center">Отменить столик</button>`; st = "Ждём, пока кто-нибудь сядет…"; }
+  else if (t.status === "play") { if (!t.myDone) { ctl = `<div style="display:flex;gap:8px;margin-top:6px"><button class="btn o" data-a="p2auto" style="flex:1;justify-content:center">Авто-выбор</button><button class="btn" data-a="p2draw" style="flex:1.4;justify-content:center">Сменить карты</button></div><div class="t2" style="text-align:center;margin-top:8px;font-size:12px">Нажми на карты, которые хочешь оставить. Осталось <b id="p2t">${t.left}</b> с</div>`; st = my ? pkEvalC(my) : ""; } else { ctl = `<div class="t2" style="text-align:center;margin:14px">Ждём ход соперника… <b id="p2t">${t.left}</b> с</div>`; st = my ? pkEvalC(my) : ""; } }
+  else if (done) { const w = t.winner; const txt = w === 1 ? `Победа! ${t.myEv} против ${t.oppEv}: +${fmt(t.pay - t.stake)}` : w === 0 ? `Ничья (${t.myEv}): ставки возвращены` : `Поражение: ${t.oppEv} против ${t.myEv}: −${fmt(t.stake)}`; ctl = `<div id="czres" class="czres ${w === 1 ? "win" : w === 2 ? "lose" : ""}">${cz.hideOpp ? "" : txt}</div><button class="btn" data-a="czgo" data-k="3" style="width:100%;height:54px;justify-content:center;font-size:17px;margin-top:10px">К столикам</button>`; st = ""; }
+  else { ctl = `<div class="t2" style="text-align:center;margin:14px">Столик закрыт.</div><button class="btn" data-a="czgo" data-k="3" style="width:100%;justify-content:center">К столикам</button>`; }
+  return back + bal + `<div class="p2n">${opp}</div><div class="pkrow p2r" id="pkrow2">${slotsOpp}</div><div class="pkt" style="min-height:96px"><div id="pkm" class="pkm" style="background-image:url(${MAS_URL})"></div><div id="pkb" class="pkb">${t.status === "wait" ? "Подождём гостя!" : t.status === "play" ? "Игра пошла!" : ""}</div></div><div class="pkrow" id="pkrow">${slotsMy}</div><div class="p2n" style="color:var(--pri)">Ты · ${esc(me.name)}</div><div id="pkev" class="pkev">${st}</div>${ctl}`;
+};
+async function p2Lobby() {
+  const r = await api("p2_list", {}); if (!r || r.error) return; cz.lobby = r;
+  for (const id of r.claims || []) { const c = await api("p2_claim", {id}); if (c && c.amount > 0) { S.pts += c.amount; mark(); toast("Возврат/выигрыш из покера: +" + fmt(c.amount)); } }
+  if (r.mine && cz.sub === 3 && !cz.tid) { cz.tid = r.mine; cz.sub = 4; cz.t = null; cz.shown = 0; render(); p2Poll(); return; }
+  if (cz.sub === 3 && !cz.busy) render();
+}
+A.p2create = async function () {
+  if (cz.busy) return; const bet = czBet(); if (S.pts < bet || bet < 100) return toast("Не хватает монет");
+  cz.busy = true; S.pts -= bet; mark(); czUpd(); const r = await api("p2_create", {stake: bet}); cz.busy = false;
+  if (!r || r.error) { S.pts += bet; mark(); czUpd(); return toast((r && r.error) || "Нет связи"); }
+  cz.tid = r.id; cz.sub = 4; cz.t = null; cz.shown = 0; cz.fin = 0; cz.hold = [false, false, false, false, false]; render(); p2Poll();
+};
+A.p2join = async function (e) {
+  if (cz.busy) return; const id = +e.dataset.i, stake = +e.dataset.s; if (S.pts < stake) return toast("Не хватает монет");
+  cz.busy = true; const r = await api("p2_join", {id}); cz.busy = false;
+  if (!r || r.error) { toast((r && r.error) || "Нет связи"); p2Lobby(); return; }
+  S.pts -= r.stake; mark(); cz.tid = id; cz.sub = 4; cz.t = null; cz.shown = 0; cz.fin = 0; cz.hold = [false, false, false, false, false]; render(); p2Poll();
+};
+A.p2cancel = async function () { const r = await api("p2_cancel", {id: cz.tid}); if (r && r.error) return toast(r.error); p2Poll(); };
+A.p2hold = function (e) { const i = +e.dataset.i; if (!cz.t || cz.t.myDone || cz.busy) return; cz.hold[i] = !cz.hold[i]; e.classList.toggle("h", cz.hold[i]); try { hap("tick"); } catch (x) {} };
+A.p2auto = function () { if (!cz.t || !cz.t.hand || cz.t.myDone || cz.busy) return; cz.hold = pkAuto(cz.t.hand); document.querySelectorAll("#pkrow .pks").forEach((s, i) => s.classList.toggle("h", cz.hold[i])); pkSay("Я бы оставил эти!", 900); };
+A.p2draw = async function () {
+  if (!cz.t || cz.t.myDone || cz.busy) return; cz.busy = true; const old = cz.t.hand.slice(), hold = cz.hold.slice();
+  const r = await api("p2_draw", {id: cz.tid, hold});
+  if (!r || r.error) { cz.busy = false; return toast((r && r.error) || "Нет связи"); }
+  const slots = document.querySelectorAll("#pkrow .pks"), ch = [];
+  r.hand.forEach((c, i) => { if (!hold[i]) { ch.push(i); const w = slots[i].querySelector(".pkw"); if (w) w.innerHTML = pkCard(c, true); } });
+  pkSay("Меняю!", 1000); ch.forEach((i, k) => pkFly(i, k * 170));
+  await sleep((ch.length ? (ch.length - 1) * 170 : 0) + 640); await pkReveal(ch);
+  cz.hold = [false, false, false, false, false]; cz.busy = false; await p2Apply(r);
+};
+let p2Busy = false;
+async function p2Poll() {
+  if (p2Busy || cz.sub !== 4 || !cz.tid) return; p2Busy = true;
+  try { const r = await api("p2_state", {id: cz.tid}); if (r && r.error) { toast(r.error); cz.tid = 0; cz.sub = 3; render(); p2Lobby(); } else if (r && !cz.busy) await p2Apply(r); } catch (e) {}
+  p2Busy = false;
+}
+async function p2Apply(r) {
+  const prev = cz.t, sig = [r.status, r.myDone, r.oppDone, (r.hand || []).join(), r.winner].join("|"); cz.t = r;
+  if (sig === cz.sig) { const e = document.getElementById("p2t"); if (e) e.textContent = r.left; return; } cz.sig = sig;
+  if (r.status === "play" && !cz.shown) {
+    cz.shown = 1; const fresh = !prev || prev.status === "wait";
+    if (fresh && !r.myDone) {
+      cz.dealing = true; cz.busy = false; render(); cz.busy = true; await sleep(60); pkSay("Раздаю!", 1500);
+      for (let i = 0; i < 5; i++) { pkFly(i, i * 170, "#pkrow"); pkFly(i, i * 170 + 85, "#pkrow2"); }
+      await sleep(4 * 170 + 85 + 640); await pkReveal([0, 1, 2, 3, 4]); cz.dealing = false; cz.busy = false; pkSay("Что оставим?", 900); const ev = $("#pkev"); if (ev) ev.textContent = pkEvalC(r.hand); return;
+    }
+  }
+  if (r.status === "done" && !cz.fin) {
+    cz.fin = 1; cz.hideOpp = true; cz.busy = false; render(); cz.busy = true; await sleep(700);
+    const row = document.querySelectorAll("#pkrow2 .pks"); const oh = r.oppHand;
+    row.forEach((s, i) => { const w = s.querySelector(".pkw"); if (w) w.innerHTML = pkCard(oh[i], true); });
+    await sleep(60); await pkReveal([0, 1, 2, 3, 4].map(i => i)); const rows2 = document.querySelectorAll("#pkrow2 .pk3"); rows2.forEach(c => c.classList.remove("back"));
+    cz.hideOpp = false; cz.busy = false; render();
+    const c = await api("p2_claim", {id: r.id}); if (c && c.amount > 0) { S.pts += c.amount; mark(); if (c.amount > r.stake) save(true); czUpd(); }
+    pkSay(r.winner === 1 ? "Ты выиграл! Браво!" : r.winner === 0 ? "Ничья, бывает!" : "Не повезло, реванш?", 1500);
+    if (r.winner === 1) { try { fxConfetti(90); jingle(2); hap("ok"); } catch (x) {} }
+    return;
+  }
+  if (r.status === "cancel") { if (!r.claimed) { const c = await api("p2_claim", {id: r.id}); if (c && c.amount > 0) { S.pts += c.amount; mark(); toast("Ставка возвращена: +" + fmt(c.amount)); } } cz.tid = 0; cz.sub = 3; cz.t = null; render(); p2Lobby(); return; }
+  if (!cz.busy) render();
+}
+setInterval(() => { if (tab === 6 && !document.hidden) { if (cz.sub === 4) p2Poll(); } }, 1500);
+setInterval(() => { if (tab === 6 && !document.hidden && cz.sub === 3 && !cz.busy) p2Lobby(); }, 3500);
