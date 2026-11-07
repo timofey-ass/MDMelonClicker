@@ -43,7 +43,7 @@ const perk = k => +(S.perks[k] || 0);
 const owned = () => S.b.reduce((a, b) => a + b, 0);
 function collBonus() { let t = 0; for (const k in S.inv) { const i = +k; if (i < ITEMS.length) { const b = RARS[ITEMS[i][2]][2]; t += S.holo.includes(i) ? b * 1.5 : b; } } return Math.min(t, 900); }
 function baseMult() { return 1 + .10 * Math.floor(S.gt / 25) + .02 * S.ach.length + collBonus() / 100 + SETS.filter(x => S.sets.includes(x[0])).reduce((a, x) => a + x[3], 0) / 100; }
-function factor() { const t = now(); let f = baseMult(); if (S.pts < 0) f *= 2; if (t < S.boost) f *= 2; if (t < fever) f *= 2; if (t < frenzy) f *= 3; return f; }
+function factor() { const t = now(); let f = baseMult(); if (t < S.boost) f *= 2; if (t < fever) f *= 2; if (t < frenzy) f *= 3; return f; }
 const nerf = x => x <= 1e3 ? x : 1e3 * Math.pow(x / 1e3, .7);
 function cpsRaw() { return BUILDS.reduce((a, b, i) => a + b[3] * S.b[i], 0) * factor() * (1 + .1 * perk("cps")); }
 function cps() { return nerf(cpsRaw()); }
