@@ -35,6 +35,7 @@ async function init(db) {
     db.prepare("CREATE TABLE IF NOT EXISTS promo_uses (code TEXT, uid INTEGER, PRIMARY KEY(code, uid))"),
     db.prepare("CREATE TABLE IF NOT EXISTS bcast (id INTEGER PRIMARY KEY AUTOINCREMENT, text TEXT, ts INTEGER)"),
     db.prepare("CREATE TABLE IF NOT EXISTS ucats (id INTEGER PRIMARY KEY AUTOINCREMENT, uid INTEGER, uname TEXT, name TEXT, rar INTEGER, img TEXT, status TEXT DEFAULT 'new', idx INTEGER, ts INTEGER)"),
+    db.prepare("CREATE TABLE IF NOT EXISTS loans (id INTEGER PRIMARY KEY AUTOINCREMENT, uid INTEGER, amount REAL, due INTEGER, status TEXT DEFAULT 'open', ts INTEGER)"),
     db.prepare("CREATE TABLE IF NOT EXISTS pk2m (tid INTEGER, seat INTEGER, code INTEGER, ts INTEGER, n INTEGER DEFAULT 0, PRIMARY KEY (tid, seat))"),
     db.prepare("CREATE TABLE IF NOT EXISTS pk2 (id INTEGER PRIMARY KEY AUTOINCREMENT, p1 INTEGER, n1 TEXT, p2 INTEGER, n2 TEXT, stake REAL, status TEXT DEFAULT 'wait', h1 TEXT, h2 TEXT, rest TEXT, d1 INTEGER DEFAULT 0, d2 INTEGER DEFAULT 0, res TEXT, c1 INTEGER DEFAULT 0, c2 INTEGER DEFAULT 0, ts INTEGER, dealt INTEGER DEFAULT 0)"),
     db.prepare("CREATE TABLE IF NOT EXISTS ideas (id INTEGER PRIMARY KEY AUTOINCREMENT, uid INTEGER, uname TEXT, text TEXT, status TEXT DEFAULT 'new', ts INTEGER)"),
@@ -50,7 +51,8 @@ function clean(s) {
   if (!s || typeof s !== "object" || Array.isArray(s)) return null;
   if (JSON.stringify(s).length > 40000) return null;
   if (!Array.isArray(s.b) || !s.inv || typeof s.inv !== "object") return null;
-  for (const k of ["pts", "run", "total"]) s[k] = Math.max(0, num(s[k]));
+  for (const k of ["run", "total"]) s[k] = Math.max(0, num(s[k]));
+  s.pts = Math.max(-1e15, num(s.pts));
   return s;
 }
 async function getUser(db, id) { return db.prepare("SELECT * FROM users WHERE id=?").bind(id).first(); }
@@ -162,6 +164,34 @@ async function api(path, req, env) {
     if (cv[0] === 2 && Object.keys(cnt).some(k => cnt[k] === 2 && +k >= 9)) return {n: "Пара валетов или выше", m: 1};
     return {n: "Ничего", m: 0};
   };
+  if (path.startsWith("loan_")) {
+    const LOAN_H = 3600, LOAN_FINE = 0.015;
+    await db.prepare("UPDATE loans SET status='overdue' WHERE uid=? AND status='open' AND due<?").bind(id, now).run();
+    const cur = await db.prepare("SELECT * FROM loans WHERE uid=? AND status IN ('open','overdue') ORDER BY id DESC LIMIT 1").bind(id).first();
+    const urow = await db.prepare("SELECT total FROM users WHERE id=?").bind(id).first();
+    const lim = Math.min(1e12, Math.max(10000, Math.floor(num(urow && urow.total) * 0.3)));
+    const view = l => l ? {id: l.id, amount: l.amount, due: l.due, left: Math.max(0, l.due - now), status: l.status, fine: Math.ceil(l.amount * (1 + LOAN_FINE))} : null;
+    if (path === "loan_info") return J({loan: view(cur), max: lim, now});
+    if (path === "loan_take") {
+      if (cur) return J({error: "Сначала закрой прошлый долг"});
+      const a = Math.floor(Number(b.amount)); if (!isFinite(a) || a < 1000) return J({error: "Минимум 1 000"}); if (a > lim) return J({error: "Лимит долга: " + lim});
+      const r = await db.prepare("INSERT INTO loans (uid,amount,due,status,ts) VALUES (?,?,?,'open',?)").bind(id, a, now + LOAN_H, now).run();
+      return J({ok: true, loan: view({id: r.meta.last_row_id, amount: a, due: now + LOAN_H, status: "open"})});
+    }
+    if (path === "loan_repay") {
+      if (!cur || cur.status !== "open") return J({error: "Нет долга для возврата"});
+      const r = await db.prepare("UPDATE loans SET status='repaid' WHERE id=? AND status='open' AND due>=?").bind(cur.id, now).run();
+      if (r.meta.changes !== 1) return J({error: "Срок вышел"});
+      return J({ok: true, amount: cur.amount});
+    }
+    if (path === "loan_settle") {
+      if (!cur || cur.status !== "overdue") return J({error: "Нечего взыскивать"});
+      const r = await db.prepare("UPDATE loans SET status='settled' WHERE id=? AND status='overdue'").bind(cur.id).run();
+      if (r.meta.changes !== 1) return J({error: "Уже взыскано"});
+      return J({ok: true, amount: cur.amount, fine: Math.ceil(cur.amount * (1 + LOAN_FINE))});
+    }
+    return J({error: "?"});
+  }
   if (path === "cz_info") { const j = await jpGet(); return J({jp: j.pool, last: j.last}); }
   if (path === "cz_roulette") {
     const bet = Math.floor(Number(b.bet)), pick = String(b.pick);

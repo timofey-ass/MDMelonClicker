@@ -243,6 +243,27 @@ body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;ba
 .p2chip:active{transform:scale(.95)}
 .p2bub{width:fit-content;max-width:90%;margin:2px auto 6px;padding:7px 13px;border-radius:14px;font-size:13px;font-weight:700;animation:catpop .35s}
 .p2bub.o{background:#eee;color:#222}.p2bub.m{background:var(--pri);color:#2a1500}
+.czbank{margin-top:10px}
+.chip.on{background:var(--pri);color:var(--onpr,#2a1500)}
+.coll{position:fixed;inset:0;z-index:120;background:radial-gradient(circle at 50% 60%,#4a0f0f,#14060a 75%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:20px;animation:collin .3s;overflow:hidden}
+.coll.out{opacity:0;transition:opacity .45s}
+@keyframes collin{from{opacity:0}}
+.collt{font-size:28px;font-weight:900;color:#ff7043;text-shadow:0 2px 12px #000;text-align:center;animation:catpop .5s}
+.coll.done .collt{color:#9ccc65}
+.collrow{display:flex;align-items:flex-end;justify-content:center;gap:2px;height:120px}
+.collc{animation:collwalk .55s cubic-bezier(.2,.8,.3,1.2) var(--d) backwards}
+.collc.c0{--fx:-120vw}.collc.c1{--fx:0;margin-bottom:12px}.collc.c2{--fx:120vw}
+.collc.c1{animation-name:collup}
+@keyframes collwalk{from{transform:translateX(var(--fx))}}
+@keyframes collup{from{transform:translateY(160px);opacity:0}}
+.collsp{width:105px;height:110px;background-size:210px 110px;background-repeat:no-repeat;animation:collbl 2.4s steps(1) infinite,collhop .5s ease-in-out infinite alternate}
+.collc.c1 .collsp{animation-delay:.4s,.15s}.collc.c2 .collsp{animation-delay:.9s,.3s}
+@keyframes collbl{0%{background-position:0 0}88%{background-position:-105px 0}96%{background-position:0 0}}
+@keyframes collhop{to{transform:translateY(-8px)}}
+.collb{font-size:15px;font-weight:700;text-align:center;color:#ffd7cc}
+.collbal{font-size:16px;color:#fff;background:#0006;border-radius:20px;padding:8px 18px}.collbal b{font-size:20px}
+.collcoin{position:absolute;left:50%;bottom:38%;font-size:26px;opacity:0;animation:collcoin .9s ease-in forwards}
+@keyframes collcoin{0%{opacity:1;transform:translate(0,0) scale(1)}100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(.5) rotate(360deg)}}
 </style></head><body>
 <div id="load"><div class="lw"><div class="lglow"></div><div class="lm" id="lm">🍉</div><div class="lsh"></div></div><div class="lti">MDMelonClicker</div><div id="lt">Подключаюсь…</div><div class="tr"><i id="lbar"></i></div><div id="ltip"></div></div>
 <div id="app"><div id="top"><h1 id="ttl">MDMelonClicker</h1><span id="gemc"></span></div><div id="view"></div><div id="nav"></div></div>

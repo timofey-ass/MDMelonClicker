@@ -13,7 +13,7 @@ const RC = ["#b0bec5", "#4fc3f7", "#ba68c8", "#ff5252", "#ffd740", "#1de9b6", "#
 const SUF = ["", "K", "M", "B", "T", "Qa", "Qi", "Sx"];
 const now = () => Date.now() / 1000;
 const esc = s => String(s).replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
-function fmt(n) { n = +n; if (n < 1000) return (n >= 10 || n === Math.floor(n)) ? String(Math.floor(n)) : n.toFixed(1); if (n >= 1e24) return (n / 1e21).toExponential(2).replace("e+", "e") + "Sx"; const i = Math.min(Math.floor(Math.log10(n) / 3), 7); return (n / Math.pow(1000, i)).toFixed(2) + SUF[i]; }
+function fmt(n) { n = +n; if (n < 0) return "−" + fmt(-n); if (n < 1000) return (n >= 10 || n === Math.floor(n)) ? String(Math.floor(n)) : n.toFixed(1); if (n >= 1e24) return (n / 1e21).toExponential(2).replace("e+", "e") + "Sx"; const i = Math.min(Math.floor(Math.log10(n) / 3), 7); return (n / Math.pow(1000, i)).toFixed(2) + SUF[i]; }
 function clock(s) { s = Math.max(0, Math.floor(s)); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); }
 function hap(k) { try { if (!tg || !tg.HapticFeedback || !LS("hap", 1)) return; if (k === "ok") tg.HapticFeedback.notificationOccurred("success"); else tg.HapticFeedback.impactOccurred(k || "light"); } catch (e) {} }
 function LS(k, d) { try { const v = localStorage.getItem("md_" + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } }
