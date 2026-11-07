@@ -335,7 +335,7 @@ function masShow() {
   if (masBlocked()) return masNext(4000);
   const s = masSide = 1 - masSide, el = document.createElement("div"); el.id = "mas"; el.dataset.s = s;
   el.style.cssText = "position:fixed;bottom:calc(76px + env(safe-area-inset-bottom));" + (s ? "right:6px;flex-direction:row-reverse;" : "left:6px;") + "z-index:30;display:flex;align-items:flex-end;gap:6px;transition:transform .6s cubic-bezier(.2,.9,.3,1.2);transform:translateX(" + (s ? "130%" : "-130%") + ");max-width:92vw";
-  el.innerHTML = `<div class="msp" style="flex:none;width:96px;height:102px;background:url(${MAS_URL}) 0 0/384px 102px no-repeat;background-position-x:-192px;filter:drop-shadow(0 4px 8px #0006)"></div><div class="mbub" style="background:var(--on);color:var(--surf);font-size:13px;font-weight:600;line-height:1.3;padding:9px 12px;border-radius:14px ${s ? "14px 4px 14px" : "14px 14px 4px"};max-width:210px;margin-bottom:34px;opacity:0;transition:opacity .25s"></div>`;
+  el.innerHTML = `<div class="msp" style="flex:none;width:96px;height:102px;background:url(${MAS_URL}) 0 0/384px 102px no-repeat;background-position-x:-192px"></div><div class="mbub" style="background:var(--on);color:var(--surf);font-size:13px;font-weight:600;line-height:1.3;padding:9px 12px;border-radius:14px ${s ? "14px 4px 14px" : "14px 14px 4px"};max-width:210px;margin-bottom:34px;opacity:0;transition:opacity .25s"></div>`;
   el.onclick = () => { masQ = []; masClose(); masNext(20000); };
   document.body.appendChild(el); masEl = el; const run = ++masRun;
   requestAnimationFrame(() => requestAnimationFrame(() => { el.style.transform = "translateX(0)"; }));
@@ -480,3 +480,77 @@ document.addEventListener("change", e => {
   };
   im.onerror = () => toast("Не удалось открыть картинку"); im.src = url;
 });
+
+// ---------- Обмен: новый интерфейс
+let tradeF = 0;
+const SWP = `<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h12l-3-3M17 17H5l3 3"/></svg>`;
+const otile = (idx, label, extra) => { const it = ITEMS[idx] || ["", "?", 0]; return `<div class="otile"><div class="olab">${label}</div>${catEl(idx, 76, {})}<div class="onm" style="color:${RC[it[2]]}">${esc(it[1])}</div>${extra || ""}</div>`; };
+offerCard = function (o, mineF) {
+  if (!ITEMS[o.give] || !ITEMS[o.want]) return "";
+  const have = S.inv[o.want + ""] || 0, can = have >= 1;
+  const left = mineF ? otile(o.give, "Отдаёшь") : otile(o.give, "Получишь");
+  const right = mineF ? otile(o.want, "Хочешь") : otile(o.want, "Отдашь", `<div class="ohv ${can ? "ok" : "no"}">${can ? "У тебя ×" + have : "У тебя нет"}</div>`);
+  return `<div class="ocard${mineF ? " mine" : ""}"><div class="orow">${left}<div class="oswap">${SWP}</div>${right}</div><div class="ofoot"><div class="grow t2" style="margin:0;font-size:12px">${mineF ? "Твоё предложение" : "от " + nm(o.sname, o.badges)}</div>${mineF ? btn("Снять", "canceloff", `data-i="${o.id}"`, "o") : btn("Обменять", "accept", `data-i="${o.id}"`, can ? "" : "dis")}</div></div>`;
+};
+const _tTopT = tTop;
+tTop = function () {
+  if (sub !== 1) return _tTopT();
+  const seg = `<div class="seg"><button data-a="sub" data-i="0">Лидеры</button><button class="on" data-a="sub" data-i="1">Обмен</button><button data-a="sub" data-i="2">Чат</button></div>`;
+  let h = mback + seg;
+  if (!offData) return h + `<div class="t2" style="text-align:center;margin:30px">Загружаю…</div>`;
+  const mine = offData.filter(o => o.seller === me.id), oth = offData.filter(o => o.seller !== me.id), canL = oth.filter(o => (S.inv[o.want + ""] || 0) >= 1);
+  h += `<button class="btn" data-a="newoffer" style="width:100%;height:54px;justify-content:center;font-size:16px;margin-bottom:10px">＋ Создать обмен <span style="opacity:.7;font-weight:500;margin-left:6px">${mine.length}/5</span></button>`;
+  h += `<div style="display:flex;gap:6px;margin-bottom:10px">${[["Все", oth.length + mine.length], ["Могу принять", canL.length], ["Мои", mine.length]].map((x, i) => `<button class="chip ${tradeF === i ? "p" : ""}" style="border:0;font-family:inherit" data-a="tradef" data-i="${i}">${x[0]} · ${x[1]}</button>`).join("")}</div>`;
+  const list = tradeF === 0 ? mine.map(o => [o, true]).concat(oth.map(o => [o, false])) : tradeF === 1 ? canL.map(o => [o, false]) : mine.map(o => [o, true]);
+  h += list.length ? list.map(([o, m]) => offerCard(o, m)).join("") : `<div class="t2" style="text-align:center;margin:24px 8px">${tradeF === 1 ? "Сейчас нет предложений, которые ты можешь принять" : tradeF === 2 ? "У тебя нет активных обменов. Нажми «Создать обмен»" : "Пока нет предложений. Создай первое!"}</div>`;
+  h += `<div class="t2" style="margin:10px 6px;font-size:12px">Кот, которого ты предлагаешь, уходит в залог и вернётся, если снять предложение. Меняться можно любыми котами.</div>`;
+  return h;
+};
+A.tradef = function (e) { tradeF = +e.dataset.i; render(); };
+
+function startOffer() {
+  const mineAll = Object.keys(S.inv).filter(k => S.inv[k] >= 1 && +k !== 70 && +k !== 71).map(Number);
+  if (!mineAll.length) return toast("У тебя нет котов для обмена");
+  offer = {give: null, want: null};
+  const o = ov(""); o.style.background = "var(--surf)"; let rf = -1, q = "";
+  const slot = (kind, title) => { const i = offer[kind]; const it = i === null ? null : ITEMS[i]; return `<div class="oslot${it ? " f" : ""}" data-open="${kind}"><div class="olab">${title}</div>${it ? `<div class="pop">${catEl(i, 92, {})}</div><div class="onm" style="color:${RC[it[2]]}">${esc(it[1])}</div>${kind === "give" ? `<div class="ohv ${S.inv[i + ""] === 1 ? "no" : "ok"}">${S.inv[i + ""] === 1 ? "Последний кот!" : "У тебя ×" + S.inv[i + ""]}</div>` : ""}` : `<div class="oplus">+</div><div class="t2" style="margin:0;font-size:12px">Выбрать</div>`}</div>`; };
+  const main = () => {
+    const ok = offer.give !== null && offer.want !== null && offer.give !== offer.want;
+    o.innerHTML = `<h2 style="margin:0 0 4px">Новый обмен</h2><div class="t2" style="margin:0 0 18px;text-align:center">Выбери, что отдаёшь и что хочешь получить</div><div class="slots">${slot("give", "Ты отдаёшь")}<div class="oswap big">${SWP}</div>${slot("want", "Хочешь получить")}</div><div style="margin-top:auto;padding-top:20px;width:100%;display:flex;gap:10px">${btn("Отмена", "close", "", "t")}<button class="btn grow ${ok ? "" : "dis"}" data-a="mkoffer" style="justify-content:center">Предложить</button></div>`;
+    o.querySelectorAll("[data-open]").forEach(e => e.onclick = () => pick(e.dataset.open));
+  };
+  const pick = kind => {
+    let ids = kind === "give" ? mineAll.slice() : ITEMS.map((it, i) => i).filter(i => i !== 70 && i !== 71 && i !== offer.give);
+    ids.sort((a, b) => ITEMS[b][2] - ITEMS[a][2] || a - b);
+    o.innerHTML = `<div style="width:100%;display:flex;align-items:center;gap:10px"><button class="btn t" id="pback">←</button><h2 style="margin:0">${kind === "give" ? "Что отдаёшь" : "Что хочешь получить"}</h2></div><input id="psearch" placeholder="Поиск по названию" style="width:100%;margin:12px 0 8px"><div style="display:flex;gap:6px;flex-wrap:wrap;width:100%"><button class="chip" data-rf="-1">Все</button>${RARS.slice(0, 7).map((R, r) => `<button class="chip" data-rf="${r}" style="color:${RC[r]}">${R[0]}</button>`).join("")}</div><div class="rgrid" id="pgrid"></div>`;
+    const grid = o.querySelector("#pgrid"), chips = [...o.querySelectorAll("[data-rf]")];
+    const draw = () => {
+      chips.forEach(c => c.classList.toggle("p", +c.dataset.rf === rf));
+      const l = ids.filter(i => (rf < 0 || ITEMS[i][2] === rf) && ITEMS[i][1].toLowerCase().includes(q));
+      grid.innerHTML = l.length ? l.map(i => `<div class="cell tcell" data-i="${i}" style="${offer[kind] === i ? "box-shadow:inset 0 0 0 2px var(--pri)" : ""}">${S.inv[i + ""] > 1 && kind === "give" ? `<i class="tcnt">×${S.inv[i + ""]}</i>` : ""}${catEl(i, 76, {})}<span style="color:${RC[ITEMS[i][2]]}">${esc(ITEMS[i][1])}</span></div>`).join("") : `<div class="t2" style="grid-column:1/-1;text-align:center;margin:20px">Ничего не найдено</div>`;
+      grid.querySelectorAll("[data-i]").forEach(e => e.onclick = () => { offer[kind] = +e.dataset.i; if (kind === "give" && offer.want === offer.give) offer.want = null; main(); });
+    };
+    o.querySelector("#pback").onclick = main; o.querySelector("#psearch").oninput = e => { q = e.target.value.trim().toLowerCase(); draw(); };
+    chips.forEach(c => c.onclick = () => { rf = +c.dataset.rf; draw(); });
+    draw();
+  };
+  main();
+}
+function tradeFx(gaveIdx, gotIdx) {
+  const o = document.createElement("div"); o.className = "tfx";
+  o.innerHTML = `<div class="tfc" id="tfa">${catEl(gaveIdx, 110, {})}</div><div class="tfc" id="tfb">${catEl(gotIdx, 110, {})}</div><div class="tft"><div class="t1" style="font-size:22px;color:var(--pri)">Обмен состоялся!</div><div class="t2" style="margin-top:4px;text-align:center">Получен: <b style="color:${RC[ITEMS[gotIdx][2]]}">${esc(ITEMS[gotIdx][1])}</b></div></div>`;
+  document.body.appendChild(o); try { jingle(2); } catch (e) {} try { hap("ok"); } catch (e) {}
+  const W = innerWidth, a = o.querySelector("#tfa"), b = o.querySelector("#tfb"), x0 = W * .22 - 55, x1 = W * .78 - 55, Y = innerHeight * .38;
+  a.style.cssText = `left:${x0}px;top:${Y}px`; b.style.cssText = `left:${x1}px;top:${Y}px`;
+  const opt = {duration: 900, easing: "cubic-bezier(.5,0,.3,1)", fill: "forwards"};
+  a.animate([{transform: "translate(0,0) scale(1)"}, {transform: `translate(${(x1 - x0) / 2}px,-70px) scale(.8)`, offset: .5}, {transform: `translate(${x1 - x0}px,0) scale(1)`}], opt);
+  b.animate([{transform: "translate(0,0) scale(1)"}, {transform: `translate(${(x0 - x1) / 2}px,70px) scale(.8)`, offset: .5}, {transform: `translate(${x0 - x1}px,0) scale(1.15)`}], opt);
+  setTimeout(() => { try { fxConfetti(40); } catch (e) {} }, 800);
+  o.onclick = () => o.remove(); setTimeout(() => { o.style.opacity = 0; setTimeout(() => o.remove(), 400); }, 2600);
+}
+A.accept = async function (e) {
+  const id = +e.dataset.i, o = offData && offData.find(x => x.id === id); if (!o) return;
+  if ((S.inv[o.want + ""] || 0) < 1) return toast("У тебя нет кота: " + ITEMS[o.want][1]);
+  await save(true); const r = await api("accept", {id}); if (r.error) { toast(r.error); offData = null; render(); return; }
+  adopt(r); checkAch(); mark(); offData = null; render(); tradeFx(o.want, o.give);
+};
