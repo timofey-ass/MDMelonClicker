@@ -816,9 +816,11 @@ function bankHtml() {
   if (!L) return `<div class="card col czbank">${bankLogo}<div class="t1" style="text-align:center;font-size:20px">Банк</div><div class="t2" style="font-size:12px;margin:0;text-align:center">Возьми монеты в долг и верни за 1 час без процентов. Не вернёшь — придут коты-коллекторы и заберут вдвое больше долга, баланс может уйти в минус. В минусе играть в казино нельзя.</div><div class="czchips">${[25, 50, 100].map(v => `<button class="chip${cz.lpct === v ? " on" : ""}" style="border:0;font-family:inherit" data-a="lnpct" data-v="${v}">${v}%</button>`).join("")}</div>${S.pts < 0 ? "" : cz.ban > 0 ? `<div class="t2" style="text-align:center;margin:0"><b>Банк закрыт ещё ${Math.ceil(cz.ban / 3600)} ч</b> после банкротства</div>` : `<button class="btn" data-a="lntake" style="width:100%;height:50px;justify-content:center"${cz.lmax < 1000 ? " disabled" : ""}>Взять ${fmt(lnAmt())} в долг</button>`}<div class="t2" style="font-size:11px;margin:0;text-align:center">Лимит: ${fmt(cz.lmax)} (30% от монет за забег)</div>${minus}</div>`;
   return `<div class="card col czbank">${bankLogo}<div class="t1" style="text-align:center;font-size:20px">Твой долг: ${fmt(L.amount)}</div><div class="t2" style="margin:0;text-align:center">Осталось <b id="lnleft" style="font-size:16px">${fmtT(lnLeft())}</b> до прихода коллекторов</div><button class="btn" data-a="lnpay" style="width:100%;height:50px;justify-content:center"${S.pts < L.amount ? " disabled" : ""}>Вернуть ${fmt(L.amount)}</button>${S.pts < L.amount ? `<div class="t2" style="font-size:11px;margin:0;text-align:center">Не хватает монет, заработай или выиграй</div>` : ""}${minus}</div>`;
 }
+const bmHtml = () => `<div class="bm"><div class="bmfloor"></div><div class="bmhole"><div class="bmlight"></div><div class="bmbars"><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="bmeyes"><b></b><b></b></div><div class="bmsign">ЧЁРНЫЙ РЫНОК</div><div class="bmsoon">Скоро…</div><div class="bmpsst">Тсс… здесь будет продаваться то, чего нет наверху</div></div></div>`;
 const _tCas2 = tCasino;
 tCasino = function () {
   let h = _tCas2();
+  if (cz.sub === 0) h += bmHtml();
   if (cz.sub === 0) h = h.replace(/(<div id="czlast" class="czjs"><\/div><\/div>)/, "$1" + bankHtml());
   return h;
 };
