@@ -35,6 +35,7 @@ async function init(db) {
     db.prepare("CREATE TABLE IF NOT EXISTS promo_uses (code TEXT, uid INTEGER, PRIMARY KEY(code, uid))"),
     db.prepare("CREATE TABLE IF NOT EXISTS bcast (id INTEGER PRIMARY KEY AUTOINCREMENT, text TEXT, ts INTEGER)"),
     db.prepare("CREATE TABLE IF NOT EXISTS ucats (id INTEGER PRIMARY KEY AUTOINCREMENT, uid INTEGER, uname TEXT, name TEXT, rar INTEGER, img TEXT, status TEXT DEFAULT 'new', idx INTEGER, ts INTEGER)"),
+    db.prepare("CREATE TABLE IF NOT EXISTS pk2m (tid INTEGER, seat INTEGER, code INTEGER, ts INTEGER, n INTEGER DEFAULT 0, PRIMARY KEY (tid, seat))"),
     db.prepare("CREATE TABLE IF NOT EXISTS pk2 (id INTEGER PRIMARY KEY AUTOINCREMENT, p1 INTEGER, n1 TEXT, p2 INTEGER, n2 TEXT, stake REAL, status TEXT DEFAULT 'wait', h1 TEXT, h2 TEXT, rest TEXT, d1 INTEGER DEFAULT 0, d2 INTEGER DEFAULT 0, res TEXT, c1 INTEGER DEFAULT 0, c2 INTEGER DEFAULT 0, ts INTEGER, dealt INTEGER DEFAULT 0)"),
     db.prepare("CREATE TABLE IF NOT EXISTS ideas (id INTEGER PRIMARY KEY AUTOINCREMENT, uid INTEGER, uname TEXT, text TEXT, status TEXT DEFAULT 'new', ts INTEGER)"),
     db.prepare("CREATE TABLE IF NOT EXISTS kv (k TEXT PRIMARY KEY, v TEXT)"),
@@ -245,6 +246,15 @@ async function api(path, req, env) {
     if (tb.status === "cancel") { out.pay = seat === 1 ? tb.stake : 0; out.claimed = !!tb["c" + seat]; }
     return out;
   };
+  const P2_PH = 10;
+  if (path === "p2_say") {
+    const tb = await db.prepare("SELECT * FROM pk2 WHERE id=? AND (p1=? OR p2=?) AND status IN ('wait','play','done')").bind(Number(b.id), id, id).first(); if (!tb) return J({error: "Столик не найден"});
+    const code = Math.floor(Number(b.code)); if (!(code >= 0 && code < P2_PH)) return J({error: "Нет такой фразы"});
+    const seat = tb.p1 === id ? 1 : 2, old = await db.prepare("SELECT ts FROM pk2m WHERE tid=? AND seat=?").bind(tb.id, seat).first();
+    if (old && now - old.ts < 2) return J({error: "Не так быстро"});
+    await db.prepare("INSERT INTO pk2m (tid,seat,code,ts,n) VALUES (?,?,?,?,1) ON CONFLICT(tid,seat) DO UPDATE SET code=excluded.code, ts=excluded.ts, n=n+1").bind(tb.id, seat, code, now).run();
+    return J({ok: true});
+  }
   const p2Active = async () => await db.prepare("SELECT * FROM pk2 WHERE (p1=? OR p2=?) AND status IN ('wait','play') ORDER BY id DESC LIMIT 1").bind(id, id).first();
   if (path === "p2_list") {
     await db.prepare("UPDATE pk2 SET status='cancel' WHERE status='wait' AND ts<?").bind(now - 1800).run();
@@ -271,7 +281,10 @@ async function api(path, req, env) {
   }
   if (path === "p2_state") {
     let tb = await db.prepare("SELECT * FROM pk2 WHERE id=? AND (p1=? OR p2=?)").bind(Number(b.id), id, id).first(); if (!tb) return J({error: "Столик не найден"});
-    tb = await p2Tick(tb); return J(p2View(tb, id));
+    tb = await p2Tick(tb); const v = p2View(tb, id);
+    const ms = (await db.prepare("SELECT seat,code,ts,n FROM pk2m WHERE tid=?").bind(tb.id).all()).results;
+    for (const m of ms) { const k = m.seat === v.seat ? "myMsg" : "oppMsg"; v[k] = {code: m.code, n: m.n, ago: now - m.ts}; }
+    return J(v);
   }
   if (path === "p2_draw") {
     let tb = await db.prepare("SELECT * FROM pk2 WHERE id=? AND (p1=? OR p2=?)").bind(Number(b.id), id, id).first(); if (!tb || tb.status !== "play") return J({error: "Раздача не идёт"});
