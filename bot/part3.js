@@ -37,12 +37,13 @@ function applyReward(kind, a, b) {
   if (kind === "pts") { S.pts += a; S.run += a; S.total += a; }
   else if (kind === "gems") S.gems += a;
   else if (kind === "cat") { const i = Math.max(0, Math.min(ITEMS.length - 1, Math.floor(a))); for (let k = 0; k < (b || 1); k++) grant(i, false); }
+  else if (kind === "allcats") { const q = Math.max(1, b || 1); for (let i = 0; i < ITEMS.length; i++) S.inv[i] = (S.inv[i] || 0) + q; }
   else if (kind === "takepts") { const t = a < 0 ? S.pts : b === 2 ? S.pts * Math.min(a, 100) / 100 : Math.min(S.pts, a); S.pts = Math.max(0, S.pts - t); }
   else if (kind === "takegems") { const t = a < 0 ? S.gems : Math.min(S.gems, a); S.gems -= t; }
   else if (kind === "takecat") { const k = String(Math.floor(a)); if (k in S.inv) { S.inv[k] -= (b || 1); if (S.inv[k] <= 0) { delete S.inv[k]; S.holo = S.holo.filter(x => x !== +k); if (+S.eq === +k) S.eq = -1; } } }
   checkAch(); mark(); save(true);
 }
-const rewTxt = (kind, a, b) => kind === "takegems" ? "−" + (a < 0 ? "все самоцветы" : fmt(a) + " самоцветов") : kind === "takepts" ? "−" + (a < 0 ? "все монеты" : b === 2 ? a + "% монет" : fmt(a) + " монет") : kind === "takecat" ? "отобран кот " + (ITEMS[Math.floor(a)] ? ITEMS[Math.floor(a)][1] : "") + " ×" + (b || 1) : kind === "pts" ? "+" + fmt(a) + " монет" : kind === "gems" ? "+" + fmt(a) + " самоцветов" : ITEMS[Math.floor(a)] ? ITEMS[Math.floor(a)][1] + " ×" + (b || 1) : "награда";
+const rewTxt = (kind, a, b) => kind === "allcats" ? "все коты ×" + (b || 1) : kind === "takegems" ? "−" + (a < 0 ? "все самоцветы" : fmt(a) + " самоцветов") : kind === "takepts" ? "−" + (a < 0 ? "все монеты" : b === 2 ? a + "% монет" : fmt(a) + " монет") : kind === "takecat" ? "отобран кот " + (ITEMS[Math.floor(a)] ? ITEMS[Math.floor(a)][1] : "") + " ×" + (b || 1) : kind === "pts" ? "+" + fmt(a) + " монет" : kind === "gems" ? "+" + fmt(a) + " самоцветов" : ITEMS[Math.floor(a)] ? ITEMS[Math.floor(a)][1] + " ×" + (b || 1) : "награда";
 function announce(text) {
   const o = document.createElement("div"); o.className = "ann"; o.innerHTML = `<div class="anc"><div class="t1" style="color:var(--pri);display:flex;align-items:center;gap:8px">${ic("sparkle", 18)}Сообщение</div><div style="margin:10px 0 14px;font-size:15px;white-space:pre-wrap">${esc(text)}</div>${btn("Понятно", "annx")}</div>`;
   document.body.appendChild(o); jingle(1); buzz(1);
@@ -169,6 +170,7 @@ const admCard = () => {
   h += `<div style="display:flex;align-items:center;gap:10px;margin-top:6px">${catEl(admIdx, 46, {})}<div class="grow t1" style="color:${rc};font-size:14px">${it[1]} · ${RARS[it[2]][0]} ×${admQty}</div></div>`;
   h += chips3([["−", -1], ["+", 1], ["+5", 5]], "admidx") + chips3([["×1", 1], ["×5", 5], ["×10", 10]], "admqty");
   h += btn("Выдать котика", "admcat", 'style="width:100%;justify-content:center"');
+  h += btn("Выдать ВСЕХ котов ×" + admQty, "admallcats", 'style="width:100%;justify-content:center"', "o");
   h += chips3([["+1M", 1e6], ["+1B", 1e9], ["+1T", 1e12]], "admpts");
   h += `<div class="buyrow">${btn(ic("gem", 14) + "+10", "admgem", 'data-v="10"', "o")}${btn(ic("gem", 14) + "+100", "admgem", 'data-v="100"', "o")}</div>`;
   h += `<div class="t1" style="color:var(--err,#ff5252);margin-top:10px">Забрать у игрока</div><div class="t2">Нужен ID игрока в поле выше (себе тоже можно)</div>`;
@@ -189,6 +191,11 @@ async function admGive(kind, a, b) {
 }
 A.admidx = function (e) { admIdx = ((admIdx + +e.dataset.v) % ITEMS.length + ITEMS.length) % ITEMS.length; render(); };
 A.admqty = function (e) { admQty = +e.dataset.v; render(); };
+let allCatsArm = 0;
+A.admallcats = function (e) {
+  if (!allCatsArm) { allCatsArm = 1; e.textContent = "Точно выдать всех? Нажми ещё раз"; setTimeout(() => { allCatsArm = 0; if (tab === 5) render(); }, 4000); return; }
+  allCatsArm = 0; admGive("allcats", 0, admQty);
+};
 A.admcat = function () { admGive("cat", admIdx, admQty); };
 A.admpts = function (e) { admGive("pts", +e.dataset.v, 1); };
 A.admtakecat = function () { admGive("takecat", admIdx, admQty); };
@@ -286,7 +293,7 @@ let _lastTab = -1, _lastSub = -1;
 const _render4 = render;
 render = function () {
   _render4();
-  if (tab !== _lastTab) { _lastTab = tab; _lastSub = sub; const v = $("#view"); if (v) { v.classList.remove("vin"); void v.offsetWidth; v.classList.add("vin"); } }
+  if (tab !== _lastTab) { _lastTab = tab; _lastSub = sub; const v = $("#view"); if (v) { v.classList.remove("vin"); void v.offsetWidth; v.classList.add("vin"); clearTimeout(v._vt); v._vt = setTimeout(() => v.classList.remove("vin"), 650); } }
 };
 // эффекты на события
 const _toast0 = toast;
@@ -802,8 +809,8 @@ const fmtT = s => Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
 const lnLeft = () => cz.loan ? Math.max(0, Math.ceil((cz.loan.at - Date.now()) / 1000)) : 0;
 function bankHtml() {
   const L = cz.loan;
-  if (!L) return `<div class="card col czbank"><div class="t1" style="color:var(--pri)">🏦 Банк</div><div class="t2" style="font-size:12px;margin:0">Возьми монеты в долг и верни за 1 час без процентов. Не вернёшь — придут коты-коллекторы и заберут вдвое больше долга, баланс может уйти в минус. В минусе играть в казино нельзя.</div><div class="czchips">${[25, 50, 100].map(v => `<button class="chip${cz.lpct === v ? " on" : ""}" style="border:0;font-family:inherit" data-a="lnpct" data-v="${v}">${v}%</button>`).join("")}</div><button class="btn" data-a="lntake" style="width:100%;height:50px;justify-content:center"${cz.lmax < 1000 ? " disabled" : ""}>Взять ${fmt(lnAmt())} в долг</button><div class="t2" style="font-size:11px;margin:0;text-align:center">Лимит: ${fmt(cz.lmax)}</div></div>`;
-  return `<div class="card col czbank"><div class="t1" style="color:#ff8a65">🏦 Твой долг: ${fmt(L.amount)}</div><div class="t2" style="margin:0">Осталось <b id="lnleft" style="font-size:16px">${fmtT(lnLeft())}</b> до прихода коллекторов</div><button class="btn" data-a="lnpay" style="width:100%;height:50px;justify-content:center"${S.pts < L.amount ? " disabled" : ""}>Вернуть ${fmt(L.amount)}</button>${S.pts < L.amount ? `<div class="t2" style="font-size:11px;margin:0;text-align:center">Не хватает монет, заработай или выиграй</div>` : ""}</div>`;
+  if (!L) return `<div class="card col czbank"><div class="t1" style="text-align:center;font-size:20px">🏦 Банк</div><div class="t2" style="font-size:12px;margin:0;text-align:center">Возьми монеты в долг и верни за 1 час без процентов. Не вернёшь — придут коты-коллекторы и заберут вдвое больше долга, баланс может уйти в минус. В минусе играть в казино нельзя.</div><div class="czchips">${[25, 50, 100].map(v => `<button class="chip${cz.lpct === v ? " on" : ""}" style="border:0;font-family:inherit" data-a="lnpct" data-v="${v}">${v}%</button>`).join("")}</div><button class="btn" data-a="lntake" style="width:100%;height:50px;justify-content:center"${cz.lmax < 1000 ? " disabled" : ""}>Взять ${fmt(lnAmt())} в долг</button><div class="t2" style="font-size:11px;margin:0;text-align:center">Лимит: ${fmt(cz.lmax)}</div></div>`;
+  return `<div class="card col czbank"><div class="t1" style="text-align:center;font-size:20px">🏦 Твой долг: ${fmt(L.amount)}</div><div class="t2" style="margin:0;text-align:center">Осталось <b id="lnleft" style="font-size:16px">${fmtT(lnLeft())}</b> до прихода коллекторов</div><button class="btn" data-a="lnpay" style="width:100%;height:50px;justify-content:center"${S.pts < L.amount ? " disabled" : ""}>Вернуть ${fmt(L.amount)}</button>${S.pts < L.amount ? `<div class="t2" style="font-size:11px;margin:0;text-align:center">Не хватает монет, заработай или выиграй</div>` : ""}</div>`;
 }
 const _tCas2 = tCasino;
 tCasino = function () {
