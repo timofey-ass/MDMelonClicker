@@ -169,11 +169,15 @@ async function api(path, req, env) {
     await db.prepare("UPDATE loans SET status='overdue' WHERE uid=? AND status='open' AND due<?").bind(id, now).run();
     const cur = await db.prepare("SELECT * FROM loans WHERE uid=? AND status IN ('open','overdue') ORDER BY id DESC LIMIT 1").bind(id).first();
     const urow = await db.prepare("SELECT total, state AS state0 FROM users WHERE id=?").bind(id).first();
-    const lim = Math.min(1e12, Math.max(10000, Math.floor(num(urow && urow.total) * 0.3)));
+    let runv = 0; try { runv = num(JSON.parse((urow && urow.state0) || "{}").run); } catch (e) {}
+    const lim = Math.min(1e12, Math.max(10000, Math.floor(runv * 0.3)));
+    const bk = await db.prepare("SELECT ts FROM loans WHERE uid=? AND status='bankrupt' ORDER BY id DESC LIMIT 1").bind(id).first();
+    const ban = bk ? Math.max(0, bk.ts + 3 * 86400 - now) : 0;
     const view = l => l ? {id: l.id, amount: l.amount, due: l.due, left: Math.max(0, l.due - now), status: l.status, fine: Math.ceil(l.amount * LOAN_MUL)} : null;
-    if (path === "loan_info") return J({loan: view(cur), max: lim, now});
+    if (path === "loan_info") return J({loan: view(cur), max: lim, now, ban});
     if (path === "loan_take") {
       if (cur) return J({error: "Сначала закрой прошлый долг"});
+      if (ban > 0) return J({error: "Банк закрыт для тебя ещё " + Math.ceil(ban / 3600) + " ч"});
       try { if (num(JSON.parse(urow.state0 || "{}").pts) < 0) return J({error: "Ты в минусе: сначала отработай долг"}); } catch (e) {}
       const a = Math.floor(Number(b.amount)); if (!isFinite(a) || a < 1000) return J({error: "Минимум 1 000"}); if (a > lim) return J({error: "Лимит долга: " + lim});
       const r = await db.prepare("INSERT INTO loans (uid,amount,due,status,ts) VALUES (?,?,?,'open',?)").bind(id, a, now + LOAN_H, now).run();
@@ -184,6 +188,12 @@ async function api(path, req, env) {
       const r = await db.prepare("UPDATE loans SET status='repaid' WHERE id=? AND status='open' AND due>=?").bind(cur.id, now).run();
       if (r.meta.changes !== 1) return J({error: "Срок вышел"});
       return J({ok: true, amount: cur.amount});
+    }
+    if (path === "loan_bankrupt") {
+      if (cur) return J({error: "Сначала закрой долг в банке"});
+      if (ban > 0) return J({error: "Ты уже объявлял банкротство"});
+      await db.prepare("INSERT INTO loans (uid,amount,due,status,ts) VALUES (?,0,?,'bankrupt',?)").bind(id, now, now).run();
+      return J({ok: true, ban: 3 * 86400});
     }
     if (path === "loan_settle") {
       if (!cur || cur.status !== "overdue") return J({error: "Нечего взыскивать"});
