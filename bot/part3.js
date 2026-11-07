@@ -285,7 +285,7 @@ let _lastTab = -1, _lastSub = -1;
 const _render4 = render;
 render = function () {
   _render4();
-  if (tab !== _lastTab || sub !== _lastSub) { _lastTab = tab; _lastSub = sub; const v = $("#view"); if (v) { v.classList.remove("vin"); void v.offsetWidth; v.classList.add("vin"); } }
+  if (tab !== _lastTab) { _lastTab = tab; _lastSub = sub; const v = $("#view"); if (v) { v.classList.remove("vin"); void v.offsetWidth; v.classList.add("vin"); } }
 };
 // эффекты на события
 const _toast0 = toast;
@@ -321,7 +321,7 @@ const MAS_TIPS = [
   "Копить миллиарды невыгодно: свыше 1 млрд идёт небольшой налог."
 ];
 let masEl = null, masT = 0, masSide = 0, masBag = [], masQ = [], masRun = 0;
-const masBlocked = () => (tab === 6 && cz.sub >= 2) || OVL || document.hidden || document.querySelector(".mdl");
+const masBlocked = () => (tab === 6 && cz.sub >= 2) || OVL || document.hidden || document.querySelector(".mdl,.coll");
 function masClose() { const e = masEl; if (!e) return; masEl = null; masRun++; const sp = e.querySelector(".msp"); if (sp) sp.style.backgroundPositionX = "-192px"; e.querySelector(".mbub").style.opacity = 0; e.style.transform = "translateX(" + (e.dataset.s === "0" ? "-130%" : "130%") + ")"; setTimeout(() => e.remove(), 700); }
 function masNext(ms) { clearTimeout(masT); masT = setTimeout(masShow, ms); }
 function masPush(t) { if (typeof t !== "string" || !t || t.length > 140 || masQ.includes(t)) return; masQ.push(t); if (masQ.length > 6) masQ.shift(); if (!masEl) masNext(400); }
@@ -579,7 +579,7 @@ function pkAuto(h) {
   return h.map(c => c % 13 >= 9);
 }
 const pkCard = (c, back) => `<div class="pk3${back ? " back" : ""}"><div class="pkf face ${Math.floor(c / 13) % 3 === 1 ? "red" : ""}${Math.floor(c / 13) === 2 ? " red" : ""}"><b>${RK[c % 13]}</b><i>${SU[Math.floor(c / 13)]}</i></div><div class="pkf bk"></div></div>`;
-const czBet = () => { const mx = Math.floor(S.pts); cz.bet = Math.max(100, Math.min(cz.bet, mx >= 100 ? mx : 100)); return cz.bet; };
+const czBet = () => { const mx = Math.max(0, Math.floor(S.pts)); cz.bet = Math.max(100, Math.min(cz.bet, mx >= 100 ? mx : 100)); return cz.bet; };
 function czUpd() {
   const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
   set("czbal", fmt(S.pts)); set("czbetv", fmt(czBet())); document.querySelectorAll(".czjp").forEach(e => e.textContent = cz.jp === null ? "…" : fmt(cz.jp));
@@ -792,3 +792,55 @@ async function p2Apply(r) {
 }
 setInterval(() => { if (tab === 6 && !document.hidden) { if (cz.sub === 4) p2Poll(); } }, 1500);
 setInterval(() => { if (tab === 6 && !document.hidden && cz.sub === 3 && !cz.busy) p2Lobby(); }, 3500);
+
+// ---------- банк и коллекторы
+const COLL_URL = MAS_URL.replace("mascot.png?v=1", "collector.png?v=1");
+cz.loan = null; cz.lmax = 0; cz.lpct = 50; let collBusy = false, lnSig = "";
+const lnAmt = () => Math.max(1000, Math.min(cz.lmax, Math.floor(cz.lmax * cz.lpct / 100)));
+const fmtT = s => Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
+const lnLeft = () => cz.loan ? Math.max(0, Math.ceil((cz.loan.at - Date.now()) / 1000)) : 0;
+function bankHtml() {
+  const L = cz.loan;
+  if (!L) return `<div class="card col czbank"><div class="t1" style="color:var(--pri)">🏦 Банк</div><div class="t2" style="font-size:12px;margin:0">Возьми монеты в долг и верни за 1 час без процентов. Не вернёшь — придут коты-коллекторы и заберут долг плюс штраф 1,5%, баланс может уйти в минус.</div><div class="czchips">${[25, 50, 100].map(v => `<button class="chip${cz.lpct === v ? " on" : ""}" style="border:0;font-family:inherit" data-a="lnpct" data-v="${v}">${v}%</button>`).join("")}</div><button class="btn" data-a="lntake" style="width:100%;height:50px;justify-content:center"${cz.lmax < 1000 ? " disabled" : ""}>Взять ${fmt(lnAmt())} в долг</button><div class="t2" style="font-size:11px;margin:0;text-align:center">Лимит: ${fmt(cz.lmax)}</div></div>`;
+  return `<div class="card col czbank"><div class="t1" style="color:#ff8a65">🏦 Твой долг: ${fmt(L.amount)}</div><div class="t2" style="margin:0">Осталось <b id="lnleft" style="font-size:16px">${fmtT(lnLeft())}</b> до прихода коллекторов</div><button class="btn" data-a="lnpay" style="width:100%;height:50px;justify-content:center"${S.pts < L.amount ? " disabled" : ""}>Вернуть ${fmt(L.amount)}</button>${S.pts < L.amount ? `<div class="t2" style="font-size:11px;margin:0;text-align:center">Не хватает монет, заработай или выиграй</div>` : ""}</div>`;
+}
+const _tCas2 = tCasino;
+tCasino = function () {
+  let h = _tCas2();
+  if (cz.sub === 0) h = h.replace(/(<div id="czlast" class="czjs"><\/div><\/div>)/, "$1" + bankHtml());
+  return h;
+};
+async function loanCheck() {
+  if (collBusy || !S) return; let r; try { r = await api("loan_info", {}); } catch (e) { return; } if (!r || r.error) return;
+  cz.lmax = r.max; cz.loan = r.loan; if (r.loan) r.loan.at = Date.now() + r.loan.left * 1000;
+  if (r.loan && r.loan.status === "overdue") return collect();
+  const sig = r.loan ? r.loan.id + r.loan.status : "n" + r.max; if (sig !== lnSig) { lnSig = sig; if (tab === 6 && cz.sub === 0 && !cz.busy) render(); }
+}
+setInterval(() => { if (!document.hidden) loanCheck(); }, 15000);
+setTimeout(loanCheck, 3500);
+setInterval(() => { const e = document.getElementById("lnleft"); if (e && cz.loan) { const l = lnLeft(); e.textContent = fmtT(l); if (l <= 0) loanCheck(); } }, 1000);
+A.lnpct = function (e) { cz.lpct = +e.dataset.v; render(); };
+A.lntake = async function () {
+  if (cz.busy || cz.loan) return; const a = lnAmt(); const r = await api("loan_take", {amount: a});
+  if (!r || r.error) return toast((r && r.error) || "Нет связи");
+  S.pts += a; mark(); save(true); cz.loan = r.loan; cz.loan.at = Date.now() + r.loan.left * 1000; lnSig = r.loan.id + r.loan.status; render();
+  toast("Получено в долг: " + fmt(a) + ". Верни за час!");
+};
+A.lnpay = async function () {
+  if (cz.busy || !cz.loan) return; const a = cz.loan.amount; if (S.pts < a) return toast("Не хватает монет");
+  const r = await api("loan_repay", {}); if (!r || r.error) { toast((r && r.error) || "Нет связи"); return loanCheck(); }
+  S.pts -= r.amount; mark(); save(true); cz.loan = null; lnSig = ""; render(); toast("Долг возвращён. Коты-коллекторы разочарованы");
+};
+async function collect() {
+  if (collBusy) return; collBusy = true;
+  const r = await api("loan_settle", {}); if (!r || r.error) { collBusy = false; return; }
+  const before = S.pts, after = before - r.fine, o = document.createElement("div"); o.className = "coll";
+  o.innerHTML = `<div class="collt">Время платить!</div><div class="collrow">${[0, 1, 2].map(i => `<div class="collc c${i}" style="--d:${i * .3}s"><div class="collsp" style="background-image:url(${COLL_URL})"></div></div>`).join("")}</div><div class="collb">Долг ${fmt(r.amount)} + штраф 1,5% = <b>${fmt(r.fine)}</b></div><div class="collbal">Баланс <b id="collv">${fmt(before)}</b></div>`;
+  document.body.appendChild(o); try { hap("err"); } catch (e) {}
+  await sleep(2100);
+  for (let i = 0; i < 16; i++) { const c = document.createElement("span"); c.className = "collcoin"; c.textContent = "🪙"; c.style.setProperty("--dx", (Math.random() * 220 - 110) + "px"); c.style.setProperty("--dy", (-180 - Math.random() * 90) + "px"); c.style.animationDelay = i * 70 + "ms"; o.appendChild(c); }
+  const t0 = performance.now(), D = 1500, ev = o.querySelector("#collv");
+  await new Promise(res => { const f = t => { const k = Math.min(1, (t - t0) / D); ev.textContent = fmt(before + (after - before) * k); if (k < 1) requestAnimationFrame(f); else res(); }; requestAnimationFrame(f); });
+  S.pts = after; mark(); save(true); o.querySelector(".collt").textContent = "Спасибо за сотрудничество!"; o.classList.add("done");
+  await sleep(1500); o.classList.add("out"); await sleep(450); o.remove(); collBusy = false; cz.loan = null; lnSig = ""; render(); loanCheck();
+}

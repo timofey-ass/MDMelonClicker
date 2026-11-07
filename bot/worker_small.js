@@ -40,6 +40,7 @@ async function init(db) {
     db.prepare("CREATE TABLE IF NOT EXISTS promo_uses (code TEXT, uid INTEGER, PRIMARY KEY(code, uid))"),
     db.prepare("CREATE TABLE IF NOT EXISTS bcast (id INTEGER PRIMARY KEY AUTOINCREMENT, text TEXT, ts INTEGER)"),
     db.prepare("CREATE TABLE IF NOT EXISTS ucats (id INTEGER PRIMARY KEY AUTOINCREMENT, uid INTEGER, uname TEXT, name TEXT, rar INTEGER, img TEXT, status TEXT DEFAULT 'new', idx INTEGER, ts INTEGER)"),
+    db.prepare("CREATE TABLE IF NOT EXISTS loans (id INTEGER PRIMARY KEY AUTOINCREMENT, uid INTEGER, amount REAL, due INTEGER, status TEXT DEFAULT 'open', ts INTEGER)"),
     db.prepare("CREATE TABLE IF NOT EXISTS pk2m (tid INTEGER, seat INTEGER, code INTEGER, ts INTEGER, n INTEGER DEFAULT 0, PRIMARY KEY (tid, seat))"),
     db.prepare("CREATE TABLE IF NOT EXISTS pk2 (id INTEGER PRIMARY KEY AUTOINCREMENT, p1 INTEGER, n1 TEXT, p2 INTEGER, n2 TEXT, stake REAL, status TEXT DEFAULT 'wait', h1 TEXT, h2 TEXT, rest TEXT, d1 INTEGER DEFAULT 0, d2 INTEGER DEFAULT 0, res TEXT, c1 INTEGER DEFAULT 0, c2 INTEGER DEFAULT 0, ts INTEGER, dealt INTEGER DEFAULT 0)"),
     db.prepare("CREATE TABLE IF NOT EXISTS ideas (id INTEGER PRIMARY KEY AUTOINCREMENT, uid INTEGER, uname TEXT, text TEXT, status TEXT DEFAULT 'new', ts INTEGER)"),
@@ -55,7 +56,8 @@ function clean(s) {
   if (!s || typeof s !== "object" || Array.isArray(s)) return null;
   if (JSON.stringify(s).length > 40000) return null;
   if (!Array.isArray(s.b) || !s.inv || typeof s.inv !== "object") return null;
-  for (const k of ["pts", "run", "total"]) s[k] = Math.max(0, num(s[k]));
+  for (const k of ["run", "total"]) s[k] = Math.max(0, num(s[k]));
+  s.pts = Math.max(-1e15, num(s.pts));
   return s;
 }
 async function getUser(db, id) { return db.prepare("SELECT * FROM users WHERE id=?").bind(id).first(); }
@@ -167,6 +169,34 @@ async function api(path, req, env) {
     if (cv[0] === 2 && Object.keys(cnt).some(k => cnt[k] === 2 && +k >= 9)) return {n: "Пара валетов или выше", m: 1};
     return {n: "Ничего", m: 0};
   };
+  if (path.startsWith("loan_")) {
+    const LOAN_H = 3600, LOAN_FINE = 0.015;
+    await db.prepare("UPDATE loans SET status='overdue' WHERE uid=? AND status='open' AND due<?").bind(id, now).run();
+    const cur = await db.prepare("SELECT * FROM loans WHERE uid=? AND status IN ('open','overdue') ORDER BY id DESC LIMIT 1").bind(id).first();
+    const urow = await db.prepare("SELECT total FROM users WHERE id=?").bind(id).first();
+    const lim = Math.min(1e12, Math.max(10000, Math.floor(num(urow && urow.total) * 0.3)));
+    const view = l => l ? {id: l.id, amount: l.amount, due: l.due, left: Math.max(0, l.due - now), status: l.status, fine: Math.ceil(l.amount * (1 + LOAN_FINE))} : null;
+    if (path === "loan_info") return J({loan: view(cur), max: lim, now});
+    if (path === "loan_take") {
+      if (cur) return J({error: "Сначала закрой прошлый долг"});
+      const a = Math.floor(Number(b.amount)); if (!isFinite(a) || a < 1000) return J({error: "Минимум 1 000"}); if (a > lim) return J({error: "Лимит долга: " + lim});
+      const r = await db.prepare("INSERT INTO loans (uid,amount,due,status,ts) VALUES (?,?,?,'open',?)").bind(id, a, now + LOAN_H, now).run();
+      return J({ok: true, loan: view({id: r.meta.last_row_id, amount: a, due: now + LOAN_H, status: "open"})});
+    }
+    if (path === "loan_repay") {
+      if (!cur || cur.status !== "open") return J({error: "Нет долга для возврата"});
+      const r = await db.prepare("UPDATE loans SET status='repaid' WHERE id=? AND status='open' AND due>=?").bind(cur.id, now).run();
+      if (r.meta.changes !== 1) return J({error: "Срок вышел"});
+      return J({ok: true, amount: cur.amount});
+    }
+    if (path === "loan_settle") {
+      if (!cur || cur.status !== "overdue") return J({error: "Нечего взыскивать"});
+      const r = await db.prepare("UPDATE loans SET status='settled' WHERE id=? AND status='overdue'").bind(cur.id).run();
+      if (r.meta.changes !== 1) return J({error: "Уже взыскано"});
+      return J({ok: true, amount: cur.amount, fine: Math.ceil(cur.amount * (1 + LOAN_FINE))});
+    }
+    return J({error: "?"});
+  }
   if (path === "cz_info") { const j = await jpGet(); return J({jp: j.pool, last: j.last}); }
   if (path === "cz_roulette") {
     const bet = Math.floor(Number(b.bet)), pick = String(b.pick);
@@ -480,7 +510,7 @@ async function tgcall(env, method, body) {
 async function secret(env) { return hex(await crypto.subtle.digest("SHA-256", enc("md:" + env.BOT_TOKEN))).slice(0, 32); }
 
 const DEMO = "<script>window.__DEV=1;(function(){var f=window.fetch;var seed={pts:1500000,run:1500000,total:3000000,gems:12,taps:1234,b:[12,8,5,3,1,0,0],inv:{\"3\":1,\"10\":1,\"22\":1,\"40\":1,\"64\":1,\"73\":1,\"80\":1,\"63\":1}};var rows=[[1,\"Мурка\",9.5e9],[2,\"Барсик\",4.2e8],[3,\"Демо\",3e6]].map(function(r){return{id:r[0],name:r[1],total:r[2],badges:\"\"}});var m={auth:{id:3,name:\"Демо\",state:seed,rev:1,admin:false,badges:\"\"},save:{ok:true,rev:1},poll:{grants:[],bc:null,maxbc:0,online:5,rev:1,badges:\"\"},top:{rows:rows,rank:3},offers:{offers:[]},chat:{rows:[{id:1,uid:1,name:\"Мурка\",text:\"Привет! Кто трейд?\",ts:0,badges:\"b\"},{id:2,uid:2,name:\"Барсик\",text:\"Выбил Королевского арбуза!\",ts:0,badges:\"\"}]}};window.fetch=function(u,o){u=String(u);if(u.indexOf(\"/api/\")===0){return Promise.resolve(new Response(JSON.stringify(m[u.slice(5)]||{}),{headers:{\"content-type\":\"application/json\"}}))}return f.apply(this,arguments)}})()</script>";
-const ANN = ["5.12.1", ["Покер на двоих: быстрые фразы — «Ставлю душу своей матери!», «Я блефую… или нет?», «Реванш?» и другие; соперник видит их над своим местом"]];
+const ANN = ["5.13.0", ["Казино: банк — бери монеты в долг без процентов и возвращай в течение часа", "Не вернул вовремя: приходят коты-коллекторы, забирают долг и штраф 1,5%, баланс может уйти в минус", "Анимация появления теперь играет только при переключении нижних вкладок, а не при каждом действии внутри"]];
 let annBusy = false;
 async function announce(env, origin) {
   if (annBusy || !env.DB || !env.BOT_TOKEN) return;
