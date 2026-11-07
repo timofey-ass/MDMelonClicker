@@ -794,7 +794,7 @@ setInterval(() => { if (tab === 6 && !document.hidden) { if (cz.sub === 4) p2Pol
 setInterval(() => { if (tab === 6 && !document.hidden && cz.sub === 3 && !cz.busy) p2Lobby(); }, 3500);
 
 // ---------- банк и коллекторы
-const COLL_URL = MAS_URL.replace("mascot.png?v=1", "collector.png?v=1");
+const COLL_URL = MAS_URL.replace("mascot.png?v=1", "collector.png?v=2");
 cz.loan = null; cz.lmax = 0; cz.lpct = 50; let collBusy = false, lnSig = "";
 const lnAmt = () => Math.max(1000, Math.min(cz.lmax, Math.floor(cz.lmax * cz.lpct / 100)));
 const fmtT = s => Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
