@@ -142,6 +142,55 @@ async function api(path, req, env) {
   const adm = id === ADMIN;
   const adm0 = id === ADMIN;
   const tg0 = (uid, text) => env.BOT_TOKEN ? tgcall(env, "sendMessage", {chat_id: uid, text}).catch(() => {}) : null;
+  // ---------- казино
+  const crnd = n => { const a = new Uint32Array(1); crypto.getRandomValues(a); return a[0] % n; };
+  const JP_SEED = 250000, ZN = 26;
+  const secColor = i => i === 0 ? "g" : i === 13 ? "j" : (i % 2 === 1 ? "r" : "b");
+  const jpGet = async () => { await db.prepare("INSERT OR IGNORE INTO kv (k,v) VALUES ('jp',?)").bind(String(JP_SEED)).run(); const r = await db.prepare("SELECT v FROM kv WHERE k='jp'").first(); const l = await db.prepare("SELECT v FROM kv WHERE k='jplast'").first(); let last = null; try { last = l ? JSON.parse(l.v) : null; } catch (e) {} return {pool: Number(r.v) || JP_SEED, last}; };
+  const cardRank = c => c % 13, cardSuit = c => Math.floor(c / 13);
+  const pkEval = h => {
+    const r = h.map(cardRank).sort((a, b) => a - b), cnt = {}; r.forEach(x => cnt[x] = (cnt[x] || 0) + 1);
+    const cv = Object.values(cnt).sort((a, b) => b - a), flush = h.every(c => cardSuit(c) === cardSuit(h[0]));
+    const uniq = Object.keys(cnt).length === 5, straight = uniq && (r[4] - r[0] === 4 || (r[0] === 0 && r[1] === 1 && r[2] === 2 && r[3] === 3 && r[4] === 12));
+    const royal = straight && flush && r[0] === 8;
+    if (royal) return {n: "Роял-флеш", m: 250}; if (straight && flush) return {n: "Стрит-флеш", m: 50};
+    if (cv[0] === 4) return {n: "Каре", m: 25}; if (cv[0] === 3 && cv[1] === 2) return {n: "Фулл-хаус", m: 9};
+    if (flush) return {n: "Флеш", m: 6}; if (straight) return {n: "Стрит", m: 4}; if (cv[0] === 3) return {n: "Тройка", m: 3};
+    if (cv[0] === 2 && cv[1] === 2) return {n: "Две пары", m: 2};
+    if (cv[0] === 2 && Object.keys(cnt).some(k => cnt[k] === 2 && +k >= 9)) return {n: "Пара валетов или выше", m: 1};
+    return {n: "Ничего", m: 0};
+  };
+  if (path === "cz_info") { const j = await jpGet(); return J({jp: j.pool, last: j.last}); }
+  if (path === "cz_roulette") {
+    const bet = Math.floor(Number(b.bet)), pick = String(b.pick);
+    if (!(bet >= 100) || !isFinite(bet) || !["r", "b", "g"].includes(pick)) return J({error: "Неверная ставка"});
+    const contrib = bet * 0.05;
+    await jpGet(); await db.prepare("UPDATE kv SET v=CAST(CAST(v AS REAL)+? AS TEXT) WHERE k='jp'").bind(contrib).run();
+    const sector = crnd(ZN), col = secColor(sector); let payout = 0, jackpot = false;
+    if (col === "j") { const j = await jpGet(); payout = bet + j.pool; jackpot = true; await db.prepare("UPDATE kv SET v=? WHERE k='jp'").bind(String(JP_SEED)).run(); await db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES ('jplast',?)").bind(JSON.stringify({n: name, a: j.pool, t: now})).run(); }
+    else if (col === pick) payout = bet * (pick === "g" ? 24 : 2);
+    const j2 = await jpGet();
+    return J({sector, payout, jackpot, jp: j2.pool, last: j2.last});
+  }
+  const pkKey = "pk" + id;
+  const pkGet = async () => { const r = await db.prepare("SELECT v FROM kv WHERE k=?").bind(pkKey).first(); return r ? JSON.parse(r.v) : null; };
+  if (path === "cz_pk_state") { const h = await pkGet(); return J({hand: h ? h.hand : null, bet: h ? h.bet : 0}); }
+  if (path === "cz_pk_deal") {
+    const old = await pkGet(); if (old) return J({hand: old.hand, bet: old.bet, resume: true});
+    const bet = Math.floor(Number(b.bet)); if (!(bet >= 100) || !isFinite(bet)) return J({error: "Неверная ставка"});
+    const deck = Array.from({length: 52}, (_, i) => i); for (let i = 51; i > 0; i--) { const j = crnd(i + 1); [deck[i], deck[j]] = [deck[j], deck[i]]; }
+    const hand = deck.slice(0, 5), rest = deck.slice(5, 15);
+    await db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES (?,?)").bind(pkKey, JSON.stringify({hand, rest, bet})).run();
+    return J({hand, bet, ev: pkEval(hand).n});
+  }
+  if (path === "cz_pk_draw") {
+    const h = await pkGet(); if (!h) return J({error: "Нет активной раздачи"});
+    const del = await db.prepare("DELETE FROM kv WHERE k=?").bind(pkKey).run(); if (del.meta.changes !== 1) return J({error: "Уже сыграно"});
+    const hold = Array.isArray(b.hold) ? b.hold.map(Boolean) : [], hand = h.hand.slice(); let k = 0;
+    for (let i = 0; i < 5; i++) if (!hold[i]) hand[i] = h.rest[k++];
+    const ev = pkEval(hand);
+    return J({hand, name: ev.n, mult: ev.m, payout: h.bet * ev.m, bet: h.bet});
+  }
   if (path === "ucats") {
     const rows = (await db.prepare("SELECT id,idx,name,rar,uid,uname FROM ucats WHERE status='ok' ORDER BY idx").all()).results;
     return J({rows});
