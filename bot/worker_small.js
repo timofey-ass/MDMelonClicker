@@ -449,7 +449,7 @@ async function api(path, req, env) {
     if (!adm) return J({error: "Нет доступа"}, 403);
     if (path === "adm_give") {
       const t = Number(b.target) || id, kind = String(b.kind);
-      if (!["pts", "gems", "cat", "takepts", "takecat", "takegems"].includes(kind)) return J({error: "Неверный тип"});
+      if (!["pts", "gems", "cat", "allcats", "takepts", "takecat", "takegems"].includes(kind)) return J({error: "Неверный тип"});
       const u = await getUser(db, t); if (!u) return J({error: "Игрок с таким ID не найден"});
       if (kind.startsWith("take")) {
         const a = num(Number(b.a)), m = Math.floor(num(Number(b.b))) || 1;
@@ -512,7 +512,7 @@ async function tgcall(env, method, body) {
 async function secret(env) { return hex(await crypto.subtle.digest("SHA-256", enc("md:" + env.BOT_TOKEN))).slice(0, 32); }
 
 const DEMO = "<script>window.__DEV=1;(function(){var f=window.fetch;var seed={pts:1500000,run:1500000,total:3000000,gems:12,taps:1234,b:[12,8,5,3,1,0,0],inv:{\"3\":1,\"10\":1,\"22\":1,\"40\":1,\"64\":1,\"73\":1,\"80\":1,\"63\":1}};var rows=[[1,\"Мурка\",9.5e9],[2,\"Барсик\",4.2e8],[3,\"Демо\",3e6]].map(function(r){return{id:r[0],name:r[1],total:r[2],badges:\"\"}});var m={auth:{id:3,name:\"Демо\",state:seed,rev:1,admin:false,badges:\"\"},save:{ok:true,rev:1},poll:{grants:[],bc:null,maxbc:0,online:5,rev:1,badges:\"\"},top:{rows:rows,rank:3},offers:{offers:[]},chat:{rows:[{id:1,uid:1,name:\"Мурка\",text:\"Привет! Кто трейд?\",ts:0,badges:\"b\"},{id:2,uid:2,name:\"Барсик\",text:\"Выбил Королевского арбуза!\",ts:0,badges:\"\"}]}};window.fetch=function(u,o){u=String(u);if(u.indexOf(\"/api/\")===0){return Promise.resolve(new Response(JSON.stringify(m[u.slice(5)]||{}),{headers:{\"content-type\":\"application/json\"}}))}return f.apply(this,arguments)}})()</script>";
-const ANN = ["5.13.4", ["Коллекторы забирают вдвое больше долга", "Если баланс в минусе, кот-коллектор прогоняет из рулетки и покера, пока не отработаешь долг", "Новый долг нельзя взять, пока не закрыт старый или баланс в минусе"]];
+const ANN = ["5.13.5", ["Анимация появления больше не запускается при каждом нажатии, только при смене вкладки", "Админка: кнопка «Выдать ВСЕХ котов»"]];
 let annBusy = false;
 async function announce(env, origin) {
   if (annBusy || !env.DB || !env.BOT_TOKEN) return;
