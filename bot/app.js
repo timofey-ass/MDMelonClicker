@@ -84,9 +84,16 @@ const circ = (icon, sz) => `<div class="circ" style="${sz ? `width:${sz}px;heigh
 function row(icon, t1, t2, rightHtml, click) { return `<div class="card ${click ? "click" : ""}" ${click || ""}>${circ(icon)}<div class="grow"><div class="t1">${t1}</div><div class="t2">${t2}</div></div>${rightHtml || ""}</div>`; }
 
 // ---------- render
+function patchView(v, html) {
+  const t = document.createElement("div"); t.innerHTML = html;
+  const a = Array.from(v.children), b = Array.from(t.children);
+  if (!a.length || a.length !== b.length || v._pk !== tab + ":" + (typeof moreSub !== "undefined" ? moreSub : 0) + ":" + (typeof sub !== "undefined" ? sub : 0) + ":" + (typeof cz !== "undefined" ? cz.sub : 0)) { v.innerHTML = html; }
+  else for (let i = 0; i < a.length; i++) if (a[i].outerHTML !== b[i].outerHTML) a[i].replaceWith(b[i]);
+  v._pk = tab + ":" + (typeof moreSub !== "undefined" ? moreSub : 0) + ":" + (typeof sub !== "undefined" ? sub : 0) + ":" + (typeof cz !== "undefined" ? cz.sub : 0);
+}
 function render() {
   if (!S) return; setNav(); const v = $("#view"), st = v.scrollTop;
-  v.innerHTML = [tGame, tShop, tCases, tAch, tTop, tMore, tCasino][tab]();
+  patchView(v, [tGame, tShop, tCases, tAch, tTop, tMore, tCasino][tab]());
   v.scrollTop = st; refresh(true); if (st && v.scrollTop !== st) requestAnimationFrame(() => { v.scrollTop = st; });
   if (tab === 4) { if (sub === 0 && !lbData) loadTop(); if (sub === 1 && !offData) loadOffers(); }
 }
