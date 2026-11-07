@@ -468,6 +468,18 @@ async function api(path, req, env) {
       await db.prepare("INSERT INTO grants (uid,kind,a,b,ts) VALUES (?,?,?,?,?)").bind(t, kind, num(Number(b.a)), Math.floor(num(Number(b.b))) || 1, now).run();
       return J({ok: true, name: u.name});
     }
+    if (path === "adm_tgcast") {
+      const text = String(b.text || "").trim().slice(0, 1000); if (text.length < 3) return J({error: "Слишком короткое сообщение"});
+      const act = await db.prepare("SELECT v FROM kv WHERE k='tgact'").first(); if (act && act.v === "1") return J({error: "Прошлая рассылка ещё идёт"});
+      for (const [k, v] of [["tgtext", text], ["tgpos", "0"], ["tgsent", "0"], ["tgact", "1"], ["tglock", "0"]]) await db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES (?,?)").bind(k, v).run();
+      const tot = await db.prepare("SELECT COUNT(*) c FROM users WHERE banned=0").first();
+      return J({ok: true, total: tot.c});
+    }
+    if (path === "adm_tgstat") {
+      const get = async k => { const r = await db.prepare("SELECT v FROM kv WHERE k=?").bind(k).first(); return r ? r.v : ""; };
+      const tot = await db.prepare("SELECT COUNT(*) c FROM users WHERE banned=0").first();
+      return J({active: (await get("tgact")) === "1", sent: Number(await get("tgsent")) || 0, total: tot.c});
+    }
     if (path === "adm_bcast") {
       const text = String(b.text || "").trim().slice(0, 300); if (!text) return J({error: "Пусто"});
       await db.prepare("INSERT INTO bcast (text,ts) VALUES (?,?)").bind(text, now).run();
@@ -540,9 +552,35 @@ async function announce(env, origin) {
     await db.prepare("UPDATE kv SET v='0' WHERE k='annlock'").run();
   } catch (e) {} finally { annBusy = false; }
 }
+let tgBusy = false;
+async function tgcastStep(env, origin) {
+  if (tgBusy || !env.DB || !env.BOT_TOKEN) return;
+  tgBusy = true;
+  try {
+    const db = env.DB; await init(db);
+    const act = await db.prepare("SELECT v FROM kv WHERE k='tgact'").first(); if (!act || act.v !== "1") return;
+    const nowS = Math.floor(Date.now() / 1000);
+    await db.prepare("INSERT OR IGNORE INTO kv (k,v) VALUES ('tglock','0')").run();
+    const lk = await db.prepare("UPDATE kv SET v=? WHERE k='tglock' AND CAST(v AS INTEGER)<?").bind(String(nowS + 20), nowS).run();
+    if (lk.meta.changes !== 1) return;
+    const get = async k => { const r = await db.prepare("SELECT v FROM kv WHERE k=?").bind(k).first(); return r ? r.v : ""; };
+    const text = await get("tgtext"), pos = Number(await get("tgpos")) || 0, sent0 = Number(await get("tgsent")) || 0;
+    const rows = (await db.prepare("SELECT id FROM users WHERE id>? AND banned=0 ORDER BY id LIMIT 40").bind(pos).all()).results;
+    if (!rows.length || !text) { await db.prepare("UPDATE kv SET v='0' WHERE k='tgact'").run(); await db.prepare("UPDATE kv SET v='0' WHERE k='tglock'").run(); return; }
+    const markup = {inline_keyboard: [[{text: "Играть", web_app: {url: origin}}]]};
+    let ok = 0;
+    for (let i = 0; i < rows.length; i += 10) {
+      const rs = await Promise.all(rows.slice(i, i + 10).map(r => tgcall(env, "sendMessage", {chat_id: r.id, text, reply_markup: markup}).catch(() => null)));
+      ok += rs.filter(x => x && x.ok).length;
+    }
+    await db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES ('tgpos',?)").bind(String(rows[rows.length - 1].id)).run();
+    await db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES ('tgsent',?)").bind(String(sent0 + ok)).run();
+    await db.prepare("UPDATE kv SET v='0' WHERE k='tglock'").run();
+  } catch (e) {} finally { tgBusy = false; }
+}
 export default {
   async fetch(req, env, ctx) {
-    if (ctx && ctx.waitUntil && req.method === "POST" && new URL(req.url).pathname === "/api/poll") ctx.waitUntil(announce(env, new URL(req.url).origin));
+    if (ctx && ctx.waitUntil && req.method === "POST" && new URL(req.url).pathname === "/api/poll") ctx.waitUntil(announce(env, new URL(req.url).origin).then(() => tgcastStep(env, new URL(req.url).origin)));
     const url = new URL(req.url), p = url.pathname;
     try {
       if (p === "/" || p === "/index.html") return new Response(await getHtml(), {headers: {"content-type": "text/html;charset=utf-8", "cache-control": "no-store"}});
