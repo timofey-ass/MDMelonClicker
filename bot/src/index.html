@@ -1248,7 +1248,7 @@ function masShow() {
     while (alive()) {
       const msg = masQ.length ? masQ.shift() : masTip(), isTip = !masQ.length && !first && false;
       if (!first) { bub.style.opacity = 0; await wait(280); if (!alive()) return; }
-      bub.textContent = msg; bub.style.opacity = 1; first = false;
+      bub.textContent = noemo(msg); bub.style.opacity = 1; first = false;
       let f = 1; fr(1); const end = Date.now() + 1300 + msg.length * 50;
       while (alive() && Date.now() < end) { await wait(230 + Math.random() * 60); if (alive()) fr(f = f === 1 ? 2 : 1); }
       if (!alive()) return; fr(2);
@@ -1259,7 +1259,7 @@ function masShow() {
   })();
 }
 setInterval(() => { if (masEl && masBlocked()) { masClose(); masNext(5000); } }, 600);
-(function () { const t0 = toast; toast = function (t) { masPush(t); return t0.apply(this, arguments); }; })();
+(function () { const t0 = toast; toast = function (t) { const r = t0.apply(this, arguments); if (typeof t === "string" && t.length <= 140 && !masBlocked()) { masPush(t); const e = $("#toast"); clearTimeout(tt); e.classList.remove("s"); } return r; }; })();
 masNext(20000);
 
 // ---------- «Ещё»: меню из пяти кнопок
