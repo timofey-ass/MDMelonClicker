@@ -174,11 +174,15 @@ async function api(path, req, env) {
     await db.prepare("UPDATE loans SET status='overdue' WHERE uid=? AND status='open' AND due<?").bind(id, now).run();
     const cur = await db.prepare("SELECT * FROM loans WHERE uid=? AND status IN ('open','overdue') ORDER BY id DESC LIMIT 1").bind(id).first();
     const urow = await db.prepare("SELECT total, state AS state0 FROM users WHERE id=?").bind(id).first();
-    const lim = Math.min(1e12, Math.max(10000, Math.floor(num(urow && urow.total) * 0.3)));
+    let runv = 0; try { runv = num(JSON.parse((urow && urow.state0) || "{}").run); } catch (e) {}
+    const lim = Math.min(1e12, Math.max(10000, Math.floor(runv * 0.3)));
+    const bk = await db.prepare("SELECT ts FROM loans WHERE uid=? AND status='bankrupt' ORDER BY id DESC LIMIT 1").bind(id).first();
+    const ban = bk ? Math.max(0, bk.ts + 3 * 86400 - now) : 0;
     const view = l => l ? {id: l.id, amount: l.amount, due: l.due, left: Math.max(0, l.due - now), status: l.status, fine: Math.ceil(l.amount * LOAN_MUL)} : null;
-    if (path === "loan_info") return J({loan: view(cur), max: lim, now});
+    if (path === "loan_info") return J({loan: view(cur), max: lim, now, ban});
     if (path === "loan_take") {
       if (cur) return J({error: "Сначала закрой прошлый долг"});
+      if (ban > 0) return J({error: "Банк закрыт для тебя ещё " + Math.ceil(ban / 3600) + " ч"});
       try { if (num(JSON.parse(urow.state0 || "{}").pts) < 0) return J({error: "Ты в минусе: сначала отработай долг"}); } catch (e) {}
       const a = Math.floor(Number(b.amount)); if (!isFinite(a) || a < 1000) return J({error: "Минимум 1 000"}); if (a > lim) return J({error: "Лимит долга: " + lim});
       const r = await db.prepare("INSERT INTO loans (uid,amount,due,status,ts) VALUES (?,?,?,'open',?)").bind(id, a, now + LOAN_H, now).run();
@@ -189,6 +193,12 @@ async function api(path, req, env) {
       const r = await db.prepare("UPDATE loans SET status='repaid' WHERE id=? AND status='open' AND due>=?").bind(cur.id, now).run();
       if (r.meta.changes !== 1) return J({error: "Срок вышел"});
       return J({ok: true, amount: cur.amount});
+    }
+    if (path === "loan_bankrupt") {
+      if (cur) return J({error: "Сначала закрой долг в банке"});
+      if (ban > 0) return J({error: "Ты уже объявлял банкротство"});
+      await db.prepare("INSERT INTO loans (uid,amount,due,status,ts) VALUES (?,0,?,'bankrupt',?)").bind(id, now, now).run();
+      return J({ok: true, ban: 3 * 86400});
     }
     if (path === "loan_settle") {
       if (!cur || cur.status !== "overdue") return J({error: "Нечего взыскивать"});
@@ -524,7 +534,7 @@ async function tgcall(env, method, body) {
 async function secret(env) { return hex(await crypto.subtle.digest("SHA-256", enc("md:" + env.BOT_TOKEN))).slice(0, 32); }
 
 const DEMO = "<script>window.__DEV=1;(function(){var f=window.fetch;var seed={pts:1500000,run:1500000,total:3000000,gems:12,taps:1234,b:[12,8,5,3,1,0,0],inv:{\"3\":1,\"10\":1,\"22\":1,\"40\":1,\"64\":1,\"73\":1,\"80\":1,\"63\":1}};var rows=[[1,\"Мурка\",9.5e9],[2,\"Барсик\",4.2e8],[3,\"Демо\",3e6]].map(function(r){return{id:r[0],name:r[1],total:r[2],badges:\"\"}});var m={auth:{id:3,name:\"Демо\",state:seed,rev:1,admin:false,badges:\"\"},save:{ok:true,rev:1},poll:{grants:[],bc:null,maxbc:0,online:5,rev:1,badges:\"\"},top:{rows:rows,rank:3},offers:{offers:[]},chat:{rows:[{id:1,uid:1,name:\"Мурка\",text:\"Привет! Кто трейд?\",ts:0,badges:\"b\"},{id:2,uid:2,name:\"Барсик\",text:\"Выбил Королевского арбуза!\",ts:0,badges:\"\"}]}};window.fetch=function(u,o){u=String(u);if(u.indexOf(\"/api/\")===0){return Promise.resolve(new Response(JSON.stringify(m[u.slice(5)]||{}),{headers:{\"content-type\":\"application/json\"}}))}return f.apply(this,arguments)}})()</script>";
-const ANN = ["5.14.0", ["Казино: покер на двоих со столиками и быстрыми фразами (например «Ставлю душу своей матери!»)", "Казино: банк. Бери монеты в долг на час без процентов. Не вернёшь — придут коты-коллекторы и заберут вдвое больше, баланс уйдёт в минус, а в минусе в казино не пускают", "Течкоты продаются в 2 раза дешевле", "Анимация появления теперь только при смене вкладок", "Исправлены прыжки экрана при покупке улучшений и генераторов, стало меньше лагов"]];
+const ANN = ["5.15.0", ["Как выбраться из долга: в минусе весь доход ×2", "Банкротство в банке: долг списывается, прогресс забега сбрасывается (коты и самоцветы остаются), банк закрыт на 3 дня", "Лимит долга теперь 30% от монет, заработанных за текущий забег"]];
 let annBusy = false;
 async function announce(env, origin) {
   if (annBusy || !env.DB || !env.BOT_TOKEN) return;

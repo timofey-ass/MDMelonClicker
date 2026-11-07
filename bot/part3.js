@@ -807,14 +807,14 @@ setInterval(() => { if (tab === 6 && !document.hidden && cz.sub === 3 && !cz.bus
 const BANK_LOGO = MAS_URL.replace("mascot.png?v=1", "bank_logo.png?v=1");
 const bankLogo = `<img src="${BANK_LOGO}" alt="" style="display:block;margin:0 auto;height:56px;width:auto;filter:drop-shadow(0 2px 6px rgba(0,0,0,.35))">`;
 const COLL_URL = MAS_URL.replace("mascot.png?v=1", "collector.png?v=2");
-cz.loan = null; cz.lmax = 0; cz.lpct = 50; let collBusy = false, lnSig = "";
+cz.loan = null; cz.lmax = 0; cz.lpct = 50; cz.ban = 0; let collBusy = false, lnSig = "";
 const lnAmt = () => Math.max(1000, Math.min(cz.lmax, Math.floor(cz.lmax * cz.lpct / 100)));
 const fmtT = s => Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
 const lnLeft = () => cz.loan ? Math.max(0, Math.ceil((cz.loan.at - Date.now()) / 1000)) : 0;
 function bankHtml() {
-  const L = cz.loan;
-  if (!L) return `<div class="card col czbank">${bankLogo}<div class="t1" style="text-align:center;font-size:20px">Банк</div><div class="t2" style="font-size:12px;margin:0;text-align:center">Возьми монеты в долг и верни за 1 час без процентов. Не вернёшь — придут коты-коллекторы и заберут вдвое больше долга, баланс может уйти в минус. В минусе играть в казино нельзя.</div><div class="czchips">${[25, 50, 100].map(v => `<button class="chip${cz.lpct === v ? " on" : ""}" style="border:0;font-family:inherit" data-a="lnpct" data-v="${v}">${v}%</button>`).join("")}</div><button class="btn" data-a="lntake" style="width:100%;height:50px;justify-content:center"${cz.lmax < 1000 ? " disabled" : ""}>Взять ${fmt(lnAmt())} в долг</button><div class="t2" style="font-size:11px;margin:0;text-align:center">Лимит: ${fmt(cz.lmax)}</div></div>`;
-  return `<div class="card col czbank">${bankLogo}<div class="t1" style="text-align:center;font-size:20px">Твой долг: ${fmt(L.amount)}</div><div class="t2" style="margin:0;text-align:center">Осталось <b id="lnleft" style="font-size:16px">${fmtT(lnLeft())}</b> до прихода коллекторов</div><button class="btn" data-a="lnpay" style="width:100%;height:50px;justify-content:center"${S.pts < L.amount ? " disabled" : ""}>Вернуть ${fmt(L.amount)}</button>${S.pts < L.amount ? `<div class="t2" style="font-size:11px;margin:0;text-align:center">Не хватает монет, заработай или выиграй</div>` : ""}</div>`;
+  const L = cz.loan, minus = S.pts < 0 ? `<div class="t2" style="font-size:12px;margin:0;text-align:center;background:rgba(0,0,0,.25);border-radius:12px;padding:8px">Ты в минусе: доход ×2, пока не выберешься. Или объяви банкротство: долг пропадёт, но прогресс забега (монеты, генераторы, улучшения) сбросится, коты и самоцветы останутся. После этого банк закрыт на 3 дня.</div>${btn("Объявить банкротство", "lnbk", 'style="width:100%;justify-content:center"', "o")}` : "";
+  if (!L) return `<div class="card col czbank">${bankLogo}<div class="t1" style="text-align:center;font-size:20px">Банк</div><div class="t2" style="font-size:12px;margin:0;text-align:center">Возьми монеты в долг и верни за 1 час без процентов. Не вернёшь — придут коты-коллекторы и заберут вдвое больше долга, баланс может уйти в минус. В минусе играть в казино нельзя.</div><div class="czchips">${[25, 50, 100].map(v => `<button class="chip${cz.lpct === v ? " on" : ""}" style="border:0;font-family:inherit" data-a="lnpct" data-v="${v}">${v}%</button>`).join("")}</div>${S.pts < 0 ? "" : cz.ban > 0 ? `<div class="t2" style="text-align:center;margin:0"><b>Банк закрыт ещё ${Math.ceil(cz.ban / 3600)} ч</b> после банкротства</div>` : `<button class="btn" data-a="lntake" style="width:100%;height:50px;justify-content:center"${cz.lmax < 1000 ? " disabled" : ""}>Взять ${fmt(lnAmt())} в долг</button>`}<div class="t2" style="font-size:11px;margin:0;text-align:center">Лимит: ${fmt(cz.lmax)} (30% от монет за забег)</div>${minus}</div>`;
+  return `<div class="card col czbank">${bankLogo}<div class="t1" style="text-align:center;font-size:20px">Твой долг: ${fmt(L.amount)}</div><div class="t2" style="margin:0;text-align:center">Осталось <b id="lnleft" style="font-size:16px">${fmtT(lnLeft())}</b> до прихода коллекторов</div><button class="btn" data-a="lnpay" style="width:100%;height:50px;justify-content:center"${S.pts < L.amount ? " disabled" : ""}>Вернуть ${fmt(L.amount)}</button>${S.pts < L.amount ? `<div class="t2" style="font-size:11px;margin:0;text-align:center">Не хватает монет, заработай или выиграй</div>` : ""}${minus}</div>`;
 }
 const _tCas2 = tCasino;
 tCasino = function () {
@@ -824,13 +824,21 @@ tCasino = function () {
 };
 async function loanCheck() {
   if (collBusy || !S) return; let r; try { r = await api("loan_info", {}); } catch (e) { return; } if (!r || r.error) return;
-  cz.lmax = r.max; cz.loan = r.loan; if (r.loan) r.loan.at = Date.now() + r.loan.left * 1000;
+  cz.lmax = r.max; cz.loan = r.loan; cz.ban = r.ban || 0; if (r.loan) r.loan.at = Date.now() + r.loan.left * 1000;
   if (r.loan && r.loan.status === "overdue") return collect();
   const sig = r.loan ? r.loan.id + r.loan.status : "n" + r.max; if (sig !== lnSig) { lnSig = sig; if (tab === 6 && cz.sub === 0 && !cz.busy) render(); }
 }
 setInterval(() => { if (!document.hidden) loanCheck(); }, 15000);
 setTimeout(loanCheck, 3500);
 setInterval(() => { const e = document.getElementById("lnleft"); if (e && cz.loan) { const l = lnLeft(); e.textContent = fmtT(l); if (l <= 0) loanCheck(); } }, 1000);
+let bkArm = 0;
+A.lnbk = async function (e) {
+  if (S.pts >= 0) return;
+  if (!bkArm) { bkArm = 1; e.textContent = "ТОЧНО? Прогресс забега сбросится. Нажми ещё раз"; setTimeout(() => { bkArm = 0; if (tab === 6) render(); }, 5000); return; }
+  bkArm = 0; const r = await api("loan_bankrupt", {}); if (!r || r.error) return toast((r && r.error) || "Нет связи");
+  Object.assign(S, {pts: 0, run: 0, click: 0, crit: 0, fev: 0, b: BUILDS.map(() => 0), boost: 0}); fever = frenzy = 0; mark(); save(true); cz.ban = r.ban; lnSig = ""; render();
+  toast("Банкротство. Долг списан, начинай с нуля");
+};
 A.lnpct = function (e) { cz.lpct = +e.dataset.v; render(); };
 A.lntake = async function () {
   if (cz.busy || cz.loan) return toast("Сначала верни прошлый долг"); if (S.pts < 0) return toast("Ты в минусе: сначала отработай долг"); const a = lnAmt(); const r = await api("loan_take", {amount: a});
@@ -863,7 +871,7 @@ let kickOn = false;
 function kickOut() {
   if (kickOn) return; kickOn = true;
   const o = document.createElement("div"); o.className = "kick";
-  o.innerHTML = `<div class="kickc"><div class="kickb">Эй, должник! У тебя минус ${fmt(-S.pts)}. Играть нельзя, пока не отработаешь долг!</div><div class="collsp" style="background-image:url(${COLL_URL})"></div></div>`;
+  o.innerHTML = `<div class="kickc"><div class="kickb">Эй, должник! У тебя минус ${fmt(-S.pts)}. Играть нельзя, пока не отработаешь долг! В банке можно объявить банкротство.</div><div class="collsp" style="background-image:url(${COLL_URL})"></div></div>`;
   document.body.appendChild(o); try { hap("err"); } catch (e) {}
   const end = () => { if (!o.isConnected) return; o.classList.add("out"); setTimeout(() => { o.remove(); kickOn = false; }, 300); };
   o.addEventListener("click", end); setTimeout(end, 2800);
