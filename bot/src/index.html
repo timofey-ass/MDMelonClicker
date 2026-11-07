@@ -1172,6 +1172,8 @@ const admCard = () => {
   h += btn("Отобрать кота: " + it[1] + " ×" + admQty, "admtakecat", 'style="width:100%;justify-content:center"', "o");
   h += `<div class="buyrow3">${[10, 50, 99].map(x => btn("−" + x + "%", "admtakepct", `data-v="${x}"`, "o")).join("")}</div><input data-keep="admamt" placeholder="Своя сумма, например 5e25" style="margin-top:6px">` + btn("Забрать эту сумму", "admtakeamt", 'style="width:100%;justify-content:center"', "o") + btn("Забрать все монеты", "admtakeall", 'style="width:100%;justify-content:center"', "o") + `` + btn("Забрать все самоцветы", "admtakegem", 'data-v="-1" style="width:100%;justify-content:center"', "o") + `</div>`;
   h += `<div class="card col"><div class="t1" style="color:var(--pri)">Банк (тест)</div><div class="t2" style="font-size:12px;margin:0">Пропускает час твоего долга: коллекторы придут сразу.</div>${btn("⏩ Пропустить час долга", "admskip", 'style="width:100%;justify-content:center"', "o")}</div>`;
+  h += `<div class="card col"><div class="t1" style="color:var(--pri)">Сообщение во все чаты бота</div><div class="t2" style="font-size:12px;margin:0">Придёт каждому игроку в личку от бота, с кнопкой «Играть». Уходит порциями, пока игроки заходят в игру.</div><textarea data-keep="tgc" rows="3" maxlength="1000" placeholder="Текст сообщения"></textarea><div id="tgst" class="t2" style="font-size:12px;margin:0">${tgStat ? tgStat : ""}</div>${btn("Отправить в чаты", "admtg", 'style="width:100%;justify-content:center"', "o")}</div>`;
+  if (!tgStat) setTimeout(tgRefresh, 50);
   h += `<div class="card col"><div class="t1" style="color:var(--pri)">Сообщение всем в игре</div><textarea data-keep="bc" rows="2" placeholder="Текст сообщения"></textarea>${btn("Показать всем", "admbc")}</div>`;
   h += `<div class="card col"><div class="t1" style="color:var(--pri)">Промокоды</div><input data-keep="pcode" placeholder="Код, например NEWYEAR" style="text-transform:uppercase"><div class="buyrow4">${[["Монеты", "pts"], ["Самоцветы", "gems"], ["Кот", "cat"]].map(x => `<button class="chip ${admKind === x[1] ? "p" : ""}" style="border:0;font-family:inherit;justify-content:center" data-a="admkind" data-v="${x[1]}">${x[0]}</button>`).join("")}</div><input data-keep="pa" inputmode="decimal" placeholder="${admKind === "cat" ? "Номер кота 0–62" : "Сколько"}">${admKind === "cat" ? `<input data-keep="pb" inputmode="numeric" placeholder="Сколько котов (1)">` : ""}<input data-keep="pmx" inputmode="numeric" placeholder="Сколько человек смогут ввести (0 = без лимита)">${btn("Создать промокод", "admpromo")}`;
   if (promoList) h += promoList.map(p => `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid rgba(255,255,255,.06)"><div class="grow"><div class="t1" style="font-size:14px">${esc(p.code)}</div><div class="t2" style="font-size:11px">${rewTxt(p.kind, p.a, p.b)} · использовано ${p.used}${p.mx ? "/" + p.mx : ""}</div></div>${btn(ic("close", 16), "admpdel", `data-v="${esc(p.code)}"`, "t")}</div>`).join("");
@@ -1862,6 +1864,15 @@ function kickOut() {
 const _czgo2 = A.czgo;
 A.czgo = function (e) { if (S.pts < 0 && +e.dataset.k >= 1) return kickOut(); return _czgo2.apply(this, arguments); };
 for (const k of ["czdeal", "czspin", "p2create", "p2join"]) { const f = A[k]; A[k] = function () { if (S.pts < 0) return kickOut(); return f.apply(this, arguments); }; }
+
+let tgStat = "", tgArm = 0;
+async function tgRefresh() { const r = await api("adm_tgstat", {}); if (!r || r.error) return; tgStat = r.active ? "Рассылка идёт: " + r.sent + " из " + r.total : r.sent ? "Последняя рассылка: доставлено " + r.sent + " из " + r.total : ""; const e = document.getElementById("tgst"); if (e) e.textContent = tgStat; if (r.active) setTimeout(() => { if (tab === 5 && moreSub === 3) tgRefresh(); }, 4000); }
+A.admtg = async function (e) {
+  const text = (KEEP.tgc || "").trim(); if (text.length < 3) return toast("Напиши текст сообщения");
+  if (!tgArm) { tgArm = 1; e.textContent = "ТОЧНО отправить ВСЕМ? Нажми ещё раз"; setTimeout(() => { tgArm = 0; if (tab === 5) render(); }, 5000); return; }
+  tgArm = 0; const r = await api("adm_tgcast", {text}); if (!r || r.error) return toast((r && r.error) || "Нет связи");
+  KEEP.tgc = ""; toast("Рассылка запущена: " + r.total + " чатов"); tgStat = "Рассылка идёт: 0 из " + r.total; render(); pollNow(); setTimeout(tgRefresh, 4000);
+};
 
 boot();
 
