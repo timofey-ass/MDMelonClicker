@@ -87,7 +87,7 @@ function row(icon, t1, t2, rightHtml, click) { return `<div class="card ${click 
 function render() {
   if (!S) return; setNav(); const v = $("#view"), st = v.scrollTop;
   v.innerHTML = [tGame, tShop, tCases, tAch, tTop, tMore, tCasino][tab]();
-  v.scrollTop = st; refresh(true);
+  v.scrollTop = st; refresh(true); if (st && v.scrollTop !== st) requestAnimationFrame(() => { v.scrollTop = st; });
   if (tab === 4) { if (sub === 0 && !lbData) loadTop(); if (sub === 1 && !offData) loadOffers(); }
 }
 function refresh(full) {
