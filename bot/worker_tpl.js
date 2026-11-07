@@ -483,6 +483,7 @@ async function api(path, req, env) {
       const c = (await db.prepare("SELECT COUNT(*) AS c FROM users").first()).c;
       return J({ok: true, count: c});
     }
+    if (path === "adm_skiploan") { const r = await db.prepare("UPDATE loans SET due=? WHERE uid=? AND status='open'").bind(now - 1, id).run(); return J(r.meta.changes ? {ok: true} : {error: "Нет активного долга"}); }
     if (path === "adm_del") { await db.prepare("DELETE FROM chat WHERE id=?").bind(Number(b.id)).run(); return J({ok: true}); }
     if (path === "adm_ban") { await db.prepare("UPDATE users SET banned=? WHERE id=?").bind(b.on ? 1 : 0, Number(b.uid)).run(); if (b.on) await db.prepare("DELETE FROM chat WHERE uid=?").bind(Number(b.uid)).run(); return J({ok: true}); }
     if (path === "adm_badges") { const v = String(b.badges || "").replace(/[^ctsg]/g, "").slice(0, 4); await db.prepare("UPDATE users SET badges=? WHERE id=?").bind(v, Number(b.uid)).run(); return J({ok: true, badges: bd(Number(b.uid), v)}); }
