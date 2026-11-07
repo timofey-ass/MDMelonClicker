@@ -243,7 +243,12 @@ body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;ba
 .p2chip:active{transform:scale(.95)}
 .p2bub{width:fit-content;max-width:90%;margin:2px auto 6px;padding:7px 13px;border-radius:14px;font-size:13px;font-weight:700;animation:catpop .35s}
 .p2bub.o{background:#eee;color:#222}.p2bub.m{background:var(--pri);color:#2a1500}
-.czbank{margin-top:10px}
+.czbank{margin-top:10px;background:linear-gradient(135deg,#8e1b0e,#e8531a 50%,#ff9a3c);border-radius:22px;color:#fff;box-shadow:0 0 24px rgba(255,100,40,.28)}
+.czbank .t1,.czbank .t2,.czbank b{color:#fff!important;text-shadow:0 1px 3px rgba(0,0,0,.35)}
+.czbank .t2{opacity:.92}
+.czbank .chip{background:rgba(0,0,0,.28);color:#fff}.czbank .chip.on{background:#fff;color:#a32a0a;text-shadow:none}
+.czbank .btn{background:rgba(20,6,2,.62);color:#fff}
+.czbank .btn[disabled]{opacity:.55}
 .chip.on{background:var(--pri);color:var(--onpr,#2a1500)}
 .coll{position:fixed;inset:0;z-index:120;background:radial-gradient(circle at 50% 60%,#4a0f0f,#14060a 75%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:20px;animation:collin .3s;overflow:hidden}
 .coll.out{opacity:0;transition:opacity .45s}
