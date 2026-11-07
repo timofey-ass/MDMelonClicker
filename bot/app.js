@@ -339,11 +339,21 @@ async function decodeCode(code) {
 }
 async function boot() {
   setTheme(LS("th", 0)); buildNav();
-  if (!tg || !tg.initData) { $("#lt").textContent = "Открой игру из бота в Телеграме"; if (!window.__DEV) return; }
-  const t0 = Date.now(); const r = await api("auth", {});
-  if (r.error) { $("#lt").textContent = r.error + ". Нужен интернет."; $("#load .tr").style.display = "none"; return; }
-  me = {id: r.id, name: r.name}; try { await loadUcats(); } catch (e) {} S = fixState(r.state || defState()); rev = r.rev || 0; snap = cloneInv(); dirty = !r.state; checkAch();
-  setTimeout(() => { $("#load").remove(); render(); }, Math.max(0, 1300 - (Date.now() - t0)));
+  const lm = $("#lm"), bar = $("#lbar"), lt = $("#lt"), step = (p, t) => { if (bar) bar.style.width = p + "%"; if (t && lt) lt.textContent = t; };
+  try { const url = ADM_IMG.replace("admin/0.jpg", "mascot.png?v=1"), im = new Image(); im.onload = () => { lm.style.backgroundImage = `url(${url})`; lm.classList.add("img"); lm.textContent = ""; }; im.src = url; } catch (e) {}
+  const LT = ["Тапай подряд — включится лихорадка!", "Лови золотые звёзды: они дают бонус.", "Генераторы приносят монеты даже когда ты не в игре.", "Меняйся котами с другими игроками.", "Предлагай своих котов в мастерской."];
+  const tip = $("#ltip"); if (tip) tip.textContent = LT[Math.floor(Math.random() * LT.length)];
+  if (!tg || !tg.initData) { lt.textContent = "Открой игру из бота в Телеграме"; if (!window.__DEV) return; }
+  const t0 = Date.now(); step(18, "Подключаюсь…");
+  const [r] = await Promise.all([api("auth", {}), loadUcats().catch(() => {})]);
+  if (r.error) { lt.textContent = r.error + ". Нужен интернет."; $("#load .tr").style.display = "none"; return; }
+  step(60, "Загружаю прогресс…");
+  me = {id: r.id, name: r.name};
+  S = fixState(r.state || defState());
+  if (Object.keys(S.inv || {}).some(k => +k >= ITEMS.length)) { try { await loadUcats(); } catch (e) {} S = fixState(r.state || defState()); }
+  rev = r.rev || 0; snap = cloneInv(); dirty = !r.state; checkAch();
+  step(88, "Готовлю котов…");
+  setTimeout(() => { step(100, "Готово!"); setTimeout(() => { const l = $("#load"); if (!l) return; l.classList.add("out"); render(); setTimeout(() => l.remove(), 480); }, 260); }, Math.max(0, 700 - (Date.now() - t0)));
 }
 // ============ PART 2: порт геймплея и эффектов плагина ============
 const CHANGES = D.CHANGES, TIPS = D.TIPS;
