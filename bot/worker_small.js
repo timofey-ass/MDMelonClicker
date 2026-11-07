@@ -40,6 +40,7 @@ async function init(db) {
     db.prepare("CREATE TABLE IF NOT EXISTS promo_uses (code TEXT, uid INTEGER, PRIMARY KEY(code, uid))"),
     db.prepare("CREATE TABLE IF NOT EXISTS bcast (id INTEGER PRIMARY KEY AUTOINCREMENT, text TEXT, ts INTEGER)"),
     db.prepare("CREATE TABLE IF NOT EXISTS ucats (id INTEGER PRIMARY KEY AUTOINCREMENT, uid INTEGER, uname TEXT, name TEXT, rar INTEGER, img TEXT, status TEXT DEFAULT 'new', idx INTEGER, ts INTEGER)"),
+    db.prepare("CREATE TABLE IF NOT EXISTS pk2m (tid INTEGER, seat INTEGER, code INTEGER, ts INTEGER, n INTEGER DEFAULT 0, PRIMARY KEY (tid, seat))"),
     db.prepare("CREATE TABLE IF NOT EXISTS pk2 (id INTEGER PRIMARY KEY AUTOINCREMENT, p1 INTEGER, n1 TEXT, p2 INTEGER, n2 TEXT, stake REAL, status TEXT DEFAULT 'wait', h1 TEXT, h2 TEXT, rest TEXT, d1 INTEGER DEFAULT 0, d2 INTEGER DEFAULT 0, res TEXT, c1 INTEGER DEFAULT 0, c2 INTEGER DEFAULT 0, ts INTEGER, dealt INTEGER DEFAULT 0)"),
     db.prepare("CREATE TABLE IF NOT EXISTS ideas (id INTEGER PRIMARY KEY AUTOINCREMENT, uid INTEGER, uname TEXT, text TEXT, status TEXT DEFAULT 'new', ts INTEGER)"),
     db.prepare("CREATE TABLE IF NOT EXISTS kv (k TEXT PRIMARY KEY, v TEXT)"),
@@ -250,6 +251,15 @@ async function api(path, req, env) {
     if (tb.status === "cancel") { out.pay = seat === 1 ? tb.stake : 0; out.claimed = !!tb["c" + seat]; }
     return out;
   };
+  const P2_PH = 10;
+  if (path === "p2_say") {
+    const tb = await db.prepare("SELECT * FROM pk2 WHERE id=? AND (p1=? OR p2=?) AND status IN ('wait','play','done')").bind(Number(b.id), id, id).first(); if (!tb) return J({error: "Столик не найден"});
+    const code = Math.floor(Number(b.code)); if (!(code >= 0 && code < P2_PH)) return J({error: "Нет такой фразы"});
+    const seat = tb.p1 === id ? 1 : 2, old = await db.prepare("SELECT ts FROM pk2m WHERE tid=? AND seat=?").bind(tb.id, seat).first();
+    if (old && now - old.ts < 2) return J({error: "Не так быстро"});
+    await db.prepare("INSERT INTO pk2m (tid,seat,code,ts,n) VALUES (?,?,?,?,1) ON CONFLICT(tid,seat) DO UPDATE SET code=excluded.code, ts=excluded.ts, n=n+1").bind(tb.id, seat, code, now).run();
+    return J({ok: true});
+  }
   const p2Active = async () => await db.prepare("SELECT * FROM pk2 WHERE (p1=? OR p2=?) AND status IN ('wait','play') ORDER BY id DESC LIMIT 1").bind(id, id).first();
   if (path === "p2_list") {
     await db.prepare("UPDATE pk2 SET status='cancel' WHERE status='wait' AND ts<?").bind(now - 1800).run();
@@ -276,7 +286,10 @@ async function api(path, req, env) {
   }
   if (path === "p2_state") {
     let tb = await db.prepare("SELECT * FROM pk2 WHERE id=? AND (p1=? OR p2=?)").bind(Number(b.id), id, id).first(); if (!tb) return J({error: "Столик не найден"});
-    tb = await p2Tick(tb); return J(p2View(tb, id));
+    tb = await p2Tick(tb); const v = p2View(tb, id);
+    const ms = (await db.prepare("SELECT seat,code,ts,n FROM pk2m WHERE tid=?").bind(tb.id).all()).results;
+    for (const m of ms) { const k = m.seat === v.seat ? "myMsg" : "oppMsg"; v[k] = {code: m.code, n: m.n, ago: now - m.ts}; }
+    return J(v);
   }
   if (path === "p2_draw") {
     let tb = await db.prepare("SELECT * FROM pk2 WHERE id=? AND (p1=? OR p2=?)").bind(Number(b.id), id, id).first(); if (!tb || tb.status !== "play") return J({error: "Раздача не идёт"});
@@ -467,7 +480,7 @@ async function tgcall(env, method, body) {
 async function secret(env) { return hex(await crypto.subtle.digest("SHA-256", enc("md:" + env.BOT_TOKEN))).slice(0, 32); }
 
 const DEMO = "<script>window.__DEV=1;(function(){var f=window.fetch;var seed={pts:1500000,run:1500000,total:3000000,gems:12,taps:1234,b:[12,8,5,3,1,0,0],inv:{\"3\":1,\"10\":1,\"22\":1,\"40\":1,\"64\":1,\"73\":1,\"80\":1,\"63\":1}};var rows=[[1,\"Мурка\",9.5e9],[2,\"Барсик\",4.2e8],[3,\"Демо\",3e6]].map(function(r){return{id:r[0],name:r[1],total:r[2],badges:\"\"}});var m={auth:{id:3,name:\"Демо\",state:seed,rev:1,admin:false,badges:\"\"},save:{ok:true,rev:1},poll:{grants:[],bc:null,maxbc:0,online:5,rev:1,badges:\"\"},top:{rows:rows,rank:3},offers:{offers:[]},chat:{rows:[{id:1,uid:1,name:\"Мурка\",text:\"Привет! Кто трейд?\",ts:0,badges:\"b\"},{id:2,uid:2,name:\"Барсик\",text:\"Выбил Королевского арбуза!\",ts:0,badges:\"\"}]}};window.fetch=function(u,o){u=String(u);if(u.indexOf(\"/api/\")===0){return Promise.resolve(new Response(JSON.stringify(m[u.slice(5)]||{}),{headers:{\"content-type\":\"application/json\"}}))}return f.apply(this,arguments)}})()</script>";
-const ANN = ["5.12.0", ["Казино: покер на двоих — создай столик и жди соперника или сядь за чужой", "Одинаковые ставки, 5 карт и одна замена, у кого комбинация старше — забирает банк (5% банка идёт в джекпот)", "Карты раздаёт арбуз-талисман; если соперник долго думает, за него ходит авто-выбор через минуту", "Когда кто-то сядет за твой столик, бот пришлёт сообщение"]];
+const ANN = ["5.12.1", ["Покер на двоих: быстрые фразы — «Ставлю душу своей матери!», «Я блефую… или нет?», «Реванш?» и другие; соперник видит их над своим местом"]];
 let annBusy = false;
 async function announce(env, origin) {
   if (annBusy || !env.DB || !env.BOT_TOKEN) return;

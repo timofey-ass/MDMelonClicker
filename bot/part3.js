@@ -695,6 +695,8 @@ setInterval(() => { if (tab === 6 && !document.hidden) { const e = document.getE
 
 // ---------- покер на двоих
 cz.tid = 0; cz.t = null; cz.lobby = null; cz.sig = ""; cz.shown = 0; cz.fin = 0;
+const P2PH = ["Ставлю душу своей матери!", "Ну давай, удиви меня", "Я блефую… или нет?", "У меня каре, зуб даю", "Не торопись, я подожду", "Ничего личного, просто покер", "Ох, повезло тебе!", "Реванш?", "Красиво сыграл", "Арбуз всё видит"];
+const p2bub = (m, cls) => m && (Date.now() - m.at) < 6000 ? `<div class="p2bub ${cls}" data-n="${m.n}">${esc(P2PH[m.code] || "")}</div>` : "";
 const _tCas = tCasino;
 tCasino = function () {
   if (cz.sub < 3) return _tCas();
@@ -716,7 +718,8 @@ tCasino = function () {
   else if (t.status === "play") { if (!t.myDone) { ctl = `<div style="display:flex;gap:8px;margin-top:6px"><button class="btn o" data-a="p2auto" style="flex:1;justify-content:center">Авто-выбор</button><button class="btn" data-a="p2draw" style="flex:1.4;justify-content:center">Сменить карты</button></div><div class="t2" style="text-align:center;margin-top:8px;font-size:12px">Нажми на карты, которые хочешь оставить. Осталось <b id="p2t">${t.left}</b> с</div>`; st = my ? pkEvalC(my) : ""; } else { ctl = `<div class="t2" style="text-align:center;margin:14px">Ждём ход соперника… <b id="p2t">${t.left}</b> с</div>`; st = my ? pkEvalC(my) : ""; } }
   else if (done) { const w = t.winner; const txt = w === 1 ? `Победа! ${t.myEv} против ${t.oppEv}: +${fmt(t.pay - t.stake)}` : w === 0 ? `Ничья (${t.myEv}): ставки возвращены` : `Поражение: ${t.oppEv} против ${t.myEv}: −${fmt(t.stake)}`; ctl = `<div id="czres" class="czres ${w === 1 ? "win" : w === 2 ? "lose" : ""}">${cz.hideOpp ? "" : txt}</div><button class="btn" data-a="czgo" data-k="3" style="width:100%;height:54px;justify-content:center;font-size:17px;margin-top:10px">К столикам</button>`; st = ""; }
   else { ctl = `<div class="t2" style="text-align:center;margin:14px">Столик закрыт.</div><button class="btn" data-a="czgo" data-k="3" style="width:100%;justify-content:center">К столикам</button>`; }
-  return back + bal + `<div class="p2n">${opp}</div><div class="pkrow p2r" id="pkrow2">${slotsOpp}</div><div class="pkt" style="min-height:96px"><div id="pkm" class="pkm" style="background-image:url(${MAS_URL})"></div><div id="pkb" class="pkb">${t.status === "wait" ? "Подождём гостя!" : t.status === "play" ? "Игра пошла!" : ""}</div></div><div class="pkrow" id="pkrow">${slotsMy}</div><div class="p2n" style="color:var(--pri)">Ты · ${esc(me.name)}</div><div id="pkev" class="pkev">${st}</div>${ctl}`;
+  const phr = t.status === "wait" ? "" : `<div class="p2ph">${P2PH.map((x, i) => `<button class="p2chip" data-a="p2say" data-i="${i}">${esc(x)}</button>`).join("")}</div>`;
+  return back + bal + `<div class="p2n">${opp}</div>${p2bub(t.oppMsg, "o")}<div class="pkrow p2r" id="pkrow2">${slotsOpp}</div><div class="pkt" style="min-height:96px"><div id="pkm" class="pkm" style="background-image:url(${MAS_URL})"></div><div id="pkb" class="pkb">${t.status === "wait" ? "Подождём гостя!" : t.status === "play" ? "Игра пошла!" : ""}</div></div><div class="pkrow" id="pkrow">${slotsMy}</div><div class="p2n" style="color:var(--pri)">Ты · ${esc(me.name)}</div>${p2bub(t.myMsg, "m")}<div id="pkev" class="pkev">${st}</div>${ctl}${phr}`;
 };
 async function p2Lobby() {
   const r = await api("p2_list", {}); if (!r || r.error) return; cz.lobby = r;
@@ -735,6 +738,12 @@ A.p2join = async function (e) {
   cz.busy = true; const r = await api("p2_join", {id}); cz.busy = false;
   if (!r || r.error) { toast((r && r.error) || "Нет связи"); p2Lobby(); return; }
   S.pts -= r.stake; mark(); cz.tid = id; cz.sub = 4; cz.t = null; cz.shown = 0; cz.fin = 0; cz.hold = [false, false, false, false, false]; render(); p2Poll();
+};
+let p2SayAt = 0;
+A.p2say = async function (e) {
+  if (!cz.tid || Date.now() - p2SayAt < 2000) return; p2SayAt = Date.now(); const code = +e.dataset.i;
+  if (cz.t) { cz.t.myMsg = {code, n: ((cz.t.myMsg && cz.t.myMsg.n) || 0) + 1, at: Date.now()}; if (!cz.busy) render(); }
+  const r = await api("p2_say", {id: cz.tid, code}); if (r && r.error) toast(r.error); else setTimeout(() => { if (cz.sub === 4 && !cz.busy) render(); }, 6100);
 };
 A.p2cancel = async function () { const r = await api("p2_cancel", {id: cz.tid}); if (r && r.error) return toast(r.error); p2Poll(); };
 A.p2hold = function (e) { const i = +e.dataset.i; if (!cz.t || cz.t.myDone || cz.busy) return; cz.hold[i] = !cz.hold[i]; e.classList.toggle("h", cz.hold[i]); try { hap("tick"); } catch (x) {} };
@@ -756,7 +765,8 @@ async function p2Poll() {
   p2Busy = false;
 }
 async function p2Apply(r) {
-  const prev = cz.t, sig = [r.status, r.myDone, r.oppDone, (r.hand || []).join(), r.winner].join("|"); cz.t = r;
+  for (const k of ["oppMsg", "myMsg"]) if (r[k]) { r[k].at = Date.now() - r[k].ago * 1000; if (r[k].ago < 6) setTimeout(() => { if (cz.sub === 4 && !cz.busy) render(); }, 6100 - r[k].ago * 1000); }
+  const prev = cz.t, sig = [r.status, r.myDone, r.oppDone, (r.hand || []).join(), r.winner, r.oppMsg ? r.oppMsg.n : 0, r.myMsg ? r.myMsg.n : 0].join("|"); cz.t = r;
   if (sig === cz.sig) { const e = document.getElementById("p2t"); if (e) e.textContent = r.left; return; } cz.sig = sig;
   if (r.status === "play" && !cz.shown) {
     cz.shown = 1; const fresh = !prev || prev.status === "wait";
