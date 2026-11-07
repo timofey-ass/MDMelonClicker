@@ -269,6 +269,12 @@ body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;ba
 .collbal{font-size:16px;color:#fff;background:#0006;border-radius:20px;padding:8px 18px}.collbal b{font-size:20px}
 .collcoin{position:absolute;left:50%;bottom:38%;font-size:26px;opacity:0;animation:collcoin .9s ease-in forwards}
 @keyframes collcoin{0%{opacity:1;transform:translate(0,0) scale(1)}100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(.5) rotate(360deg)}}
+.kick{position:fixed;inset:0;z-index:130;background:rgba(20,4,4,.78);display:flex;align-items:flex-end;justify-content:center;padding-bottom:140px;animation:collin .2s}
+.kick.out{opacity:0;transition:opacity .3s}
+.kickc{display:flex;flex-direction:column;align-items:center;gap:6px;animation:kickin .45s cubic-bezier(.2,.9,.3,1.2)}
+.kickc .collsp{transform:scale(1.5);transform-origin:bottom center;margin-top:20px}
+.kickb{max-width:290px;background:#fff;color:#2a0d08;font-weight:800;font-size:15px;text-align:center;padding:12px 16px;border-radius:18px;box-shadow:0 6px 24px #0008}
+@keyframes kickin{from{transform:translateX(120vw)}}
 </style></head><body>
 <div id="load"><div class="lw"><div class="lglow"></div><div class="lm" id="lm">🍉</div><div class="lsh"></div></div><div class="lti">MDMelonClicker</div><div id="lt">Подключаюсь…</div><div class="tr"><i id="lbar"></i></div><div id="ltip"></div></div>
 <div id="app"><div id="top"><h1 id="ttl">MDMelonClicker</h1><span id="gemc"></span></div><div id="view"></div><div id="nav"></div></div>
