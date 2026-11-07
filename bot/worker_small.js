@@ -40,6 +40,7 @@ async function init(db) {
     db.prepare("CREATE TABLE IF NOT EXISTS promo_uses (code TEXT, uid INTEGER, PRIMARY KEY(code, uid))"),
     db.prepare("CREATE TABLE IF NOT EXISTS bcast (id INTEGER PRIMARY KEY AUTOINCREMENT, text TEXT, ts INTEGER)"),
     db.prepare("CREATE TABLE IF NOT EXISTS ucats (id INTEGER PRIMARY KEY AUTOINCREMENT, uid INTEGER, uname TEXT, name TEXT, rar INTEGER, img TEXT, status TEXT DEFAULT 'new', idx INTEGER, ts INTEGER)"),
+    db.prepare("CREATE TABLE IF NOT EXISTS pk2 (id INTEGER PRIMARY KEY AUTOINCREMENT, p1 INTEGER, n1 TEXT, p2 INTEGER, n2 TEXT, stake REAL, status TEXT DEFAULT 'wait', h1 TEXT, h2 TEXT, rest TEXT, d1 INTEGER DEFAULT 0, d2 INTEGER DEFAULT 0, res TEXT, c1 INTEGER DEFAULT 0, c2 INTEGER DEFAULT 0, ts INTEGER, dealt INTEGER DEFAULT 0)"),
     db.prepare("CREATE TABLE IF NOT EXISTS ideas (id INTEGER PRIMARY KEY AUTOINCREMENT, uid INTEGER, uname TEXT, text TEXT, status TEXT DEFAULT 'new', ts INTEGER)"),
     db.prepare("CREATE TABLE IF NOT EXISTS kv (k TEXT PRIMARY KEY, v TEXT)"),
     db.prepare("CREATE TABLE IF NOT EXISTS chat (id INTEGER PRIMARY KEY AUTOINCREMENT, uid INTEGER, name TEXT, text TEXT, ts INTEGER)"),
@@ -195,6 +196,105 @@ async function api(path, req, env) {
     for (let i = 0; i < 5; i++) if (!hold[i]) hand[i] = h.rest[k++];
     const ev = pkEval(hand);
     return J({hand, name: ev.n, mult: ev.m, payout: h.bet * ev.m, bet: h.bet});
+  }
+  // ---------- покер на двоих
+  const pkScore = h => {
+    const r = h.map(cardRank), cnt = {}; r.forEach(x => cnt[x] = (cnt[x] || 0) + 1);
+    const g = Object.keys(cnt).map(k => [cnt[k], +k]).sort((a, b) => b[0] - a[0] || b[1] - a[1]);
+    const flush = h.every(c => cardSuit(c) === cardSuit(h[0])), rs = r.slice().sort((a, b) => a - b);
+    const straight = g.length === 5 && (rs[4] - rs[0] === 4 || (rs[0] === 0 && rs[1] === 1 && rs[2] === 2 && rs[3] === 3 && rs[4] === 12));
+    let cat, ranks = g.flatMap(x => Array(x[0]).fill(x[1])), nm;
+    const top = straight ? (rs[4] === 12 && rs[0] === 0 ? 3 : rs[4]) : 0;
+    if (straight && flush) { cat = 8; ranks = [top, 0, 0, 0, 0]; nm = top === 12 ? "Роял-флеш" : "Стрит-флеш"; }
+    else if (g[0][0] === 4) { cat = 7; nm = "Каре"; } else if (g[0][0] === 3 && g[1][0] === 2) { cat = 6; nm = "Фулл-хаус"; }
+    else if (flush) { cat = 5; nm = "Флеш"; } else if (straight) { cat = 4; ranks = [top, 0, 0, 0, 0]; nm = "Стрит"; }
+    else if (g[0][0] === 3) { cat = 3; nm = "Тройка"; } else if (g[0][0] === 2 && g[1][0] === 2) { cat = 2; nm = "Две пары"; }
+    else if (g[0][0] === 2) { cat = 1; nm = "Пара"; } else { cat = 0; nm = "Старшая карта"; }
+    return {s: cat * 371293 + ranks.reduce((a, x, i) => a + x * Math.pow(13, 4 - i), 0), n: nm};
+  };
+  const autoHold = h => {
+    const ev = pkEval(h).n, all = h.map(() => true), cnt = {}; h.forEach(c => cnt[cardRank(c)] = (cnt[cardRank(c)] || 0) + 1);
+    if (["Роял-флеш", "Стрит-флеш", "Фулл-хаус", "Флеш", "Стрит"].includes(ev)) return all;
+    if (Object.values(cnt).some(v => v >= 2)) return h.map(c => cnt[cardRank(c)] >= 2);
+    const bs = {}; h.forEach(c => bs[cardSuit(c)] = (bs[cardSuit(c)] || 0) + 1); const fs = Object.keys(bs).find(s => bs[s] >= 4);
+    if (fs !== undefined) return h.map(c => cardSuit(c) === +fs);
+    return h.map(c => cardRank(c) >= 9);
+  };
+  const p2Draw = (tb, seat, hold) => {
+    const k = seat === 1 ? "h1" : "h2", hand = JSON.parse(tb[k]), rest = JSON.parse(tb.rest), used = tb.d1 + tb.d2 === 0 ? 0 : (tb.d1 ? 5 : 0) + (tb.d2 ? 5 : 0); // пул замен: по 5 карт на игрока
+    const off = seat === 1 ? 0 : 5; let n = 0; for (let i = 0; i < 5; i++) if (!hold[i]) hand[i] = rest[off + n++];
+    return hand;
+  };
+  const p2Resolve = async tb => {
+    const a = pkScore(JSON.parse(tb.h1)), c = pkScore(JSON.parse(tb.h2)), pot = tb.stake * 2, winner = a.s > c.s ? 1 : c.s > a.s ? 2 : 0;
+    let pay1 = 0, pay2 = 0, fee = 0;
+    if (winner === 0) { pay1 = pay2 = tb.stake; } else { fee = pot * 0.05; const w = pot - fee; if (winner === 1) pay1 = w; else pay2 = w; }
+    const res = {winner, e1: a.n, e2: c.n, pay1, pay2};
+    const r = await db.prepare("UPDATE pk2 SET status='done', res=? WHERE id=? AND status='play'").bind(JSON.stringify(res), tb.id).run();
+    if (r.meta.changes === 1 && fee > 0) { await jpGet(); await db.prepare("UPDATE kv SET v=CAST(CAST(v AS REAL)+? AS TEXT) WHERE k='jp'").bind(fee).run(); }
+  };
+  const p2Tick = async tb => {
+    if (tb.status !== "play") return tb;
+    let changed = false;
+    if (now - tb.dealt > 60) {
+      for (const seat of [1, 2]) { if (!tb["d" + seat]) { const hand = JSON.parse(tb["h" + seat]), nh = p2Draw(tb, seat, autoHold(hand)); await db.prepare("UPDATE pk2 SET h" + seat + "=?, d" + seat + "=1 WHERE id=? AND d" + seat + "=0").bind(JSON.stringify(nh), tb.id).run(); changed = true; tb = await db.prepare("SELECT * FROM pk2 WHERE id=?").bind(tb.id).first(); } }
+    }
+    if (tb.d1 && tb.d2) { await p2Resolve(tb); changed = true; }
+    return changed ? await db.prepare("SELECT * FROM pk2 WHERE id=?").bind(tb.id).first() : tb;
+  };
+  const p2View = (tb, me) => {
+    const seat = tb.p1 === me ? 1 : 2, done = tb.status === "done", res = done ? JSON.parse(tb.res) : null;
+    const my = tb.h1 === null ? null : JSON.parse(seat === 1 ? tb.h1 : tb.h2);
+    const out = {id: tb.id, status: tb.status, stake: tb.stake, seat, n1: tb.n1, n2: tb.n2, myDone: !!tb["d" + seat], oppDone: !!tb["d" + (3 - seat)], left: tb.status === "play" ? Math.max(0, 60 - (now - tb.dealt)) : 0, hand: my};
+    if (done) { out.oppHand = JSON.parse(seat === 1 ? tb.h2 : tb.h1); out.winner = res.winner === 0 ? 0 : (res.winner === seat ? 1 : 2); out.myEv = seat === 1 ? res.e1 : res.e2; out.oppEv = seat === 1 ? res.e2 : res.e1; out.pay = seat === 1 ? res.pay1 : res.pay2; out.claimed = !!tb["c" + seat]; }
+    if (tb.status === "cancel") { out.pay = seat === 1 ? tb.stake : 0; out.claimed = !!tb["c" + seat]; }
+    return out;
+  };
+  const p2Active = async () => await db.prepare("SELECT * FROM pk2 WHERE (p1=? OR p2=?) AND status IN ('wait','play') ORDER BY id DESC LIMIT 1").bind(id, id).first();
+  if (path === "p2_list") {
+    await db.prepare("UPDATE pk2 SET status='cancel' WHERE status='wait' AND ts<?").bind(now - 1800).run();
+    const rows = (await db.prepare("SELECT id,n1,stake FROM pk2 WHERE status='wait' AND p1!=? ORDER BY id DESC LIMIT 20").bind(id).all()).results;
+    const act = await p2Active();
+    const claims = (await db.prepare("SELECT id FROM pk2 WHERE ((p1=? AND c1=0) OR (p2=? AND c2=0)) AND status IN ('done','cancel') ORDER BY id DESC LIMIT 5").bind(id, id).all()).results.map(x => x.id);
+    return J({rows, mine: act ? act.id : 0, claims});
+  }
+  if (path === "p2_create") {
+    const stake = Math.floor(Number(b.stake)); if (!(stake >= 100) || !isFinite(stake)) return J({error: "Неверная ставка"});
+    if (await p2Active()) return J({error: "У тебя уже есть активный столик"});
+    const r = await db.prepare("INSERT INTO pk2 (p1,n1,stake,ts) VALUES (?,?,?,?)").bind(id, name, stake, now).run();
+    return J({ok: true, id: r.meta.last_row_id});
+  }
+  if (path === "p2_join") {
+    const tb = await db.prepare("SELECT * FROM pk2 WHERE id=? AND status='wait'").bind(Number(b.id)).first();
+    if (!tb) return J({error: "Столик уже занят или закрыт"}); if (tb.p1 === id) return J({error: "Это твой столик"});
+    if (await p2Active()) return J({error: "У тебя уже есть активный столик"});
+    const deck = Array.from({length: 52}, (_, i) => i); for (let i = 51; i > 0; i--) { const j = crnd(i + 1); [deck[i], deck[j]] = [deck[j], deck[i]]; }
+    const r = await db.prepare("UPDATE pk2 SET p2=?, n2=?, status='play', h1=?, h2=?, rest=?, dealt=? WHERE id=? AND status='wait' AND p1!=?").bind(id, name, JSON.stringify(deck.slice(0, 5)), JSON.stringify(deck.slice(5, 10)), JSON.stringify(deck.slice(10, 20)), now, tb.id, id).run();
+    if (r.meta.changes !== 1) return J({error: "Столик уже занят"});
+    tg0(tb.p1, "🃏 К твоему столику в покере сел " + name + "! Заходи в игру.");
+    return J({ok: true, id: tb.id, stake: tb.stake});
+  }
+  if (path === "p2_state") {
+    let tb = await db.prepare("SELECT * FROM pk2 WHERE id=? AND (p1=? OR p2=?)").bind(Number(b.id), id, id).first(); if (!tb) return J({error: "Столик не найден"});
+    tb = await p2Tick(tb); return J(p2View(tb, id));
+  }
+  if (path === "p2_draw") {
+    let tb = await db.prepare("SELECT * FROM pk2 WHERE id=? AND (p1=? OR p2=?)").bind(Number(b.id), id, id).first(); if (!tb || tb.status !== "play") return J({error: "Раздача не идёт"});
+    const seat = tb.p1 === id ? 1 : 2; if (tb["d" + seat]) return J(p2View(tb, id));
+    const hold = Array.isArray(b.hold) ? b.hold.map(Boolean) : [], nh = p2Draw(tb, seat, hold);
+    await db.prepare("UPDATE pk2 SET h" + seat + "=?, d" + seat + "=1 WHERE id=? AND d" + seat + "=0").bind(JSON.stringify(nh), tb.id).run();
+    tb = await db.prepare("SELECT * FROM pk2 WHERE id=?").bind(tb.id).first(); tb = await p2Tick(tb); return J(p2View(tb, id));
+  }
+  if (path === "p2_cancel") {
+    const r = await db.prepare("UPDATE pk2 SET status='cancel' WHERE id=? AND p1=? AND status='wait'").bind(Number(b.id), id).run();
+    return J(r.meta.changes === 1 ? {ok: true} : {error: "Столик уже занят"});
+  }
+  if (path === "p2_claim") {
+    const tb = await db.prepare("SELECT * FROM pk2 WHERE id=? AND (p1=? OR p2=?) AND status IN ('done','cancel')").bind(Number(b.id), id, id).first(); if (!tb) return J({error: "Нечего забирать"});
+    const seat = tb.p1 === id ? 1 : 2; if (tb.status === "cancel" && seat !== 1) return J({amount: 0});
+    const r = await db.prepare("UPDATE pk2 SET c" + seat + "=1 WHERE id=? AND c" + seat + "=0").bind(tb.id).run(); if (r.meta.changes !== 1) return J({amount: 0});
+    let amount = tb.stake; if (tb.status === "done") { const res = JSON.parse(tb.res); amount = seat === 1 ? res.pay1 : res.pay2; }
+    return J({amount});
   }
   if (path === "ucats") {
     const rows = (await db.prepare("SELECT id,idx,name,rar,uid,uname FROM ucats WHERE status='ok' ORDER BY idx").all()).results;
@@ -367,7 +467,7 @@ async function tgcall(env, method, body) {
 async function secret(env) { return hex(await crypto.subtle.digest("SHA-256", enc("md:" + env.BOT_TOKEN))).slice(0, 32); }
 
 const DEMO = "<script>window.__DEV=1;(function(){var f=window.fetch;var seed={pts:1500000,run:1500000,total:3000000,gems:12,taps:1234,b:[12,8,5,3,1,0,0],inv:{\"3\":1,\"10\":1,\"22\":1,\"40\":1,\"64\":1,\"73\":1,\"80\":1,\"63\":1}};var rows=[[1,\"Мурка\",9.5e9],[2,\"Барсик\",4.2e8],[3,\"Демо\",3e6]].map(function(r){return{id:r[0],name:r[1],total:r[2],badges:\"\"}});var m={auth:{id:3,name:\"Демо\",state:seed,rev:1,admin:false,badges:\"\"},save:{ok:true,rev:1},poll:{grants:[],bc:null,maxbc:0,online:5,rev:1,badges:\"\"},top:{rows:rows,rank:3},offers:{offers:[]},chat:{rows:[{id:1,uid:1,name:\"Мурка\",text:\"Привет! Кто трейд?\",ts:0,badges:\"b\"},{id:2,uid:2,name:\"Барсик\",text:\"Выбил Королевского арбуза!\",ts:0,badges:\"\"}]}};window.fetch=function(u,o){u=String(u);if(u.indexOf(\"/api/\")===0){return Promise.resolve(new Response(JSON.stringify(m[u.slice(5)]||{}),{headers:{\"content-type\":\"application/json\"}}))}return f.apply(this,arguments)}})()</script>";
-const ANN = ["5.11.0", ["Казино: рулетка с общим джекпотом — красное/чёрное ×2, зелёное ×24, сектор ★ отдаёт весь джекпот", "Казино: простой покер — 5 карт, одна замена, карты раздаёт арбуз-талисман, есть «Авто-выбор»", "Играть можно только на монеты; выигрыши не попадают в таблицу лидеров"]];
+const ANN = ["5.12.0", ["Казино: покер на двоих — создай столик и жди соперника или сядь за чужой", "Одинаковые ставки, 5 карт и одна замена, у кого комбинация старше — забирает банк (5% банка идёт в джекпот)", "Карты раздаёт арбуз-талисман; если соперник долго думает, за него ходит авто-выбор через минуту", "Когда кто-то сядет за твой столик, бот пришлёт сообщение"]];
 let annBusy = false;
 async function announce(env, origin) {
   if (annBusy || !env.DB || !env.BOT_TOKEN) return;
