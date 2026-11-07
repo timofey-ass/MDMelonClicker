@@ -804,6 +804,8 @@ setInterval(() => { if (tab === 6 && !document.hidden) { if (cz.sub === 4) p2Pol
 setInterval(() => { if (tab === 6 && !document.hidden && cz.sub === 3 && !cz.busy) p2Lobby(); }, 3500);
 
 // ---------- банк и коллекторы
+const BANK_LOGO = MAS_URL.replace("mascot.png?v=1", "bank_logo.png?v=1");
+const bankLogo = `<img src="${BANK_LOGO}" alt="" style="display:block;margin:0 auto;height:56px;width:auto;filter:drop-shadow(0 2px 6px rgba(0,0,0,.35))">`;
 const COLL_URL = MAS_URL.replace("mascot.png?v=1", "collector.png?v=2");
 cz.loan = null; cz.lmax = 0; cz.lpct = 50; let collBusy = false, lnSig = "";
 const lnAmt = () => Math.max(1000, Math.min(cz.lmax, Math.floor(cz.lmax * cz.lpct / 100)));
@@ -811,8 +813,8 @@ const fmtT = s => Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
 const lnLeft = () => cz.loan ? Math.max(0, Math.ceil((cz.loan.at - Date.now()) / 1000)) : 0;
 function bankHtml() {
   const L = cz.loan;
-  if (!L) return `<div class="card col czbank"><div class="t1" style="text-align:center;font-size:20px">🏦 Банк</div><div class="t2" style="font-size:12px;margin:0;text-align:center">Возьми монеты в долг и верни за 1 час без процентов. Не вернёшь — придут коты-коллекторы и заберут вдвое больше долга, баланс может уйти в минус. В минусе играть в казино нельзя.</div><div class="czchips">${[25, 50, 100].map(v => `<button class="chip${cz.lpct === v ? " on" : ""}" style="border:0;font-family:inherit" data-a="lnpct" data-v="${v}">${v}%</button>`).join("")}</div><button class="btn" data-a="lntake" style="width:100%;height:50px;justify-content:center"${cz.lmax < 1000 ? " disabled" : ""}>Взять ${fmt(lnAmt())} в долг</button><div class="t2" style="font-size:11px;margin:0;text-align:center">Лимит: ${fmt(cz.lmax)}</div></div>`;
-  return `<div class="card col czbank"><div class="t1" style="text-align:center;font-size:20px">🏦 Твой долг: ${fmt(L.amount)}</div><div class="t2" style="margin:0;text-align:center">Осталось <b id="lnleft" style="font-size:16px">${fmtT(lnLeft())}</b> до прихода коллекторов</div><button class="btn" data-a="lnpay" style="width:100%;height:50px;justify-content:center"${S.pts < L.amount ? " disabled" : ""}>Вернуть ${fmt(L.amount)}</button>${S.pts < L.amount ? `<div class="t2" style="font-size:11px;margin:0;text-align:center">Не хватает монет, заработай или выиграй</div>` : ""}</div>`;
+  if (!L) return `<div class="card col czbank">${bankLogo}<div class="t1" style="text-align:center;font-size:20px">Банк</div><div class="t2" style="font-size:12px;margin:0;text-align:center">Возьми монеты в долг и верни за 1 час без процентов. Не вернёшь — придут коты-коллекторы и заберут вдвое больше долга, баланс может уйти в минус. В минусе играть в казино нельзя.</div><div class="czchips">${[25, 50, 100].map(v => `<button class="chip${cz.lpct === v ? " on" : ""}" style="border:0;font-family:inherit" data-a="lnpct" data-v="${v}">${v}%</button>`).join("")}</div><button class="btn" data-a="lntake" style="width:100%;height:50px;justify-content:center"${cz.lmax < 1000 ? " disabled" : ""}>Взять ${fmt(lnAmt())} в долг</button><div class="t2" style="font-size:11px;margin:0;text-align:center">Лимит: ${fmt(cz.lmax)}</div></div>`;
+  return `<div class="card col czbank">${bankLogo}<div class="t1" style="text-align:center;font-size:20px">Твой долг: ${fmt(L.amount)}</div><div class="t2" style="margin:0;text-align:center">Осталось <b id="lnleft" style="font-size:16px">${fmtT(lnLeft())}</b> до прихода коллекторов</div><button class="btn" data-a="lnpay" style="width:100%;height:50px;justify-content:center"${S.pts < L.amount ? " disabled" : ""}>Вернуть ${fmt(L.amount)}</button>${S.pts < L.amount ? `<div class="t2" style="font-size:11px;margin:0;text-align:center">Не хватает монет, заработай или выиграй</div>` : ""}</div>`;
 }
 const _tCas2 = tCasino;
 tCasino = function () {
