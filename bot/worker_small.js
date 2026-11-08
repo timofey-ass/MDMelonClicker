@@ -41,6 +41,7 @@ async function init(db) {
     db.prepare("CREATE TABLE IF NOT EXISTS bcast (id INTEGER PRIMARY KEY AUTOINCREMENT, text TEXT, ts INTEGER)"),
     db.prepare("CREATE TABLE IF NOT EXISTS ucats (id INTEGER PRIMARY KEY AUTOINCREMENT, uid INTEGER, uname TEXT, name TEXT, rar INTEGER, img TEXT, status TEXT DEFAULT 'new', idx INTEGER, ts INTEGER)"),
     db.prepare("CREATE TABLE IF NOT EXISTS loans (id INTEGER PRIMARY KEY AUTOINCREMENT, uid INTEGER, amount REAL, due INTEGER, status TEXT DEFAULT 'open', ts INTEGER)"),
+    db.prepare("CREATE TABLE IF NOT EXISTS bm_buys (uid INTEGER, day INTEGER, slot INTEGER, PRIMARY KEY (uid, day, slot))"),
     db.prepare("CREATE TABLE IF NOT EXISTS pk2m (tid INTEGER, seat INTEGER, code INTEGER, ts INTEGER, n INTEGER DEFAULT 0, PRIMARY KEY (tid, seat))"),
     db.prepare("CREATE TABLE IF NOT EXISTS pk2 (id INTEGER PRIMARY KEY AUTOINCREMENT, p1 INTEGER, n1 TEXT, p2 INTEGER, n2 TEXT, stake REAL, status TEXT DEFAULT 'wait', h1 TEXT, h2 TEXT, rest TEXT, d1 INTEGER DEFAULT 0, d2 INTEGER DEFAULT 0, res TEXT, c1 INTEGER DEFAULT 0, c2 INTEGER DEFAULT 0, ts INTEGER, dealt INTEGER DEFAULT 0)"),
     db.prepare("CREATE TABLE IF NOT EXISTS ideas (id INTEGER PRIMARY KEY AUTOINCREMENT, uid INTEGER, uname TEXT, text TEXT, status TEXT DEFAULT 'new', ts INTEGER)"),
@@ -171,6 +172,17 @@ async function api(path, req, env) {
     if (cv[0] === 2 && Object.keys(cnt).some(k => cnt[k] === 2 && +k >= 9)) return {n: "Пара валетов или выше", m: 1};
     return {n: "Ничего", m: 0};
   };
+  if (path === "bm_info" || path === "bm_buy") {
+    const day = Math.floor(now / 86400), left = (day + 1) * 86400 - now;
+    if (path === "bm_buy") {
+      const slot = Math.floor(Number(b.slot)); if (!(slot >= 0 && slot < 4)) return J({error: "Нет такого товара"});
+      const r = await db.prepare("INSERT OR IGNORE INTO bm_buys (uid,day,slot) VALUES (?,?,?)").bind(id, day, slot).run();
+      if (r.meta.changes !== 1) return J({error: "Ты уже купил этот товар сегодня"});
+      return J({ok: true, day});
+    }
+    const bought = (await db.prepare("SELECT slot FROM bm_buys WHERE uid=? AND day=?").bind(id, day).all()).results.map(x => x.slot);
+    return J({day, left, bought});
+  }
   if (path.startsWith("loan_")) {
     const LOAN_H = 3600, LOAN_MUL = 2;
     await db.prepare("UPDATE loans SET status='overdue' WHERE uid=? AND status='open' AND due<?").bind(id, now).run();
@@ -536,7 +548,7 @@ async function tgcall(env, method, body) {
 async function secret(env) { return hex(await crypto.subtle.digest("SHA-256", enc("md:" + env.BOT_TOKEN))).slice(0, 32); }
 
 const DEMO = "<script>window.__DEV=1;(function(){var f=window.fetch;var seed={pts:1500000,run:1500000,total:3000000,gems:12,taps:1234,b:[12,8,5,3,1,0,0],inv:{\"3\":1,\"10\":1,\"22\":1,\"40\":1,\"64\":1,\"73\":1,\"80\":1,\"63\":1}};var rows=[[1,\"Мурка\",9.5e9],[2,\"Барсик\",4.2e8],[3,\"Демо\",3e6]].map(function(r){return{id:r[0],name:r[1],total:r[2],badges:\"\"}});var m={auth:{id:3,name:\"Демо\",state:seed,rev:1,admin:false,badges:\"\"},save:{ok:true,rev:1},poll:{grants:[],bc:null,maxbc:0,online:5,rev:1,badges:\"\"},top:{rows:rows,rank:3},offers:{offers:[]},chat:{rows:[{id:1,uid:1,name:\"Мурка\",text:\"Привет! Кто трейд?\",ts:0,badges:\"b\"},{id:2,uid:2,name:\"Барсик\",text:\"Выбил Королевского арбуза!\",ts:0,badges:\"\"}]}};window.fetch=function(u,o){u=String(u);if(u.indexOf(\"/api/\")===0){return Promise.resolve(new Response(JSON.stringify(m[u.slice(5)]||{}),{headers:{\"content-type\":\"application/json\"}}))}return f.apply(this,arguments)}})()</script>";
-const ANN = ["5.15.0", ["Банкротство в банке: долг списывается, прогресс забега сбрасывается (коты и самоцветы остаются), банк закрыт на 3 дня", "Лимит долга теперь 30% от монет, заработанных за текущий забег"]];
+const ANN = ["5.16.0", ["Чёрный рынок в подвале казино: каждый день 4 новых редких кота (Эпический, Легендарный, Мифический, Особый)", "Цены зависят от твоего дохода, каждый товар можно купить один раз за день"]];
 let annBusy = false;
 async function announce(env, origin) {
   if (annBusy || !env.DB || !env.BOT_TOKEN) return;

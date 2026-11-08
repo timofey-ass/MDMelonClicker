@@ -36,6 +36,7 @@ async function init(db) {
     db.prepare("CREATE TABLE IF NOT EXISTS bcast (id INTEGER PRIMARY KEY AUTOINCREMENT, text TEXT, ts INTEGER)"),
     db.prepare("CREATE TABLE IF NOT EXISTS ucats (id INTEGER PRIMARY KEY AUTOINCREMENT, uid INTEGER, uname TEXT, name TEXT, rar INTEGER, img TEXT, status TEXT DEFAULT 'new', idx INTEGER, ts INTEGER)"),
     db.prepare("CREATE TABLE IF NOT EXISTS loans (id INTEGER PRIMARY KEY AUTOINCREMENT, uid INTEGER, amount REAL, due INTEGER, status TEXT DEFAULT 'open', ts INTEGER)"),
+    db.prepare("CREATE TABLE IF NOT EXISTS bm_buys (uid INTEGER, day INTEGER, slot INTEGER, PRIMARY KEY (uid, day, slot))"),
     db.prepare("CREATE TABLE IF NOT EXISTS pk2m (tid INTEGER, seat INTEGER, code INTEGER, ts INTEGER, n INTEGER DEFAULT 0, PRIMARY KEY (tid, seat))"),
     db.prepare("CREATE TABLE IF NOT EXISTS pk2 (id INTEGER PRIMARY KEY AUTOINCREMENT, p1 INTEGER, n1 TEXT, p2 INTEGER, n2 TEXT, stake REAL, status TEXT DEFAULT 'wait', h1 TEXT, h2 TEXT, rest TEXT, d1 INTEGER DEFAULT 0, d2 INTEGER DEFAULT 0, res TEXT, c1 INTEGER DEFAULT 0, c2 INTEGER DEFAULT 0, ts INTEGER, dealt INTEGER DEFAULT 0)"),
     db.prepare("CREATE TABLE IF NOT EXISTS ideas (id INTEGER PRIMARY KEY AUTOINCREMENT, uid INTEGER, uname TEXT, text TEXT, status TEXT DEFAULT 'new', ts INTEGER)"),
@@ -166,6 +167,17 @@ async function api(path, req, env) {
     if (cv[0] === 2 && Object.keys(cnt).some(k => cnt[k] === 2 && +k >= 9)) return {n: "Пара валетов или выше", m: 1};
     return {n: "Ничего", m: 0};
   };
+  if (path === "bm_info" || path === "bm_buy") {
+    const day = Math.floor(now / 86400), left = (day + 1) * 86400 - now;
+    if (path === "bm_buy") {
+      const slot = Math.floor(Number(b.slot)); if (!(slot >= 0 && slot < 4)) return J({error: "Нет такого товара"});
+      const r = await db.prepare("INSERT OR IGNORE INTO bm_buys (uid,day,slot) VALUES (?,?,?)").bind(id, day, slot).run();
+      if (r.meta.changes !== 1) return J({error: "Ты уже купил этот товар сегодня"});
+      return J({ok: true, day});
+    }
+    const bought = (await db.prepare("SELECT slot FROM bm_buys WHERE uid=? AND day=?").bind(id, day).all()).results.map(x => x.slot);
+    return J({day, left, bought});
+  }
   if (path.startsWith("loan_")) {
     const LOAN_H = 3600, LOAN_MUL = 2;
     await db.prepare("UPDATE loans SET status='overdue' WHERE uid=? AND status='open' AND due<?").bind(id, now).run();
