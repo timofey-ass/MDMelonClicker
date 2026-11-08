@@ -892,22 +892,22 @@ A.admtg = async function (e) {
 };
 
 // ---------- чёрный рынок
-const BM_PRICE = {2: [3e5, 1.5], 3: [3e6, 6], 4: [4e7, 20], 5: [4e8, 60]};
+const BM_PRICE = {2: 30, 3: 90, 4: 250, 5: 600};
 function bmOffers(day) {
   let s = (day * 2654435761) >>> 0; const R = () => (s = (Math.imul(s, 1664525) + 1013904223) >>> 0) / 4294967296;
   return [2, 3, 4, 5].map((r, slot) => { const c = []; for (let i = 0; i < BASE_N; i++) if (ITEMS[i][2] === r && i !== 70 && i !== 71) c.push(i); const idx = c[Math.floor(R() * c.length)];
-    const [fl, mn] = BM_PRICE[r]; return {slot, idx, rar: r, price: Math.round(Math.max(fl, cps() * 60 * mn)), }; });
+    return {slot, idx, rar: r, price: BM_PRICE[r]}; });
 }
 cz.bm = null;
 const _tCas3 = tCasino;
 tCasino = function () {
   if (cz.sub !== 5) return _tCas3();
   const B = cz.bm, back = `<button class="btn t" data-a="czgo" data-k="0" style="margin:0 0 8px">← Казино</button>`;
-  let h = `<div class="bmpage">${back}<div class="bmsign" style="display:block;font-size:22px;margin:6px 0 12px">ЧЁРНЫЙ РЫНОК</div><div class="bmtalk"><div class="bmeyes2"><b></b><b></b></div>Псст… Монеты есть? Товар редкий, берут быстро. Завтра будет другой.</div>`;
+  let h = `<div class="bmpage">${back}<div class="bmsign" style="display:block;font-size:22px;margin:6px 0 12px">ЧЁРНЫЙ РЫНОК</div><div class="bmtalk"><div class="bmeyes2"><b></b><b></b></div>Псст… Кристаллы есть? Товар редкий, берут быстро. Завтра будет другой.</div>`;
   if (!B) return h + `<div class="t2" style="text-align:center;margin:30px">Спускаюсь…</div></div>`;
-  h += `<div class="card" style="padding:10px 16px;background:#1a0d12"><span class="t2 grow" style="margin:0">Баланс</span><b style="font-size:18px">${fmt(S.pts)}</b></div>`;
-  h += B.offers.map(o => { const got = B.bought.includes(o.slot), can = S.pts >= o.price; return `<div class="card bmoffer"><div class="bmcat">${catEl(o.idx, 64, {})}</div><div class="grow"><div class="t1" style="font-size:16px">${ITEMS[o.idx][1]}</div><div class="rar${o.rar}" style="font-size:12px;font-weight:700">${RARS[o.rar][0]}</div><div class="t2" style="margin:2px 0 0;font-size:12px">${got ? "Продано" : "Цена " + fmt(o.price)}</div></div>${got ? `<div class="bmsold">✓</div>` : btn("Купить", "bmbuy", `data-s="${o.slot}"`, can ? "" : "dis")}</div>`; }).join("");
-  h += `<div class="t2" style="text-align:center;margin:12px;font-size:12px">Обновление через <b id="bmleft">${fmtT2(B.left - Math.floor((Date.now() - B.at) / 1000))}</b>. Цены зависят от твоего дохода.</div></div>`;
+  h += `<div class="card" style="padding:10px 16px;background:#1a0d12"><span class="t2 grow" style="margin:0">Баланс</span><b style="font-size:18px">💎 ${fmt(S.gems)}</b></div>`;
+  h += B.offers.map(o => { const got = B.bought.includes(o.slot), can = S.gems >= o.price; return `<div class="card bmoffer"><div class="bmcat">${catEl(o.idx, 64, {})}</div><div class="grow"><div class="t1" style="font-size:16px">${ITEMS[o.idx][1]}</div><div class="rar${o.rar}" style="font-size:12px;font-weight:700">${RARS[o.rar][0]}</div><div class="t2" style="margin:2px 0 0;font-size:12px">${got ? "Продано" : "Цена 💎 " + o.price}</div></div>${got ? `<div class="bmsold">✓</div>` : btn("Купить", "bmbuy", `data-s="${o.slot}"`, can ? "" : "dis")}</div>`; }).join("");
+  h += `<div class="t2" style="text-align:center;margin:12px;font-size:12px">Обновление через <b id="bmleft">${fmtT2(B.left - Math.floor((Date.now() - B.at) / 1000))}</b>. Платить надо кристаллами.</div><div class="card bmoffer" style="opacity:.85"><div class="bmcat" style="display:flex;align-items:center;justify-content:center;font-size:34px;background:#0c0508">📦</div><div class="grow"><div class="t1" style="font-size:16px">Чёрный кейс</div><div class="t2" style="margin:2px 0 0;font-size:12px">Эксклюзивные коты, которых нет больше нигде. Только за кристаллы.</div></div><div class="t2" style="margin:0;font-weight:800;color:#9a8cff">Скоро</div></div></div>`;
   return h;
 };
 const fmtT2 = s => { s = Math.max(0, s); return Math.floor(s / 3600) + ":" + String(Math.floor(s % 3600 / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0"); };
@@ -919,8 +919,8 @@ const _czgo3 = A.czgo;
 A.czgo = function (e) { if (+e.dataset.k === 5) { cz.sub = 5; cz.bm = null; render(); bmLoad(); return; } return _czgo3.apply(this, arguments); };
 A.bmbuy = async function (e) {
   if (cz.busy || !cz.bm) return; const o = cz.bm.offers[+e.dataset.s]; if (!o || cz.bm.bought.includes(o.slot)) return;
-  if (S.pts < o.price) return toast("Не хватает монет");
+  if (S.gems < o.price) return toast("Не хватает кристаллов");
   cz.busy = true; const r = await api("bm_buy", {slot: o.slot}); cz.busy = false; if (!r || r.error) { toast((r && r.error) || "Нет связи"); return bmLoad(); }
-  S.pts -= o.price; const k = grant(o.idx, false); cz.bm.bought.push(o.slot); mark(); save(true); try { afterCraft(o.idx); } catch (x) {} showResult("gem", [o.idx, k], "Чёрный рынок"); render();
+  S.gems -= o.price; const k = grant(o.idx, false); cz.bm.bought.push(o.slot); mark(); save(true); try { afterCraft(o.idx); } catch (x) {} showResult("gem", [o.idx, k], "Чёрный рынок"); render();
 };
 setInterval(() => { const e = document.getElementById("bmleft"); if (e && cz.bm) { const l = cz.bm.left - Math.floor((Date.now() - cz.bm.at) / 1000); e.textContent = fmtT2(l); if (l <= 0) bmLoad(); } }, 1000);
