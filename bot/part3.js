@@ -913,20 +913,30 @@ function bcRoll() {
 function bcCase() {
   const pool = bcPool().sort((a, b) => ITEMS[b][2] - ITEMS[a][2] || a - b), ok = pool.length > 0;
   const th = pool.map(i => `<div class="bcth" style="box-shadow:0 0 0 2px ${RC[ITEMS[i][2]]}">${catEl(i, 40, {})}</div>`).join("");
-  const ch = [4, 3, 2].map(r => `<span class="rar${r}">${RARS[r][0].slice(0, 5)}. ${BC_W[r]}%</span>`).join(" · ");
+  const ch = `<span style="color:#9a8cff">80% · 💎 ${BC_G1}–${BC_G2}</span><br>20% · кот: ` + [4, 3, 2].map(r => `<span class="rar${r}">${RARS[r][0].slice(0, 5)}. ${BC_W[r]}%</span>`).join(" · ");
   return `<div class="card col bmcase"><div style="display:flex;align-items:center;gap:12px"><div class="bmcat" style="display:flex;align-items:center;justify-content:center;font-size:34px;background:#0c0508">📦</div><div class="grow"><div class="t1" style="font-size:17px">Чёрный кейс</div><div class="t2" style="margin:2px 0 0;font-size:12px">Эксклюзивные коты, которых нет больше нигде. Только за кристаллы.</div></div></div>` +
     (ok ? `<div class="bcths">${th}</div><div class="t2" style="font-size:11px;text-align:center;margin:0">${ch}</div><div class="buyrow">${btn("💎 " + BC_PRICE, "bcopen", 'data-n="1"', S.gems >= BC_PRICE ? "" : "dis")}${btn("×5 · 💎 " + BC_PRICE * 5, "bcopen", 'data-n="5"', S.gems >= BC_PRICE * 5 ? "o" : "o dis")}</div>` : `<div class="t2" style="text-align:center;margin:6px">Загружаю котов…</div>`) + `</div>`;
 }
+const BC_GEM_P = 0.8, BC_G1 = 4, BC_G2 = 15;
 A.bcopen = function (e) {
   if (cz.busy) return; const n = +e.dataset.n === 5 ? 5 : 1, c = BC_PRICE * n;
   if (!bcPool().length) return toast("Коты ещё грузятся"); if (S.gems < c) return toast("Не хватает кристаллов");
   S.gems -= c; const wins = [];
-  for (let k = 0; k < n; k++) { const w = bcRoll(), kd = grant(w, Math.random() < .08); try { afterCraft(w); } catch (x) {} wins.push([w, kd]); }
+  for (let k = 0; k < n; k++) {
+    if (Math.random() < BC_GEM_P) { const g = BC_G1 + Math.floor(Math.random() * (BC_G2 - BC_G1 + 1)); S.gems += g; wins.push({g}); }
+    else { const w = bcRoll(), kd = grant(w, Math.random() < .08); try { afterCraft(w); } catch (x) {} wins.push({w, kd}); }
+  }
   mark(); save(true);
-  if (n === 1) showResult("gem", wins[0], "Чёрный кейс");
+  const gemCell = g => `<div class="cell"><div style="color:var(--onv)">${ic("gem", 56)}</div><span style="color:#9a8cff;font-weight:700">+${g} 💎</span><span style="color:var(--onv);font-weight:500">Кристаллы</span></div>`;
+  if (n === 1 && wins[0].w !== undefined) showResult("gem", [wins[0].w, wins[0].kd], "Чёрный кейс");
   else {
-    const o = ov(`<h2>Чёрный кейс ×5</h2><div style="animation:bn .5s 3;color:var(--on)">${ic("gem", 120)}</div>`); hap("medium");
-    setTimeout(() => { if (!document.body.contains(o)) return; hap("ok"); o.innerHTML = `<h2>Чёрный кейс ×5</h2><div class="rgrid">${wins.map(([w, k]) => `<div class="cell">${catEl(w, 64, {holo: S.holo.includes(w)})}<span class="rar${ITEMS[w][2]}">${ITEMS[w][1]}</span><span style="color:var(--onv);font-weight:500">${KIND[k]}</span></div>`).join("")}</div><div style="margin-top:20px;display:flex;gap:10px">${btn("Закрыть", "close")}</div>`; render(); }, 1100);
+    const o = ov(`<h2>Чёрный кейс${n > 1 ? " ×" + n : ""}</h2><div style="animation:bn .5s 3;color:var(--on)">${ic("gem", 120)}</div>`); hap("medium");
+    setTimeout(() => {
+      if (!document.body.contains(o)) return; hap("ok");
+      const body = n === 1 ? `<div class="rv"><div style="color:var(--onv);filter:drop-shadow(0 0 24px #9a8cff)">${ic("gem", 120)}</div><div style="font-size:26px;font-weight:700;color:#9a8cff">+${wins[0].g} 💎</div><div class="t2">Кристаллы</div></div>`
+        : `<div class="rgrid">${wins.map(x => x.w === undefined ? gemCell(x.g) : `<div class="cell">${catEl(x.w, 64, {holo: S.holo.includes(x.w)})}<span class="rar${ITEMS[x.w][2]}">${ITEMS[x.w][1]}</span><span style="color:var(--onv);font-weight:500">${KIND[x.kd]}</span></div>`).join("")}</div>`;
+      o.innerHTML = `<h2>Чёрный кейс${n > 1 ? " ×" + n : ""}</h2>${body}<div style="margin-top:20px;display:flex;gap:10px">${btn("Закрыть", "close")}</div>`; render();
+    }, 1100);
   }
   render();
 };
