@@ -89,6 +89,7 @@ async function api(path, req, env) {
     const u = await getUser(db, id);
     if (!u) {
       await db.prepare("INSERT OR IGNORE INTO users (id,name,state,rev,total,upd) VALUES (?,?,?,?,?,?)").bind(id, name, JSON.stringify(s), 1, num(s.total), now).run();
+      await db.prepare("UPDATE users SET un=? WHERE id=?").bind(String(user.username || "").slice(0, 40), id).run();
       const n = await getUser(db, id); return J({rev: n.rev});
     }
     const res = await db.prepare("UPDATE users SET state=?, rev=rev+1, total=?, name=?, upd=? WHERE id=? AND rev=?").bind(JSON.stringify(s), num(s.total), name, now, id, Number(b.rev)).run();
