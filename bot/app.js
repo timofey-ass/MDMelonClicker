@@ -54,7 +54,7 @@ function bCount(i) { if (qty === 1) return 1; if (qty === 10) return 10; let n =
 const UK = ["click", "crit", "fev"];
 const uCost = i => Math.floor(UPGR[i][3] * Math.pow(UPGR[i][4], S[UK[i]]));
 const freeEvery = () => FREE_EVERY * (1 - .15 * perk("case"));
-const pendingGems = () => Math.floor(S.run / 1e6);
+const pendingGems = () => { const x = S.run / 1e6; if (!(x >= 1)) return 0; const bn = (S.b || []).reduce((a, v) => a + (v || 0), 0); return Math.floor(Math.pow(x, 0.45) * (1 + Math.min(1, bn / 300))); };
 function level() { let xp = S.xp, lv = 1, need = 100; while (xp >= need && lv < 99) { xp -= need; lv++; need = 100 + 60 * lv; } return [lv, xp, need]; }
 function addXp(n) { const b = level()[0]; S.xp += n; for (let lv = b + 1; lv <= level()[0]; lv++) { S.fc[0]++; if (lv % 5 === 0) S.fc[1]++; if (lv % 10 === 0) S.fc[2]++; toast("⭐ Уровень " + lv + "! Бесплатный кейс ждёт"); } }
 const setIdx = key => { const s = SETS.find(x => x[0] === key); return ITEMS.map((it, i) => s[2].includes(it[1]) ? i : -1).filter(i => i >= 0); };
