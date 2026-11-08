@@ -63,7 +63,7 @@ function checkAch() {
   for (const [key, nm, , bn] of SETS) if (!S.sets.includes(key) && setIdx(key).every(i => (i + "") in S.inv)) { S.sets.push(key); toast("Сет «" + nm + "» собран: +" + bn + "% ко всему"); hap("ok"); if (key === "tech") { LSset("fall", 3 + SETS.length - 1); toast("Течкоты собраны! Включён фон из нулей и единиц"); } try { fxConfetti(80); } catch (e) {} }
   for (const [id, title, , key, goal] of ACH) if (!S.ach.includes(id) && stat(key) >= goal) { S.ach.push(id); toast("🏆 " + title + ": +2% ко всему"); hap("ok"); }
 }
-const pickR = ri => { const l = ITEMS.map((it, i) => it[2] === ri ? i : -1).filter(i => i >= 0); return l[Math.floor(Math.random() * l.length)]; };
+const pickR = ri => { const l = ITEMS.map((it, i) => it[2] === ri && !it[6] ? i : -1).filter(i => i >= 0); return l[Math.floor(Math.random() * l.length)]; };
 function rarR(w) { let r = Math.random() * w.reduce((a, b) => a + b, 0); for (let i = 0; i < w.length; i++) { r -= w[i]; if (r <= 0) return i; } return 0; }
 function roll(ci) { if (ci === 4) { const q = Math.random(); if (q < .02) return 72; if (q < .07) return 63; ci = 2; } let w = CASES[ci][3].slice(); if (S.pity >= 14) w = [0, 0].concat(w.slice(2)); return pickR(rarR(w)); }
 function grant(idx, holo) { const k = idx + ""; const have = S.inv[k] || 0; S.inv[k] = have + 1; if (have === 0) { if (holo) { S.holo.push(idx); return "newholo"; } return "new"; } if (holo && !S.holo.includes(idx)) { S.holo.push(idx); return "holo"; } return "dup"; }

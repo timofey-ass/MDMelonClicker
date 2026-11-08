@@ -407,20 +407,21 @@ const BASE_N = ITEMS.length; let ucN = 0;
 async function loadUcats() {
   const r = await api("ucats", {}); if (!r || !r.rows) return;
   ITEMS.length = BASE_N;
-  r.rows.forEach(x => { ITEMS[x.idx] = ["", x.name, x.rar, x.uid, x.uname, x.id]; });
+  r.rows.forEach(x => { ITEMS[x.idx] = ["", x.name, x.rar, x.uid, x.uname, x.id, x.bc || 0]; });
   for (let i = BASE_N; i < ITEMS.length; i++) if (!ITEMS[i]) ITEMS[i] = ["", "?", 0, 0, "", 0];
   ucN = r.rows.length;
 }
 const _catEl1 = catEl;
 catEl = function (idx, size, extra) {
   const h = _catEl1(idx, size, extra);
+  if (typeof idx === "number" && idx >= BASE_N && ITEMS[idx] && ITEMS[idx][6]) return h.replace(/background-image:url\([^)]*\)/, `background-image:url(${ADM_IMG.replace("admin/0.jpg", "bc/" + (ITEMS[idx][6] - 1) + ".jpg?v=1")})`);
   if (typeof idx === "number" && idx >= BASE_N && ITEMS[idx]) return h.replace(/background-image:url\([^)]*\)/, `background-image:url(/ucat/${ITEMS[idx][5]}.jpg)`);
   return h;
 };
 A.catinfo = function (e) {
   const i = +e.dataset.i, it = ITEMS[i]; if (!it) return; const o = S.inv[i + ""] || 0, ho = S.holo.includes(i), r = it[2];
   const bonus = r === 8 ? "×40 к тапу" : r === 7 ? "×1 секстилион к одному тапу" : "+" + RARS[r][2] + "% ко всему за предмет" + (ho ? " (×1.5 голограмма)" : "");
-  const cr = i >= BASE_N ? `<span data-a="prof" data-i="${it[3]}" style="color:var(--pri);text-decoration:underline;font-weight:700">${esc(it[4] || "Игрок")}</span>` : `<span style="font-weight:700">MDMelon</span>`;
+  const cr = i >= BASE_N && !it[6] ? `<span data-a="prof" data-i="${it[3]}" style="color:var(--pri);text-decoration:underline;font-weight:700">${esc(it[4] || "Игрок")}</span>` : `<span style="font-weight:700">MDMelon</span>`;
   const row = (k, v) => `<div style="display:flex;justify-content:space-between;gap:10px;padding:4px 0"><span class="t2" style="margin:0;font-size:14px">${k}</span><span style="font-size:14px;text-align:right">${v}</span></div>`;
   const mo = modal(`<div style="text-align:center"><div class="t1" style="font-size:22px;color:${RC[r]}">${ho ? "★ " : ""}${esc(it[1])}</div><div style="margin:14px auto;width:220px;max-width:70vw">${catEl(i, 220, {holo: ho})}</div></div>` +
     row("Редкость", `<span style="color:${RC[r]};font-weight:700">${RARS[r][0]}</span>`) + row("Бонус", bonus) + row("У тебя", o ? "×" + o + (ho ? " · голограмма" : "") : "нет") + row("Создатель", cr) +
@@ -449,7 +450,7 @@ function tWorkshop() {
       else wsPend.forEach(x => { const cr = wsAR[x.id] !== undefined ? wsAR[x.id] : x.rar; h += `<div class="card col"><div style="display:flex;gap:12px;align-items:center"><img src="/ucat/${x.id}.jpg" style="width:84px;height:84px;border-radius:16px;object-fit:cover;flex:none"><div class="grow"><div class="t2" style="margin:0;font-size:12px">от <b>${esc(x.uname)}</b></div><div class="t2" style="margin:2px 0 0;font-size:12px">Предложил: ${esc(x.name)} · <span style="color:${RC[x.rar]}">${RARS[x.rar][0]}</span></div></div></div><input data-keep="wn${x.id}" placeholder="Название" maxlength="24">${wsRarChips(cr, "wsadr", x.id)}<div style="display:flex;gap:8px">${btn("Отклонить", "ucno", `data-i="${x.id}"`, "o")}${btn("Одобрить", "ucok", `data-i="${x.id}"`)}</div></div>`; });
     }
     if (wsMine && wsMine.length) { h += `<div class="sec">Мои заявки</div>` + wsMine.map(x => `<div class="card"><div class="grow"><div class="t1" style="font-size:14px">${esc(x.name)}</div><div class="t2" style="font-size:12px">${RARS[x.rar][0]}</div></div><span class="chip ${x.status === "ok" ? "p" : ""}">${STT[x.status] || x.status}</span></div>`).join(""); }
-    const ucs = ITEMS.map((it, i) => i >= BASE_N ? i : -1).filter(i => i >= 0);
+    const ucs = ITEMS.map((it, i) => i >= BASE_N && !it[6] ? i : -1).filter(i => i >= 0);
     h += `<div class="sec">Коты игроков${ucs.length ? " · " + ucs.length : ""}</div>`;
     h += ucs.length ? `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">${ucs.map(i => `<div class="cell" data-a="catinfo" data-i="${i}" style="padding:8px 4px">${catEl(i, 76, {})}<span style="color:${RC[ITEMS[i][2]]}">${esc(ITEMS[i][1])}</span><span style="color:var(--onv);font-weight:500">${esc(ITEMS[i][4])}</span></div>`).join("")}</div>` : `<div class="t2" style="text-align:center;margin:12px">Пока нет котов от игроков. Будь первым!</div>`;
   } else {
@@ -902,6 +903,32 @@ function bmOffers(day) {
 }
 cz.bm = null;
 const _tCas3 = tCasino;
+const BC_PRICE = 60, BC_W = {2: 50, 3: 42, 4: 8};
+const bcPool = () => ITEMS.map((it, i) => it[6] ? i : -1).filter(i => i >= 0);
+function bcRoll() {
+  const pool = bcPool(); if (!pool.length) return -1; const q = Math.random() * 100, r = q < BC_W[4] ? 4 : q < BC_W[4] + BC_W[3] ? 3 : 2;
+  const l = pool.filter(i => ITEMS[i][2] === r), ll = l.length ? l : pool; return ll[Math.floor(Math.random() * ll.length)];
+}
+function bcCase() {
+  const pool = bcPool().sort((a, b) => ITEMS[b][2] - ITEMS[a][2] || a - b), ok = pool.length > 0;
+  const th = pool.map(i => `<div class="bcth" style="box-shadow:0 0 0 2px ${RC[ITEMS[i][2]]}">${catEl(i, 40, {})}</div>`).join("");
+  const ch = [4, 3, 2].map(r => `<span class="rar${r}">${RARS[r][0].slice(0, 5)}. ${BC_W[r]}%</span>`).join(" · ");
+  return `<div class="card col bmcase"><div style="display:flex;align-items:center;gap:12px"><div class="bmcat" style="display:flex;align-items:center;justify-content:center;font-size:34px;background:#0c0508">📦</div><div class="grow"><div class="t1" style="font-size:17px">Чёрный кейс</div><div class="t2" style="margin:2px 0 0;font-size:12px">Эксклюзивные коты, которых нет больше нигде. Только за кристаллы.</div></div></div>` +
+    (ok ? `<div class="bcths">${th}</div><div class="t2" style="font-size:11px;text-align:center;margin:0">${ch}</div><div class="buyrow">${btn("💎 " + BC_PRICE, "bcopen", 'data-n="1"', S.gems >= BC_PRICE ? "" : "dis")}${btn("×5 · 💎 " + BC_PRICE * 5, "bcopen", 'data-n="5"', S.gems >= BC_PRICE * 5 ? "o" : "o dis")}</div>` : `<div class="t2" style="text-align:center;margin:6px">Загружаю котов…</div>`) + `</div>`;
+}
+A.bcopen = function (e) {
+  if (cz.busy) return; const n = +e.dataset.n === 5 ? 5 : 1, c = BC_PRICE * n;
+  if (!bcPool().length) return toast("Коты ещё грузятся"); if (S.gems < c) return toast("Не хватает кристаллов");
+  S.gems -= c; const wins = [];
+  for (let k = 0; k < n; k++) { const w = bcRoll(), kd = grant(w, Math.random() < .08); try { afterCraft(w); } catch (x) {} wins.push([w, kd]); }
+  mark(); save(true);
+  if (n === 1) showResult("gem", wins[0], "Чёрный кейс");
+  else {
+    const o = ov(`<h2>Чёрный кейс ×5</h2><div style="animation:bn .5s 3;color:var(--on)">${ic("gem", 120)}</div>`); hap("medium");
+    setTimeout(() => { if (!document.body.contains(o)) return; hap("ok"); o.innerHTML = `<h2>Чёрный кейс ×5</h2><div class="rgrid">${wins.map(([w, k]) => `<div class="cell">${catEl(w, 64, {holo: S.holo.includes(w)})}<span class="rar${ITEMS[w][2]}">${ITEMS[w][1]}</span><span style="color:var(--onv);font-weight:500">${KIND[k]}</span></div>`).join("")}</div><div style="margin-top:20px;display:flex;gap:10px">${btn("Закрыть", "close")}</div>`; render(); }, 1100);
+  }
+  render();
+};
 tCasino = function () {
   if (cz.sub !== 5) return _tCas3();
   const B = cz.bm, back = `<button class="btn t" data-a="czgo" data-k="0" style="margin:0 0 8px">← Казино</button>`;
@@ -909,7 +936,7 @@ tCasino = function () {
   if (!B) return h + `<div class="t2" style="text-align:center;margin:30px">Спускаюсь…</div></div>`;
   h += `<div class="card" style="padding:10px 16px;background:#1a0d12"><span class="t2 grow" style="margin:0">Баланс</span><b style="font-size:18px">💎 ${fmt(S.gems)}</b></div>`;
   h += B.offers.map(o => { const got = B.bought.includes(o.slot), can = S.gems >= o.price; return `<div class="card bmoffer"><div class="bmcat">${catEl(o.idx, 64, {})}</div><div class="grow"><div class="t1" style="font-size:16px">${ITEMS[o.idx][1]}</div><div class="rar${o.rar}" style="font-size:12px;font-weight:700">${RARS[o.rar][0]}</div><div class="t2" style="margin:2px 0 0;font-size:12px">${got ? "Продано" : "Цена 💎 " + o.price}</div></div>${got ? `<div class="bmsold">✓</div>` : btn("Купить", "bmbuy", `data-s="${o.slot}"`, can ? "" : "dis")}</div>`; }).join("");
-  h += `<div class="t2" style="text-align:center;margin:12px;font-size:12px">Обновление через <b id="bmleft">${fmtT2(B.left - Math.floor((Date.now() - B.at) / 1000))}</b>. Платить надо кристаллами.</div><div class="card bmoffer" style="opacity:.85"><div class="bmcat" style="display:flex;align-items:center;justify-content:center;font-size:34px;background:#0c0508">📦</div><div class="grow"><div class="t1" style="font-size:16px">Чёрный кейс</div><div class="t2" style="margin:2px 0 0;font-size:12px">Эксклюзивные коты, которых нет больше нигде. Только за кристаллы.</div></div><div class="t2" style="margin:0;font-weight:800;color:#9a8cff">Скоро</div></div></div>`;
+  h += `<div class="t2" style="text-align:center;margin:12px;font-size:12px">Обновление через <b id="bmleft">${fmtT2(B.left - Math.floor((Date.now() - B.at) / 1000))}</b>. Платить надо кристаллами.</div>${bcCase()}</div>`;
   return h;
 };
 const fmtT2 = s => { s = Math.max(0, s); return Math.floor(s / 3600) + ":" + String(Math.floor(s % 3600 / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0"); };

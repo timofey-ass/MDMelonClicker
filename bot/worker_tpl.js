@@ -1,6 +1,7 @@
 const HTML = __HTML__;
 const ATLAS = "https://raw.githubusercontent.com/timofey-ass/MDMelonClicker/HEAD/mdcats2.jpg";
 const N_ITEMS = 103;
+const BC_CATS = [["Киллер в плаще", 3], ["Кот-дон", 3], ["Вор-домушник", 2], ["Торговец с рынка", 3], ["Контрабандный ящик", 2], ["Кот-алхимик", 3], ["Кот-чемодан", 2], ["Призрак рынка", 4], ["Золотой слиток", 4]];
 const ADMIN = 1796286471;
 let ready = false;
 
@@ -44,6 +45,8 @@ async function init(db) {
     db.prepare("CREATE TABLE IF NOT EXISTS chat (id INTEGER PRIMARY KEY AUTOINCREMENT, uid INTEGER, name TEXT, text TEXT, ts INTEGER)"),
   ]);
   for (const c of ["badges TEXT DEFAULT ''", "banned INTEGER DEFAULT 0", "seen INTEGER DEFAULT 0", "un TEXT DEFAULT ''"]) { try { await db.prepare("ALTER TABLE users ADD COLUMN " + c).run(); } catch (e) {} }
+  try { await db.prepare("ALTER TABLE ucats ADD COLUMN bc INTEGER DEFAULT 0").run(); } catch (e) {}
+  try { await db.prepare("CREATE UNIQUE INDEX IF NOT EXISTS ucats_bc ON ucats(bc) WHERE bc > 0").run(); } catch (e) {}
   ready = true;
 }
 function tidy(s) { if (Array.isArray(s.holo)) s.holo = s.holo.filter(i => (i + "") in s.inv); if (s.eq !== undefined && +s.eq >= 0 && !((s.eq + "") in s.inv)) s.eq = -1; }
@@ -360,7 +363,10 @@ async function api(path, req, env) {
     return J({amount});
   }
   if (path === "ucats") {
-    const rows = (await db.prepare("SELECT id,idx,name,rar,uid,uname FROM ucats WHERE status='ok' ORDER BY idx").all()).results;
+    if ((await db.prepare("SELECT COUNT(*) AS c FROM ucats WHERE bc>0").first()).c < BC_CATS.length) {
+      await db.batch(BC_CATS.map((c, k) => db.prepare("INSERT OR IGNORE INTO ucats (uid,uname,name,rar,img,status,idx,ts,bc) SELECT 0,'MDMelon',?,?,'','ok',?+(SELECT COUNT(*) FROM ucats WHERE status='ok'),?,?").bind(c[0], c[1], N_ITEMS, now, k + 1)));
+    }
+    const rows = (await db.prepare("SELECT id,idx,name,rar,uid,uname,bc FROM ucats WHERE status='ok' ORDER BY idx").all()).results;
     return J({rows});
   }
   if (path === "uc_submit") {
