@@ -816,7 +816,9 @@ function bankHtml() {
   if (!L) return `<div class="card col czbank">${bankLogo}<div class="t1" style="text-align:center;font-size:20px">Банк</div><div class="t2" style="font-size:12px;margin:0;text-align:center">Возьми монеты в долг и верни за 1 час без процентов. Не вернёшь — придут коты-коллекторы и заберут вдвое больше долга, баланс может уйти в минус. В минусе играть в казино нельзя.</div><div class="czchips">${[25, 50, 100].map(v => `<button class="chip${cz.lpct === v ? " on" : ""}" style="border:0;font-family:inherit" data-a="lnpct" data-v="${v}">${v}%</button>`).join("")}</div>${S.pts < 0 ? "" : cz.ban > 0 ? `<div class="t2" style="text-align:center;margin:0"><b>Банк закрыт ещё ${Math.ceil(cz.ban / 3600)} ч</b> после банкротства</div>` : `<button class="btn" data-a="lntake" style="width:100%;height:50px;justify-content:center"${cz.lmax < 1000 ? " disabled" : ""}>Взять ${fmt(lnAmt())} в долг</button>`}<div class="t2" style="font-size:11px;margin:0;text-align:center">Лимит: ${fmt(cz.lmax)} (30% от монет за забег)</div>${minus}</div>`;
   return `<div class="card col czbank">${bankLogo}<div class="t1" style="text-align:center;font-size:20px">Твой долг: ${fmt(L.amount)}</div><div class="t2" style="margin:0;text-align:center">Осталось <b id="lnleft" style="font-size:16px">${fmtT(lnLeft())}</b> до прихода коллекторов</div><button class="btn" data-a="lnpay" style="width:100%;height:50px;justify-content:center"${S.pts < L.amount ? " disabled" : ""}>Вернуть ${fmt(L.amount)}</button>${S.pts < L.amount ? `<div class="t2" style="font-size:11px;margin:0;text-align:center">Не хватает монет, заработай или выиграй</div>` : ""}${minus}</div>`;
 }
-const bmHtml = () => `<div class="bm"><div class="bmfloor"></div><div class="bmhole"><div class="bmlight"></div><div class="bmbars"><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="bmeyes"><b></b><b></b></div><div class="bmsign">ЧЁРНЫЙ РЫНОК</div><button class="bmgo" data-a="czgo" data-k="5">Спуститься вниз</button><div class="bmpsst">Тсс… каждый день новый товар, которого нет наверху</div></div></div>`;
+const BM_LOGO = MAS_URL.replace("mascot.png?v=1", "black_market.png?v=1");
+const bmLogo = `<img class="bmlogo" src="${BM_LOGO}" alt="Black Market">`;
+const bmHtml = () => `<div class="bm"><div class="bmfloor"></div><div class="bmhole"><div class="bmlight"></div><div class="bmbars"><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="bmeyes"><b></b><b></b></div>${bmLogo}<button class="bmdown" data-a="bmdive" aria-label="Спуститься вниз"><svg viewBox="0 0 24 24" width="30" height="30"><path d="M5 8l7 7 7-7" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 14l7 7 7-7" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" opacity=".55"/></svg></button><div class="bmpsst">Тсс… каждый день новый товар, которого нет наверху</div></div></div>`;
 const _tCas2 = tCasino;
 tCasino = function () {
   let h = _tCas2();
@@ -903,7 +905,7 @@ const _tCas3 = tCasino;
 tCasino = function () {
   if (cz.sub !== 5) return _tCas3();
   const B = cz.bm, back = `<button class="btn t" data-a="czgo" data-k="0" style="margin:0 0 8px">← Казино</button>`;
-  let h = `<div class="bmpage">${back}<div class="bmsign" style="display:block;font-size:22px;margin:6px 0 12px">ЧЁРНЫЙ РЫНОК</div><div class="bmtalk"><div class="bmeyes2"><b></b><b></b></div>Псст… Кристаллы есть? Товар редкий, берут быстро. Завтра будет другой.</div>`;
+  let h = `<div class="bmpage${cz.bmFx ? " bmfx" : ""}">${back}${bmLogo}<div class="bmtalk"><div class="bmeyes2"><b></b><b></b></div>Псст… Кристаллы есть? Товар редкий, берут быстро. Завтра будет другой.</div>`;
   if (!B) return h + `<div class="t2" style="text-align:center;margin:30px">Спускаюсь…</div></div>`;
   h += `<div class="card" style="padding:10px 16px;background:#1a0d12"><span class="t2 grow" style="margin:0">Баланс</span><b style="font-size:18px">💎 ${fmt(S.gems)}</b></div>`;
   h += B.offers.map(o => { const got = B.bought.includes(o.slot), can = S.gems >= o.price; return `<div class="card bmoffer"><div class="bmcat">${catEl(o.idx, 64, {})}</div><div class="grow"><div class="t1" style="font-size:16px">${ITEMS[o.idx][1]}</div><div class="rar${o.rar}" style="font-size:12px;font-weight:700">${RARS[o.rar][0]}</div><div class="t2" style="margin:2px 0 0;font-size:12px">${got ? "Продано" : "Цена 💎 " + o.price}</div></div>${got ? `<div class="bmsold">✓</div>` : btn("Купить", "bmbuy", `data-s="${o.slot}"`, can ? "" : "dis")}</div>`; }).join("");
@@ -917,6 +919,15 @@ async function bmLoad() {
 }
 const _czgo3 = A.czgo;
 A.czgo = function (e) { if (+e.dataset.k === 5) { cz.sub = 5; cz.bm = null; render(); bmLoad(); return; } return _czgo3.apply(this, arguments); };
+A.bmdive = async function () {
+  if (cz.busy) return; cz.busy = true; try { hap("tick"); } catch (x) {}
+  const app = document.getElementById("app"), ov = document.createElement("div"); ov.className = "bmov"; document.body.appendChild(ov);
+  void ov.offsetWidth; app.classList.add("bmup"); ov.classList.add("on"); await sleep(1350);
+  cz.sub = 5; cz.bm = null; cz.bmFx = true; setTimeout(() => { cz.bmFx = false; }, 2600); document.body.classList.add("bmdark"); app.classList.remove("bmup"); cz.busy = false; render(); bmLoad();
+  const v = document.getElementById("view"); v.scrollTop = 0; app.classList.add("bmin"); await sleep(60); ov.classList.add("off"); await sleep(1000); ov.remove(); app.classList.remove("bmin");
+};
+const _r7 = render;
+render = function () { _r7(); document.body.classList.toggle("bmdark", tab === 6 && cz.sub === 5); };
 A.bmbuy = async function (e) {
   if (cz.busy || !cz.bm) return; const o = cz.bm.offers[+e.dataset.s]; if (!o || cz.bm.bought.includes(o.slot)) return;
   if (S.gems < o.price) return toast("Не хватает кристаллов");

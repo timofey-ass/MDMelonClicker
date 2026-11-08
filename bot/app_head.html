@@ -297,6 +297,23 @@ body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;ba
 .bmoffer{background:#1a0d12;border:1px solid #3a1a24}
 .bmcat{width:64px;height:64px;border-radius:14px;overflow:hidden;flex:none}
 .bmsold{font-size:22px;color:#66bb6a;font-weight:900;padding:0 14px}
+.bmlogo{display:block;margin:0 auto;width:min(88%,330px);height:auto;filter:drop-shadow(0 0 8px rgba(255,40,60,.65)) drop-shadow(0 0 22px rgba(255,20,50,.4));animation:bmneon 3.2s infinite}
+.bmpage .bmlogo{margin:8px auto 16px}
+.bmdown{display:block;margin:20px auto 0;width:58px;height:58px;border-radius:50%;border:2px solid #9a8cff;background:rgba(106,76,255,.16);color:#d9d3ff;box-shadow:0 0 16px rgba(106,76,255,.45);animation:bmbob 1.6s ease-in-out infinite}
+.bmdown:active{transform:scale(.92)}
+@keyframes bmbob{50%{transform:translateY(7px)}}
+#app{transition:none}
+#app.bmup{transform:translateY(-100vh);transition:transform 1.3s cubic-bezier(.55,0,.85,.45)}
+.bmov{position:fixed;inset:0;z-index:300;background:#000;opacity:0;pointer-events:none;transition:opacity 1.3s ease-in}
+.bmov.on{opacity:1}
+.bmov.off{opacity:0;transition:opacity .9s ease-out}
+html:has(body.bmdark){background:#000}body.bmdark{background:#000!important}
+body.bmdark::before{display:none}
+.bmpage{background:none!important}
+.bmfx>*{animation:bmappear .7s backwards}
+.bmfx>*:nth-child(2){animation-delay:.25s}.bmfx>*:nth-child(3){animation-delay:.4s}.bmfx>*:nth-child(4){animation-delay:.55s}.bmfx>*:nth-child(5){animation-delay:.7s}.bmfx>*:nth-child(6){animation-delay:.85s}.bmfx>*:nth-child(7){animation-delay:1s}.bmfx>*:nth-child(8){animation-delay:1.15s}
+@keyframes bmappear{from{opacity:0;transform:translateY(24px)}}
+#app.bmin #top,#app.bmin #nav{animation:bmappear .9s .5s backwards}
 </style></head><body>
 <div id="load"><div class="lw"><div class="lglow"></div><div class="lm" id="lm">🍉</div><div class="lsh"></div></div><div class="lti">MDMelonClicker</div><div id="lt">Подключаюсь…</div><div class="tr"><i id="lbar"></i></div><div id="ltip"></div></div>
 <div id="app"><div id="top"><h1 id="ttl">MDMelonClicker</h1><span id="gemc"></span></div><div id="view"></div><div id="nav"></div></div>
