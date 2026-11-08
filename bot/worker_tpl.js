@@ -80,13 +80,15 @@ async function api(path, req, env) {
   if (!user) return J({error: "Открой игру из бота"}, 401);
   const id = user.id, name = uname(user); let b = {}; try { b = await req.json(); } catch (e) {}
   const now = Math.floor(Date.now() / 1000);
+  let maintT = null; try { const mt = await db.prepare("SELECT v FROM kv WHERE k='maint'").first(); if (mt && mt.v) { const m = JSON.parse(mt.v); if (m && m.on) maintT = m.text || "Технический перерыв"; } } catch (e) {}
+  if (maintT && id !== ADMIN && path !== "poll" && path !== "auth") return J({maint: maintT, error: "Технический перерыв"});
 
   if (path === "auth") {
     const u = await getUser(db, id);
-    if (!u) return J({id, name, state: null, rev: 0, admin: id === ADMIN, badges: bd(id, "")});
+    if (!u) return J({id, name, state: null, rev: 0, admin: id === ADMIN, badges: bd(id, ""), maint: id === ADMIN ? null : maintT});
     if (u.name !== name) await db.prepare("UPDATE users SET name=? WHERE id=?").bind(name, id).run();
     const un0 = String(user.username || "").slice(0, 40); if ((u.un || "") !== un0) await db.prepare("UPDATE users SET un=? WHERE id=?").bind(un0, id).run();
-    return J({id, name, state: u.state ? JSON.parse(u.state) : null, rev: u.rev, admin: id === ADMIN, badges: bd(id, u.badges), banned: !!u.banned});
+    return J({id, name, state: u.state ? JSON.parse(u.state) : null, rev: u.rev, admin: id === ADMIN, badges: bd(id, u.badges), banned: !!u.banned, maint: id === ADMIN ? null : maintT});
   }
   if (path === "save") {
     const s = clean(b.state); if (!s) return J({error: "Некорректные данные"}, 400);
@@ -430,6 +432,7 @@ async function api(path, req, env) {
     return J({ok: true});
   }
   if (path === "poll") {
+    if (maintT && id !== ADMIN) return J({maint: maintT});
     await db.prepare("UPDATE users SET seen=? WHERE id=?").bind(now, id).run();
     const g = (await db.prepare("SELECT id,kind,a,b FROM grants WHERE uid=? ORDER BY id LIMIT 50").bind(id).all()).results;
     for (const x of g) await db.prepare("DELETE FROM grants WHERE id=?").bind(x.id).run();
@@ -438,7 +441,7 @@ async function api(path, req, env) {
     const online = (await db.prepare("SELECT COUNT(*) AS c FROM users WHERE seen>?").bind(now - 40).first()).c;
     const u = await getUser(db, id);
     const uc = (await db.prepare("SELECT COUNT(*) AS c FROM ucats WHERE status='ok'").first()).c;
-    return J({uc, grants: g, bc, maxbc, online, rev: u ? u.rev : 0, banned: !!(u && u.banned), badges: bd(id, u && u.badges)});
+    return J({uc, grants: g, bc, maxbc, online, rev: u ? u.rev : 0, banned: !!(u && u.banned), badges: bd(id, u && u.badges), maintA: id === ADMIN ? maintT : undefined, maint: null});
   }
   if (path === "chat") {
     const since = Number(b.since) || 0;
@@ -527,6 +530,7 @@ async function api(path, req, env) {
       return J({ok: true, count: c});
     }
     if (path === "adm_skiploan") { const r = await db.prepare("UPDATE loans SET due=? WHERE uid=? AND status='open'").bind(now - 1, id).run(); return J(r.meta.changes ? {ok: true} : {error: "Нет активного долга"}); }
+    if (path === "adm_maint") { const on = !!b.on, text = String(b.text || "").trim().slice(0, 200) || "Скоро вернёмся, играть можно будет чуть позже."; await db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES ('maint',?)").bind(JSON.stringify({on, text})).run(); return J({ok: true, on, text}); }
     if (path === "adm_del") { await db.prepare("DELETE FROM chat WHERE id=?").bind(Number(b.id)).run(); return J({ok: true}); }
     if (path === "adm_ban") { await db.prepare("UPDATE users SET banned=? WHERE id=?").bind(b.on ? 1 : 0, Number(b.uid)).run(); if (b.on) await db.prepare("DELETE FROM chat WHERE uid=?").bind(Number(b.uid)).run(); return J({ok: true}); }
     if (path === "adm_badges") { const v = String(b.badges || "").replace(/[^ctsg]/g, "").slice(0, 4); await db.prepare("UPDATE users SET badges=? WHERE id=?").bind(v, Number(b.uid)).run(); return J({ok: true, badges: bd(Number(b.uid), v)}); }

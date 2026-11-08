@@ -49,13 +49,13 @@ function announce(text) {
   document.body.appendChild(o); jingle(1); buzz(1);
 }
 A.annx = function () { document.querySelectorAll(".ann").forEach(x => x.remove()); };
-let polling = false;
+let polling = false, maintA = null, maintArm = false;
 async function pollNow() {
   if (!S || polling) return; polling = true;
   try {
     const r = await api("poll", {bc: lastBc});
     if (r && !r.error) {
-      onlineN = r.online || 0; if (r.uc !== undefined && r.uc !== ucN) { try { await loadUcats(); } catch (e) {} } if (r.badges !== undefined) myBadges = r.badges;
+      maintA = r.maintA || null;       onlineN = r.online || 0; if (r.uc !== undefined && r.uc !== ucN) { try { await loadUcats(); } catch (e) {} } if (r.badges !== undefined) myBadges = r.badges;
       if (r.rev && r.rev > rev && !saving && !(r.grants && r.grants.length)) { dirty = true; save(true); }
       for (const g of r.grants || []) {
         if (g.kind === "reset") { S = defState(); snap = {inv: {}}; rev = r.rev; dirty = true; fever = frenzy = 0; mark(); save(true); toast("Прогресс сброшен администратором"); render(); if (g.b === 2) announce("Из-за баланса игры нам пришлось сбросить прогресс всем игрокам. В качестве утешительного приза ты получаешь кота «Королевский арбуз»: он увеличивает заработок за каждый тап в 40 раз. Его также можно выбить в Особом кейсе (шанс 2%). Прости и удачной игры!"); continue; }
@@ -179,6 +179,7 @@ const admCard = () => {
   h += `<div class="card col"><div class="t1" style="color:var(--pri)">Банк (тест)</div><div class="t2" style="font-size:12px;margin:0">Пропускает час твоего долга: коллекторы придут сразу.</div>${btn("⏩ Пропустить час долга", "admskip", 'style="width:100%;justify-content:center"', "o")}</div>`;
   h += `<div class="card col"><div class="t1" style="color:var(--pri)">Сообщение во все чаты бота</div><div class="t2" style="font-size:12px;margin:0">Придёт каждому игроку в личку от бота, с кнопкой «Играть». Уходит порциями, пока игроки заходят в игру.</div><textarea data-keep="tgc" rows="3" maxlength="1000" placeholder="Текст сообщения"></textarea><div id="tgst" class="t2" style="font-size:12px;margin:0">${tgStat ? tgStat : ""}</div>${btn("Отправить в чаты", "admtg", 'style="width:100%;justify-content:center"', "o")}</div>`;
   if (!tgStat) setTimeout(tgRefresh, 50);
+  h += `<div class="card col"><div class="t1" style="color:var(--pri)">Технический перерыв</div><div class="t2" style="font-size:12px;margin:0">Закрывает игру у всех игроков сразу, без перезагрузки страницы. Ты (админ) играть можешь. Когда выключишь, игра откроется сама.</div>${maintA ? `<div class="t2" style="color:var(--err,#ff5252);font-weight:700;margin:0">Сейчас игра закрыта: ${esc(maintA)}</div>` : ""}<textarea data-keep="mt" rows="2" placeholder="Что написать игрокам (необязательно)"></textarea>${btn(maintA ? "✅ Открыть игру" : "🛠 Закрыть на перерыв", "admmaint", 'style="width:100%;justify-content:center"', maintA ? "" : "o")}</div>`;
   h += `<div class="card col"><div class="t1" style="color:var(--pri)">Сообщение всем в игре</div><textarea data-keep="bc" rows="2" placeholder="Текст сообщения"></textarea>${btn("Показать всем", "admbc")}</div>`;
   h += `<div class="card col"><div class="t1" style="color:var(--pri)">Промокоды</div><input data-keep="pcode" placeholder="Код, например NEWYEAR" style="text-transform:uppercase"><div class="buyrow4">${[["Монеты", "pts"], ["Самоцветы", "gems"], ["Кот", "cat"]].map(x => `<button class="chip ${admKind === x[1] ? "p" : ""}" style="border:0;font-family:inherit;justify-content:center" data-a="admkind" data-v="${x[1]}">${x[0]}</button>`).join("")}</div><input data-keep="pa" inputmode="decimal" placeholder="${admKind === "cat" ? "Номер кота 0–62" : "Сколько"}">${admKind === "cat" ? `<input data-keep="pb" inputmode="numeric" placeholder="Сколько котов (1)">` : ""}<input data-keep="pmx" inputmode="numeric" placeholder="Сколько человек смогут ввести (0 = без лимита)">${btn("Создать промокод", "admpromo")}`;
   if (promoList) h += promoList.map(p => `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid rgba(255,255,255,.06)"><div class="grow"><div class="t1" style="font-size:14px">${esc(p.code)}</div><div class="t2" style="font-size:11px">${rewTxt(p.kind, p.a, p.b)} · использовано ${p.used}${p.mx ? "/" + p.mx : ""}</div></div>${btn(ic("close", 16), "admpdel", `data-v="${esc(p.code)}"`, "t")}</div>`).join("");
@@ -962,3 +963,9 @@ A.bmbuy = async function (e) {
   S.gems -= o.price; const k = grant(o.idx, false); cz.bm.bought.push(o.slot); mark(); save(true); try { afterCraft(o.idx); } catch (x) {} showResult("gem", [o.idx, k], "Чёрный рынок"); render();
 };
 setInterval(() => { const e = document.getElementById("bmleft"); if (e && cz.bm) { const l = cz.bm.left - Math.floor((Date.now() - cz.bm.at) / 1000); e.textContent = fmtT2(l); if (l <= 0) bmLoad(); } }, 1000);
+
+A.admmaint = async function () {
+  const on = !maintA; if (on && !maintArm) { maintArm = true; toast("Нажми ещё раз: игра закроется для ВСЕХ игроков"); setTimeout(() => { maintArm = false; }, 4000); return; } maintArm = false;
+  const r = await api("adm_maint", {on, text: KEEP.mt || ""}); if (!r || r.error) return toast((r && r.error) || "Нет связи");
+  maintA = r.on ? r.text : null; toast(r.on ? "Игра закрыта для игроков" : "Игра открыта"); render();
+};

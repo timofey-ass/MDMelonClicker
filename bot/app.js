@@ -319,8 +319,15 @@ document.addEventListener("visibilitychange", () => { if (document.hidden) save(
 window.addEventListener("pagehide", () => save(true, true));
 
 // ---------- server
+let maintOn = null;
+function setMaint(t) {
+  if (!t) { if (maintOn) { const x = document.getElementById("maintov"); if (x) x.remove(); maintOn = null; toast("Игра снова работает!"); } return; }
+  if (maintOn === t) return; maintOn = t; let o = document.getElementById("maintov");
+  if (!o) { o = document.createElement("div"); o.id = "maintov"; o.className = "maintov"; document.body.appendChild(o); }
+  o.innerHTML = `<div class="maintc"><div style="font-size:64px">🛠</div><div class="t1" style="font-size:22px">Технический перерыв</div><div class="t2" style="font-size:15px;margin-top:8px">${esc(t)}</div><div class="t2" style="font-size:12px;margin-top:18px">Игра откроется сама, обновлять страницу не нужно.</div></div>`;
+}
 async function api(path, body) {
-  try { const r = await fetch("/api/" + path, {method: "POST", headers: {"content-type": "application/json", "x-init": tg ? tg.initData : ""}, body: JSON.stringify(body || {}), keepalive: path === "save"}); return await r.json(); }
+  try { const r = await fetch("/api/" + path, {method: "POST", headers: {"content-type": "application/json", "x-init": tg ? tg.initData : ""}, body: JSON.stringify(body || {}), keepalive: path === "save"}); const j = await r.json(); if (j && j.maint !== undefined) setMaint(j.maint); return j; }
   catch (e) { return {error: "Нет связи с сервером"}; }
 }
 async function save(force) {
