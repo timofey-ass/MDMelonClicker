@@ -525,6 +525,12 @@ async function api(path, req, env) {
       await db.prepare("INSERT INTO grants (uid,kind,a,b,ts) VALUES (?,?,?,?,?)").bind(t, "reset", 0, 1, now).run();
       return J({ok: true, name: u.name});
     }
+    if (path === "adm_gemset") {
+      const g = Math.max(0, Math.min(1e6, Math.floor(Number(b.gems) || 0)));
+      await db.prepare("INSERT INTO grants (uid,kind,a,b,ts) SELECT id,'gemset',?,0,? FROM users").bind(g, now).run();
+      const c = (await db.prepare("SELECT COUNT(*) AS c FROM users").first()).c;
+      return J({ok: true, count: c, gems: g});
+    }
     if (path === "adm_resetall") {
       await db.prepare("UPDATE users SET state=NULL, total=0, rev=rev+1, upd=?").bind(now).run();
       await db.prepare("UPDATE offers SET status='cancelled' WHERE status='open'").run();

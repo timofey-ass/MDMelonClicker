@@ -1102,6 +1102,7 @@ async function pollNow() {
       if (r.rev && r.rev > rev && !saving && !(r.grants && r.grants.length)) { dirty = true; save(true); }
       for (const g of r.grants || []) {
         if (g.kind === "reset") { S = defState(); snap = {inv: {}}; rev = r.rev; dirty = true; fever = frenzy = 0; mark(); save(true); toast("Прогресс сброшен администратором"); render(); if (g.b === 2) announce("Из-за баланса игры нам пришлось сбросить прогресс всем игрокам. В качестве утешительного приза ты получаешь кота «Королевский арбуз»: он увеличивает заработок за каждый тап в 40 раз. Его также можно выбить в Особом кейсе (шанс 2%). Прости и удачной игры!"); continue; }
+        if (g.kind === "gemset") { S.gems = Math.max(0, +g.a || 0); mark(); save(true); render(); announce("Из-за баланса кристаллов мы сбросили их у всех игроков. Твой баланс: 💎 " + S.gems + ". Мы выдаём тебе " + S.gems + " самоцветов на раскрутку."); continue; }
         applyReward(g.kind, g.a, g.b); toast((g.kind[0] === "t" && g.kind.startsWith("take") ? "Администратор забрал: " : "Тебе выдали: ") + rewTxt(g.kind, g.a, g.b));
       }
       if (r.grants && r.grants.length && tab !== 0) render();
@@ -1166,6 +1167,12 @@ A.preset = async function (e) {
 };
 A.wk = function (e) { const i = +e.dataset.i, t = WKT[i], W = wkEnsure(); if (W.done.includes(i)) return; if (t[3]() - W.base[i] < t[1]) return toast("Ещё не выполнено"); W.done.push(i); S.gems += t[2]; toast("Задание выполнено: +" + t[2] + " самоцв."); mark(); save(true); render(); };
 let rstAll = 0;
+let gsAll = 0;
+A.admgemset = async function (e) {
+  if (!gsAll) { gsAll = 1; e.textContent = "ТОЧНО? Всем кристаллы станут 1000. Нажми ещё раз"; setTimeout(() => { gsAll = 0; render(); }, 5000); return; }
+  gsAll = 0; const r = await api("adm_gemset", {gems: 1000}); if (r.error) return toast(r.error);
+  toast("Кристаллы сброшены до 1000 у игроков: " + r.count); pollNow();
+};
 A.admresetall = async function (e) {
   if (!rstAll) { rstAll = 1; e.textContent = "ТОЧНО сбросить ВСЕМ? Нажми ещё раз"; setTimeout(() => { rstAll = 0; render(); }, 5000); return; }
   rstAll = 0; const r = await api("adm_resetall", {}); if (r.error) return toast(r.error);
@@ -1226,7 +1233,7 @@ const admCard = () => {
   h += `<div class="card col"><div class="t1" style="color:var(--pri)">Сообщение всем в игре</div><textarea data-keep="bc" rows="2" placeholder="Текст сообщения"></textarea>${btn("Показать всем", "admbc")}</div>`;
   h += `<div class="card col"><div class="t1" style="color:var(--pri)">Промокоды</div><input data-keep="pcode" placeholder="Код, например NEWYEAR" style="text-transform:uppercase"><div class="buyrow4">${[["Монеты", "pts"], ["Самоцветы", "gems"], ["Кот", "cat"]].map(x => `<button class="chip ${admKind === x[1] ? "p" : ""}" style="border:0;font-family:inherit;justify-content:center" data-a="admkind" data-v="${x[1]}">${x[0]}</button>`).join("")}</div><input data-keep="pa" inputmode="decimal" placeholder="${admKind === "cat" ? "Номер кота 0–62" : "Сколько"}">${admKind === "cat" ? `<input data-keep="pb" inputmode="numeric" placeholder="Сколько котов (1)">` : ""}<input data-keep="pmx" inputmode="numeric" placeholder="Сколько человек смогут ввести (0 = без лимита)">${btn("Создать промокод", "admpromo")}`;
   if (promoList) h += promoList.map(p => `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid rgba(255,255,255,.06)"><div class="grow"><div class="t1" style="font-size:14px">${esc(p.code)}</div><div class="t2" style="font-size:11px">${rewTxt(p.kind, p.a, p.b)} · использовано ${p.used}${p.mx ? "/" + p.mx : ""}</div></div>${btn(ic("close", 16), "admpdel", `data-v="${esc(p.code)}"`, "t")}</div>`).join("");
-  h += `<div class="t1" style="color:#ff5252;margin-top:12px">Опасная зона</div>` + btn("Сбросить прогресс ВСЕМ игрокам", "admresetall", 'style="width:100%;justify-content:center"', "o");
+  h += `<div class="t1" style="color:#ff5252;margin-top:12px">Опасная зона</div>` + btn("Сбросить прогресс ВСЕМ игрокам", "admresetall", 'style="width:100%;justify-content:center"', "o") + btn("Сбросить кристаллы ВСЕМ до 1000", "admgemset", 'style="width:100%;justify-content:center;margin-top:6px"', "o");
   return h + `</div>`;
 };
 async function admTarget() { const v = (KEEP.admid || "").trim(); return v ? +v : 0; }
