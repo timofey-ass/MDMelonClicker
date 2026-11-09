@@ -651,8 +651,24 @@ function setMaint(t) {
   if (!o) { o = document.createElement("div"); o.id = "maintov"; o.className = "maintov"; document.body.appendChild(o); }
   o.innerHTML = `<div class="maintc"><div style="font-size:64px">🛠</div><div class="t1" style="font-size:22px">Технический перерыв</div><div class="t2" style="font-size:15px;margin-top:8px">${esc(t)}</div><div class="t2" style="font-size:12px;margin-top:18px">Игра откроется сама, обновлять страницу не нужно.</div></div>`;
 }
+const wsGet = () => { try { return localStorage.getItem("mdws") || ""; } catch (e) { return ""; } };
+async function webLoginScreen(lt) {
+  const tr = document.querySelector("#load .tr"); if (tr) tr.style.display = "none";
+  lt.style.cssText = "text-align:center;padding:0 28px;display:block"; lt.innerHTML = `<div style="font-size:15px;margin-bottom:14px">Войди через Телеграм, чтобы сохранялся прогресс и был тот же аккаунт, что в боте.</div><button id="wlbtn" class="btn" style="margin:0 auto;display:inline-flex;font-size:16px;padding:12px 22px">Войти через Telegram</button><div id="wlst" class="t2" style="margin-top:12px;font-size:12px"></div>`;
+  const st = $("#wlst");
+  $("#wlbtn").onclick = async () => {
+    const r = await api("web_new", {}); if (!r || !r.tok) { st.textContent = "Нет связи с сервером"; return; }
+    try { window.open(r.link, "_blank") || (location.href = r.link); } catch (e) { location.href = r.link; }
+    st.textContent = "Открой бота, нажми «Запустить» и вернись сюда…"; const t0 = Date.now();
+    const iv = setInterval(async () => {
+      if (Date.now() - t0 > 600000) { clearInterval(iv); st.textContent = "Время вышло, нажми кнопку ещё раз."; return; }
+      const c = await api("web_check", {tok: r.tok}); if (c && c.ok && c.sess) { clearInterval(iv); try { localStorage.setItem("mdws", c.sess); } catch (e) {} location.reload(); }
+      else if (c && c.error && !/связи/.test(c.error)) { clearInterval(iv); st.textContent = c.error; }
+    }, 2000);
+  };
+}
 async function api(path, body) {
-  try { const r = await fetch("/api/" + path, {method: "POST", headers: {"content-type": "application/json", "x-init": tg ? tg.initData : ""}, body: JSON.stringify(body || {}), keepalive: path === "save"}); const j = await r.json(); if (j && j.maint !== undefined) setMaint(j.maint); return j; }
+  try { const r = await fetch("/api/" + path, {method: "POST", headers: {"content-type": "application/json", "x-init": tg ? tg.initData : "", "x-web": wsGet()}, body: JSON.stringify(body || {}), keepalive: path === "save"}); const j = await r.json(); if (j && j.maint !== undefined) setMaint(j.maint); return j; }
   catch (e) { return {error: "Нет связи с сервером"}; }
 }
 async function save(force) {
@@ -682,9 +698,10 @@ async function boot() {
   try { const url = ADM_IMG.replace("admin/0.jpg", "mascot.png?v=1"), im = new Image(); im.onload = () => { lm.style.backgroundImage = `url(${url})`; lm.classList.add("img"); lm.textContent = ""; }; im.src = url; } catch (e) {}
   const LT = ["Тапай подряд — включится лихорадка!", "Лови золотые звёзды: они дают бонус.", "Генераторы приносят монеты даже когда ты не в игре.", "Меняйся котами с другими игроками.", "Предлагай своих котов в мастерской."];
   const tip = $("#ltip"); if (tip) tip.textContent = LT[Math.floor(Math.random() * LT.length)];
-  if (!tg || !tg.initData) { lt.textContent = "Открой игру из бота в Телеграме"; if (!window.__DEV) return; }
+  if ((!tg || !tg.initData) && !wsGet() && !window.__DEV) { await webLoginScreen(lt); return; }
   const t0 = Date.now(); step(18, "Подключаюсь…");
   const [r] = await Promise.all([api("auth", {}), loadUcats().catch(() => {})]);
+  if (r.login && (!tg || !tg.initData)) { try { localStorage.removeItem("mdws"); } catch (e) {} await webLoginScreen(lt); return; }
   if (r.error) { lt.textContent = r.error + ". Нужен интернет."; $("#load .tr").style.display = "none"; return; }
   step(60, "Загружаю прогресс…");
   me = {id: r.id, name: r.name};

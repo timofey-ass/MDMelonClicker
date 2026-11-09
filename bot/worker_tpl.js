@@ -1,5 +1,6 @@
 const HTML = __HTML__;
 const ATLAS = "https://raw.githubusercontent.com/timofey-ass/MDMelonClicker/HEAD/mdcats2.jpg";
+const BOT_USER = "mdmelonbot";
 const N_ITEMS = 103;
 const BC_CATS = [["Киллер в плаще", 3], ["Кот-дон", 3], ["Вор-домушник", 2], ["Торговец с рынка", 3], ["Контрабандный ящик", 2], ["Кот-алхимик", 3], ["Кот-чемодан", 2], ["Призрак рынка", 4], ["Золотой слиток", 4]];
 const ADMIN = 1796286471;
@@ -45,6 +46,7 @@ async function init(db) {
     db.prepare("CREATE TABLE IF NOT EXISTS chat (id INTEGER PRIMARY KEY AUTOINCREMENT, uid INTEGER, name TEXT, text TEXT, ts INTEGER)"),
   ]);
   for (const c of ["badges TEXT DEFAULT ''", "banned INTEGER DEFAULT 0", "seen INTEGER DEFAULT 0", "un TEXT DEFAULT ''"]) { try { await db.prepare("ALTER TABLE users ADD COLUMN " + c).run(); } catch (e) {} }
+  try { await db.prepare("CREATE TABLE IF NOT EXISTS websess (tok TEXT PRIMARY KEY, uid INTEGER DEFAULT 0, name TEXT DEFAULT '', un TEXT DEFAULT '', sess TEXT DEFAULT '', claimed INTEGER DEFAULT 0, ts INTEGER)").run(); } catch (e) {}
   try { await db.prepare("ALTER TABLE ucats ADD COLUMN bc INTEGER DEFAULT 0").run(); } catch (e) {}
   for (const c of ["ask INTEGER DEFAULT 0", "reward INTEGER DEFAULT 0"]) { try { await db.prepare("ALTER TABLE ucats ADD COLUMN " + c).run(); } catch (e) {} }
   try { await db.prepare("CREATE TABLE IF NOT EXISTS wslikes (k TEXT, cid INTEGER, uid INTEGER, PRIMARY KEY (k, cid, uid))").run(); } catch (e) {}
@@ -79,8 +81,23 @@ async function ucSig(db) { const r = await db.prepare("SELECT COUNT(*) AS c, COA
 async function api(path, req, env) {
   const db = env.DB; if (!db) return J({error: "Не подключена база DB"}, 500);
   await init(db);
-  const user = await verify(req.headers.get("x-init"), env.BOT_TOKEN);
-  if (!user) return J({error: "Открой игру из бота"}, 401);
+  const rnd = () => hex(crypto.getRandomValues(new Uint8Array(16)));
+  if (path === "web_new") {
+    const t = rnd(), tn = Math.floor(Date.now() / 1000);
+    await db.prepare("DELETE FROM websess WHERE sess='' AND ts<?").bind(tn - 3600).run();
+    await db.prepare("INSERT INTO websess (tok,ts) VALUES (?,?)").bind(t, tn).run();
+    return J({tok: t, link: "https://t.me/" + BOT_USER + "?start=login_" + t});
+  }
+  if (path === "web_check") {
+    let q = {}; try { q = await req.json(); } catch (e) {}
+    const w = await db.prepare("SELECT sess,claimed FROM websess WHERE tok=?").bind(String(q.tok || "")).first();
+    if (!w) return J({error: "Ссылка устарела, попробуй ещё раз"});
+    if (w.sess && !w.claimed) { await db.prepare("UPDATE websess SET claimed=1 WHERE tok=?").bind(String(q.tok)).run(); return J({ok: true, sess: w.sess}); }
+    return J({pending: true});
+  }
+  let user = await verify(req.headers.get("x-init"), env.BOT_TOKEN);
+  if (!user && req.headers.get("x-web")) { const w = await db.prepare("SELECT uid,name,un FROM websess WHERE sess=? AND sess!='' AND uid>0").bind(req.headers.get("x-web")).first(); if (w) user = {id: w.uid, first_name: w.name, username: w.un}; }
+  if (!user) return J({error: "Открой игру из бота", login: 1}, 401);
   const id = user.id, name = uname(user); let b = {}; try { b = await req.json(); } catch (e) {}
   const now = Math.floor(Date.now() / 1000);
   let maintT = null; try { const mt = await db.prepare("SELECT v FROM kv WHERE k='maint'").first(); if (mt && mt.v) { const m = JSON.parse(mt.v); if (m && m.on) maintT = m.text || "Технический перерыв"; } } catch (e) {}
@@ -677,6 +694,18 @@ export default {
         if (req.headers.get("x-telegram-bot-api-secret-token") !== await secret(env)) return new Response("no", {status: 403});
         const u = await req.json(), m = u.message; if (!m || !m.text) return new Response("ok");
         const base = url.origin;
+        const lg = m.text.match(/^\/start login_([0-9a-f]{32})$/);
+        if (lg && env.DB) {
+          await init(env.DB);
+          const tn = Math.floor(Date.now() / 1000), w = await env.DB.prepare("SELECT ts,sess FROM websess WHERE tok=?").bind(lg[1]).first();
+          if (!w || w.sess || tn - w.ts > 600) await tgcall(env, "sendMessage", {chat_id: m.chat.id, text: "Ссылка для входа устарела. Вернись в приложение и нажми «Войти через Telegram» ещё раз."});
+          else {
+            const f = m.from || {}, nm = ((f.first_name || "") + " " + (f.last_name || "")).trim().slice(0, 24) || f.username || "Игрок";
+            await env.DB.prepare("UPDATE websess SET uid=?, name=?, un=?, sess=? WHERE tok=?").bind(f.id, nm, String(f.username || "").slice(0, 40), hex(crypto.getRandomValues(new Uint8Array(16))), lg[1]).run();
+            await tgcall(env, "sendMessage", {chat_id: m.chat.id, text: "✅ Вход выполнен! Вернись в игру, она откроется сама."});
+          }
+          return new Response("ok");
+        }
         if (m.text.startsWith("/top") && env.DB) {
           await init(env.DB);
           const rows = (await env.DB.prepare("SELECT name,total FROM users WHERE total>0 ORDER BY total DESC LIMIT 10").all()).results;
