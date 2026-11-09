@@ -317,6 +317,19 @@ body.bmdark::before{display:none}
 .bcths{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin:8px 0}.bcth{width:40px;height:40px;border-radius:12px;overflow:hidden}.bmcase{background:#1a0d12}
 .maintov{position:fixed;inset:0;z-index:99999;background:#0b0a0f;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px}.maintc{max-width:340px}
 .rar9{color:#18ffff}
+.dcrow{display:flex;justify-content:center;gap:8px;margin:10px 0}
+.dcd{width:52px;height:52px;border-radius:12px;background:#f4efe6;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);padding:7px;box-shadow:0 3px 0 #bdb3a2,0 6px 12px rgba(0,0,0,.35);position:relative}
+.dcd i{display:block;border-radius:50%;margin:auto;width:9px;height:9px}.dcd i.p{background:#222}
+.dcd.s{width:30px;height:30px;padding:4px;border-radius:8px;box-shadow:0 2px 0 #bdb3a2}.dcd.s i{width:5px;height:5px}
+.dcd.cup{background:linear-gradient(160deg,#6b4a2b,#3a2514);box-shadow:0 3px 0 #1d1208,0 6px 12px rgba(0,0,0,.35)}.dcd.cup b{grid-area:2/2;margin:auto;color:#d9b27a;font-size:20px}
+.dcd.ph{background:rgba(255,255,255,.07);box-shadow:none}
+.dcd.hit{box-shadow:0 0 0 3px var(--pri),0 0 18px var(--pri);transform:translateY(-3px)}
+.dcd.roll{animation:dcroll .8s}
+@keyframes dcroll{0%{transform:rotate(0) translateY(0)}20%{transform:rotate(-25deg) translateY(-14px)}40%{transform:rotate(30deg) translateY(0)}60%{transform:rotate(-18deg) translateY(-8px)}80%{transform:rotate(10deg)}100%{transform:none}}
+.dcbid{margin:6px 0;padding:10px;text-align:center;border-radius:16px;background:rgba(255,255,255,.06)}.dcbv{display:flex;align-items:center;justify-content:center;gap:10px;font-size:26px;margin-top:4px}
+.dchist{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin:4px 0 8px}.dchist span{font-size:11px;padding:3px 8px;border-radius:10px;background:rgba(255,255,255,.07)}
+.dcctl{margin-top:6px}.dcq{display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:8px}.dcqv{text-align:center;min-width:70px}.dcqv b{font-size:28px;display:block}
+.dcf{display:flex;justify-content:center;gap:8px;margin-bottom:10px}.dcfb{border:2px solid transparent;background:rgba(255,255,255,.06);border-radius:12px;padding:5px}.dcfb.on{border-color:var(--pri);background:rgba(255,255,255,.14)}
 </style></head><body>
 <div id="load"><div class="lw"><div class="lglow"></div><div class="lm" id="lm">🍉</div><div class="lsh"></div></div><div class="lti">MDMelonClicker</div><div id="lt">Подключаюсь…</div><div class="tr"><i id="lbar"></i></div><div id="ltip"></div></div>
 <div id="app"><div id="top"><h1 id="ttl">MDMelonClicker</h1><span id="gemc"></span></div><div id="view"></div><div id="nav"></div></div>
