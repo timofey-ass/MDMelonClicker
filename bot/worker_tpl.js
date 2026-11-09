@@ -73,6 +73,7 @@ const bd = (id, s) => { let r = String(s || ""); if (id === ADMIN && !r.includes
 const inv = (s, k) => s.inv[k] || 0;
 const add = (s, k, d) => { const v = inv(s, k) + d; if (v > 0) s.inv[k] = v; else delete s.inv[k]; };
 
+async function ucSig(db) { const r = await db.prepare("SELECT COUNT(*) AS c, COALESCE(SUM(rar*(idx%97+1)+idx),0) AS s FROM ucats WHERE status='ok'").first(); return r.c * 1000003 + r.s; }
 async function api(path, req, env) {
   const db = env.DB; if (!db) return J({error: "Не подключена база DB"}, 500);
   await init(db);
@@ -114,7 +115,7 @@ async function api(path, req, env) {
     return J({offers: o});
   }
   if (path === "offer") {
-    const nUc = (await db.prepare("SELECT COUNT(*) AS c FROM ucats WHERE status='ok'").first()).c;
+    const nUc = (await db.prepare("SELECT COALESCE(MAX(idx),?-1)+1-? AS c FROM ucats WHERE idx IS NOT NULL").bind(N_ITEMS, N_ITEMS).first()).c;
     const give = Number(b.give), want = Number(b.want);
     if (!Number.isInteger(give) || !Number.isInteger(want) || give < 0 || want < 0 || give === 70 || give === 71 || want === 70 || want === 71 || give >= N_ITEMS + nUc || want >= N_ITEMS + nUc || give === want) return J({error: "Неверные коты"});
     const cnt = (await db.prepare("SELECT COUNT(*) AS c FROM offers WHERE seller=? AND status='open'").bind(id).first()).c;
@@ -366,10 +367,11 @@ async function api(path, req, env) {
   }
   if (path === "ucats") {
     if ((await db.prepare("SELECT COUNT(*) AS c FROM ucats WHERE bc>0").first()).c < BC_CATS.length) {
-      await db.batch(BC_CATS.map((c, k) => db.prepare("INSERT OR IGNORE INTO ucats (uid,uname,name,rar,img,status,idx,ts,bc) SELECT 0,'MDMelon',?,?,'','ok',?+(SELECT COUNT(*) FROM ucats WHERE status='ok'),?,?").bind(c[0], c[1], N_ITEMS, now, k + 1)));
+      await db.batch(BC_CATS.map((c, k) => db.prepare("INSERT OR IGNORE INTO ucats (uid,uname,name,rar,img,status,idx,ts,bc) SELECT 0,'MDMelon',?,?,'','ok',1+(SELECT COALESCE(MAX(idx),?-1) FROM ucats WHERE idx IS NOT NULL),?,?").bind(c[0], c[1], N_ITEMS, now, k + 1)));
     }
     const rows = (await db.prepare("SELECT id,idx,name,rar,uid,uname,bc FROM ucats WHERE status='ok' ORDER BY idx").all()).results;
-    return J({rows});
+    const del = (await db.prepare("SELECT idx FROM ucats WHERE status='del' AND idx IS NOT NULL").all()).results.map(x => x.idx);
+    return J({rows, del, sig: await ucSig(db)});
   }
   if (path === "uc_submit") {
     const nm = String(b.name || "").trim().replace(/\s+/g, " ").slice(0, 24), rar = Math.floor(Number(b.rar)), img = String(b.img || "");
@@ -392,13 +394,24 @@ async function api(path, req, env) {
   }
   if (path === "uc_approve" && adm0) {
     const nm = String(b.name || "").trim().replace(/\s+/g, " ").slice(0, 24), rar = Math.floor(Number(b.rar)), c = await db.prepare("SELECT * FROM ucats WHERE id=? AND status='new'").bind(Number(b.id)).first();
-    if (!c) return J({error: "Заявка не найдена"}); if (nm.length < 2 || !(rar >= 0 && rar <= 6)) return J({error: "Неверные данные"});
-    const idx = N_ITEMS + (await db.prepare("SELECT COUNT(*) AS c FROM ucats WHERE status='ok'").first()).c;
+    if (!c) return J({error: "Заявка не найдена"}); if (nm.length < 2 || !(rar >= 0 && rar <= 9)) return J({error: "Неверные данные"});
+    const idx = (await db.prepare("SELECT COALESCE(MAX(idx),?-1)+1 AS i FROM ucats WHERE idx IS NOT NULL").bind(N_ITEMS).first()).i;
     const r = await db.prepare("UPDATE ucats SET status='ok', name=?, rar=?, idx=? WHERE id=? AND status='new'").bind(nm, rar, idx, c.id).run();
     if (r.meta.changes !== 1) return J({error: "Уже обработано"});
     await db.prepare("INSERT INTO grants (uid,kind,a,b,ts) VALUES (?,?,?,?,?)").bind(c.uid, "cat", idx, 1, now).run();
     tg0(c.uid, "✅ Твой кот «" + nm + "» одобрен и добавлен в игру! Он уже у тебя в коллекции.");
     return J({ok: true, idx});
+  }
+  if (path === "uc_setrar" && adm0) {
+    const rar = Math.floor(Number(b.rar)); if (!(rar >= 0 && rar <= 9)) return J({error: "Неверная редкость"});
+    const r = await db.prepare("UPDATE ucats SET rar=? WHERE id=? AND status='ok'").bind(rar, Number(b.id)).run();
+    return r.meta.changes ? J({ok: true}) : J({error: "Кот не найден"});
+  }
+  if (path === "uc_del" && adm0) {
+    const c = await db.prepare("SELECT idx FROM ucats WHERE id=? AND status='ok'").bind(Number(b.id)).first(); if (!c) return J({error: "Кот не найден"});
+    await db.prepare("UPDATE ucats SET status='del', img='' WHERE id=?").bind(Number(b.id)).run();
+    await db.prepare("UPDATE offers SET status='cancelled' WHERE status='open' AND (give=? OR want=?)").bind(c.idx, c.idx).run();
+    return J({ok: true});
   }
   if (path === "uc_reject" && adm0) {
     const c = await db.prepare("SELECT * FROM ucats WHERE id=? AND status='new'").bind(Number(b.id)).first(); if (!c) return J({error: "Заявка не найдена"});
@@ -440,7 +453,7 @@ async function api(path, req, env) {
     const maxbc = (await db.prepare("SELECT COALESCE(MAX(id),0) AS m FROM bcast").first()).m;
     const online = (await db.prepare("SELECT COUNT(*) AS c FROM users WHERE seen>?").bind(now - 40).first()).c;
     const u = await getUser(db, id);
-    const uc = (await db.prepare("SELECT COUNT(*) AS c FROM ucats WHERE status='ok'").first()).c;
+    const uc = await ucSig(db);
     return J({uc, grants: g, bc, maxbc, online, rev: u ? u.rev : 0, banned: !!(u && u.banned), badges: bd(id, u && u.badges), maintA: id === ADMIN ? maintT : undefined, maint: null});
   }
   if (path === "chat") {
