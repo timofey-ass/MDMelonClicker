@@ -9,7 +9,7 @@ const GEM_CASE = 3, FREE_EVERY = 4 * 3600;
 const EMO = {"👆": "tap", "💥": "crit", "🔥": "fire", "🐱": "cat", "🐾": "paw", "🥛": "milk", "🐟": "fish", "🏭": "factory", "🌀": "portal", "🚀": "rocket", "📦": "cube", "🎁": "box", "👑": "crown", "⚡": "bolt", "💎": "gem", "🧾": "swap", "⭐": "star", "🎟": "ticket"};
 const ic = (k, s, c) => `<svg class="ic" viewBox="0 0 24 24" width="${s || 20}" height="${s || 20}" fill="none" stroke="currentColor" stroke-width="2.04" stroke-linecap="round" stroke-linejoin="round"${c ? ` style="color:${c}"` : ""}>${IC[EMO[k] || k]}</svg>`;
 const noemo = t => String(t).replace(/[\u{1F000}-\u{1FAFF}\u2600-\u27BF\u2B00-\u2BFF\uFE0F]+ ?/gu, "").trim();
-const RC = ["#b0bec5", "#4fc3f7", "#ba68c8", "#ff5252", "#ffd740", "#1de9b6", "#ff1744", "#e040fb", "#ffd700"];
+const RC = ["#b0bec5", "#4fc3f7", "#ba68c8", "#ff5252", "#ffd740", "#1de9b6", "#ff1744", "#e040fb", "#ffd700", "#18ffff"];
 const SUF = ["", "K", "M", "B", "T", "Qa", "Qi", "Sx"];
 const now = () => Date.now() / 1000;
 const esc = s => String(s).replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
@@ -63,7 +63,7 @@ function checkAch() {
   for (const [key, nm, , bn] of SETS) if (!S.sets.includes(key) && setIdx(key).every(i => (i + "") in S.inv)) { S.sets.push(key); toast("Сет «" + nm + "» собран: +" + bn + "% ко всему"); hap("ok"); if (key === "tech") { LSset("fall", 3 + SETS.length - 1); toast("Течкоты собраны! Включён фон из нулей и единиц"); } try { fxConfetti(80); } catch (e) {} }
   for (const [id, title, , key, goal] of ACH) if (!S.ach.includes(id) && stat(key) >= goal) { S.ach.push(id); toast("🏆 " + title + ": +2% ко всему"); hap("ok"); }
 }
-const pickR = ri => { const l = ITEMS.map((it, i) => it[2] === ri && !it[6] ? i : -1).filter(i => i >= 0); return l[Math.floor(Math.random() * l.length)]; };
+const pickR = ri => { const l = ITEMS.map((it, i) => it[2] === ri && !it[6] && !it[7] ? i : -1).filter(i => i >= 0); return l[Math.floor(Math.random() * l.length)]; };
 function rarR(w) { let r = Math.random() * w.reduce((a, b) => a + b, 0); for (let i = 0; i < w.length; i++) { r -= w[i]; if (r <= 0) return i; } return 0; }
 function roll(ci) { if (ci === 4) { const q = Math.random(); if (q < .02) return 72; if (q < .07) return 63; ci = 2; } let w = CASES[ci][3].slice(); if (S.pity >= 14) w = [0, 0].concat(w.slice(2)); return pickR(rarR(w)); }
 function grant(idx, holo) { const k = idx + ""; const have = S.inv[k] || 0; S.inv[k] = have + 1; if (have === 0) { if (holo) { S.holo.push(idx); return "newholo"; } return "new"; } if (holo && !S.holo.includes(idx)) { S.holo.push(idx); return "holo"; } return "dup"; }
@@ -150,7 +150,7 @@ function tCases() {
   RARS.forEach((R, r) => { if (r > 6) return; const d = dupCount(r); h += `<div class="card"><div class="grow"><div class="t1" style="color:${RC[r]}">${R[0]} ×${d}</div><div class="t2" style="font-size:11px">${r < 4 ? `Контракт: 5 → 1 выше · Апгрейд: 1 дубль, шанс ${Math.round(UPCH[r] * 100)}%` : "Только продажа"}</div></div>${r < 4 ? `<button class="chip ${d >= 5 ? "" : "dis"}" style="border:0;font-family:inherit" data-a="contract" data-i="${r}">5→1</button><button class="chip ${d >= 1 ? "" : "dis"}" style="border:0;font-family:inherit" data-a="upgrade" data-i="${r}">Апгрейд</button>` : ""}<button class="chip ${d >= 1 ? "" : "dis"}" style="border:0;font-family:inherit;color:var(--gold)" data-a="sell" data-i="${r}">${ic("coin", 14)}${fmt(d * sellVal(r))}${SELLGEM[r] ? " +" + d * SELLGEM[r] + "💎" : ""}</button></div>`; });
   h += `<div class="sec">Коллекция · нажми на кота, чтобы посмотреть инфо</div>`;
   for (let ri = RARS.length - 1; ri >= 0; ri--) {
-    const ids = ITEMS.map((it, i) => it[2] === ri && (i < 70 || i >= 72 || (i + "") in S.inv) ? i : -1).filter(i => i >= 0); if (!ids.length) continue;
+    const ids = ITEMS.map((it, i) => it[2] === ri && (i < 70 || i >= 72 || (i + "") in S.inv) && !it[7] ? i : -1).filter(i => i >= 0); if (!ids.length) continue;
     h += `<div style="font-size:11px;font-weight:700;color:${RC[ri]};margin:8px 4px 4px">${RARS[ri][0]} · ${ri === 8 ? "×40 к тапу" : ri === 7 ? "×1 секстилион к одному тапу" : "+" + RARS[ri][2] + "% за предмет"}</div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">`;
     for (const idx of ids) { const o = S.inv[idx + ""] || 0, ho = S.holo.includes(idx), isq = +S.eq === idx;
       h += `<div class="cell${o ? " fxc" : ""}" ${o ? `data-a="catinfo" data-i="${idx}"` : ""} style="${isq || ho ? `box-shadow:inset 0 0 0 2px ${ho ? "#fff" : RC[ri]}` : ""}">${o ? catEl(idx, 52, {holo: ho, fx: true}) : `<div class="q">?</div>`}<span style="color:${o ? RC[ri] : "var(--out)"}">${o ? (ho ? "★ " : "") + ITEMS[idx][1] : "???"}</span>${o > 1 ? `<span style="color:var(--onv);font-weight:500">×${o}</span>` : ""}</div>`; }
