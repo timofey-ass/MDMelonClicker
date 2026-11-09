@@ -735,7 +735,8 @@ const p2bub = (m, cls) => m && (Date.now() - m.at) < 6000 ? `<div class="p2bub $
 const _tCas = tCasino;
 tCasino = function () {
   if (cz.sub < 3) return _tCas();
-  const back = `<button class="btn t" data-a="czgo" data-k="${cz.sub === 4 ? 3 : 0}" style="margin:0 0 8px">← ${cz.sub === 4 ? "К столикам" : "Казино"}</button>`;
+  const act4 = cz.sub === 4 && (!cz.t || cz.t.status === "wait" || cz.t.status === "play");
+  const back = act4 ? "" : `<button class="btn t" data-a="czgo" data-k="${cz.sub === 4 ? 3 : 0}" style="margin:0 0 8px">← ${cz.sub === 4 ? "К столикам" : "Казино"}</button>`;
   const bal = `<div class="card" style="padding:10px 16px"><span class="t2 grow" style="margin:0">Баланс</span><b id="czbal" style="font-size:18px">${fmt(S.pts)}</b></div>`;
   if (cz.sub === 3) {
     const L = cz.lobby;
@@ -1027,7 +1028,8 @@ const dcValid = (q, f, cur) => q >= 1 && q <= 10 && f >= 1 && f <= 6 && (!cur ||
 const _tCasD = tCasino;
 tCasino = function () {
   if (cz.sub !== 6 && cz.sub !== 7) return _tCasD();
-  const back = `<button class="btn t" data-a="czgo" data-k="${cz.sub === 7 ? 6 : 0}" style="margin:0 0 8px">← ${cz.sub === 7 ? "К столикам" : "Казино"}</button>`;
+  const act7 = cz.sub === 7 && (!cz.dc || cz.dc.status === "wait" || cz.dc.status === "play");
+  const back = act7 ? "" : `<button class="btn t" data-a="czgo" data-k="${cz.sub === 7 ? 6 : 0}" style="margin:0 0 8px">← ${cz.sub === 7 ? "К столикам" : "Казино"}</button>`;
   const bal = `<div class="card" style="padding:10px 16px"><span class="t2 grow" style="margin:0">Баланс</span><b id="czbal" style="font-size:18px">${fmt(S.pts)}</b></div>`;
   if (cz.sub === 6) {
     const L = cz.dlobby;
@@ -1125,3 +1127,10 @@ async function dcApply(r) {
 setInterval(() => { if (tab === 6 && !document.hidden && cz.sub === 7) dcPoll(); }, 1500);
 setInterval(() => { if (tab === 6 && !document.hidden && cz.sub === 6 && !cz.busy) dcLobby(); }, 3500);
 for (const k of ["dccreate", "dcjoin"]) { const f = A[k]; A[k] = function () { if (S.pts < 0) return kickOut(); return f.apply(this, arguments); }; }
+
+const _czgoG = A.czgo;
+A.czgo = function (e) {
+  const k = +e.dataset.k, a4 = cz.sub === 4 && (!cz.t || cz.t.status === "wait" || cz.t.status === "play"), a7 = cz.sub === 7 && (!cz.dc || cz.dc.status === "wait" || cz.dc.status === "play");
+  if ((a4 && k !== 4) || (a7 && k !== 7)) return toast("Сначала закрой свой столик");
+  return _czgoG.apply(this, arguments);
+};
