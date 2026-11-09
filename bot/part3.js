@@ -638,7 +638,7 @@ tCasino = function () {
   const back = `<button class="btn t" data-a="czgo" data-k="0" style="margin:0 0 8px">← Казино</button>`;
   const jp = `<div class="czjpc"><div class="czjt">🎰 ДЖЕКПОТ</div><div class="czjp czjv">${cz.jp === null ? "…" : fmt(cz.jp)}</div><div id="czlast" class="czjs"></div></div>`;
   const bal = `<div class="card" style="padding:10px 16px"><span class="t2 grow" style="margin:0">Баланс</span><b id="czbal" style="font-size:18px">${fmt(S.pts)}</b></div>`;
-  if (cz.sub === 0) return jp + `<button class="mbtn" data-a="czgo" data-k="1"><span style="font-size:28px">🎡</span><span class="grow">Рулетка<div class="t2" style="margin:0;font-size:12px;font-weight:500">Красное и чёрное ×2, зелёное ×24 и сектор с джекпотом</div></span>${ic("arrow", 20)}</button><button class="mbtn" data-a="czgo" data-k="2" style="height:70px"><span style="font-size:28px">🃏</span><span class="grow">Покер<div class="t2" style="margin:0;font-size:12px;font-weight:500">Простой: 5 карт, одна замена, раздаёт арбуз</div></span>${ic("arrow", 20)}</button><button class="mbtn" data-a="czgo" data-k="3" style="height:70px"><span style="font-size:28px">👥</span><span class="grow">Покер на двоих<div class="t2" style="margin:0;font-size:12px;font-weight:500">Создай столик или сядь за чужой, победитель забирает банк</div></span>${ic("arrow", 20)}</button><div class="t2" style="margin:14px 6px;font-size:12px">Играть можно только на монеты. Выигрыш не идёт в таблицу лидеров и не считается за забег. Играй осторожно!</div>`;
+  if (cz.sub === 0) return jp + `<button class="mbtn" data-a="czgo" data-k="1"><span style="font-size:28px">🎡</span><span class="grow">Рулетка<div class="t2" style="margin:0;font-size:12px;font-weight:500">Красное и чёрное ×2, зелёное ×24 и сектор с джекпотом</div></span>${ic("arrow", 20)}</button><button class="mbtn" data-a="czgo" data-k="2" style="height:70px"><span style="font-size:28px">🃏</span><span class="grow">Покер<div class="t2" style="margin:0;font-size:12px;font-weight:500">Простой: 5 карт, одна замена, раздаёт арбуз</div></span>${ic("arrow", 20)}</button><button class="mbtn" data-a="czgo" data-k="3" style="height:70px"><span style="font-size:28px">👥</span><span class="grow">Покер на двоих<div class="t2" style="margin:0;font-size:12px;font-weight:500">Создай столик или сядь за чужой, победитель забирает банк</div></span>${ic("arrow", 20)}</button><button class="mbtn" data-a="czgo" data-k="6" style="height:70px"><span style="font-size:28px">🎲</span><span class="grow">Кости-блеф на двоих<div class="t2" style="margin:0;font-size:12px;font-weight:500">Спрятанные кубики: заявляй, блефуй или скажи «Не верю!»</div></span>${ic("arrow", 20)}</button><div class="t2" style="margin:14px 6px;font-size:12px">Играть можно только на монеты. Выигрыш не идёт в таблицу лидеров и не считается за забег. Играй осторожно!</div>`;
   if (cz.sub === 1) {
     const stops = Array.from({length: ZN}, (_, i) => `${ZC[secCol(i)]} ${i * ZS}deg ${(i + 1) * ZS}deg`).join(",");
     const lab = (i, t) => `<span class="rlab" style="transform:rotate(${(i + .5) * ZS}deg) translateY(-104px)">${t}</span>`;
@@ -1015,3 +1015,113 @@ A.ucdel = async function (e) {
   ucDelArm = -1; const r = await api("uc_del", {id: it[5]}); if (!r || r.error) return toast((r && r.error) || "Нет связи");
   toast("Кот удалён из игры"); closeModal(); await loadUcats(); render();
 };
+
+
+// ===== Кости-блеф (дуэль) =====
+const DCPH = ["Я не блефую… наверное", "Не верю ни одному твоему слову", "Ставлю душу своей матери!", "Ну давай, удиви меня", "У меня тут три шестёрки, зуб даю", "Ты точно это видел?", "Ох, повезло тебе!", "Реванш?", "Красиво сыграл", "Арбуз всё видит"];
+const DPIPS = [[], [5], [1, 9], [1, 5, 9], [1, 3, 7, 9], [1, 3, 5, 7, 9], [1, 3, 4, 6, 7, 9]];
+const dieH = (n, cls) => `<div class="dcd ${cls || ""}">${n ? [1, 2, 3, 4, 5, 6, 7, 8, 9].map(i => `<i${DPIPS[n].includes(i) ? ' class="p"' : ""}></i>`).join("") : '<b>?</b>'}</div>`;
+const dcbub = (m, cls) => m && (Date.now() - m.at) < 6000 ? `<div class="p2bub ${cls}" data-n="${m.n}">${esc(DCPH[m.code] || "")}</div>` : "";
+function dcNext(cur) { return cur ? (cur[1] < 6 ? [cur[0], cur[1] + 1] : [Math.min(10, cur[0] + 1), 1]) : [2, 3]; }
+const dcValid = (q, f, cur) => q >= 1 && q <= 10 && f >= 1 && f <= 6 && (!cur || q > cur[0] || (q === cur[0] && f > cur[1]));
+const _tCasD = tCasino;
+tCasino = function () {
+  if (cz.sub !== 6 && cz.sub !== 7) return _tCasD();
+  const back = `<button class="btn t" data-a="czgo" data-k="${cz.sub === 7 ? 6 : 0}" style="margin:0 0 8px">← ${cz.sub === 7 ? "К столикам" : "Казино"}</button>`;
+  const bal = `<div class="card" style="padding:10px 16px"><span class="t2 grow" style="margin:0">Баланс</span><b id="czbal" style="font-size:18px">${fmt(S.pts)}</b></div>`;
+  if (cz.sub === 6) {
+    const L = cz.dlobby;
+    let h = back + bal + `<div class="card col"><div class="t1" style="color:var(--pri)">Создать столик · Кости-блеф</div><div class="t2" style="font-size:12px;margin:0">У каждого по 5 спрятанных кубиков. По очереди заявляйте «не меньше N кубиков с цифрой X» среди всех кубиков на столе (каждая следующая заявка выше). Не веришь, нажми «Не верю!»: кубики откроются, и кто был неправ, проигрывает банк. На ход 45 секунд. 5% банка идёт в джекпот.</div>${czBetUi()}<button class="btn" data-a="dccreate" style="width:100%;height:50px;justify-content:center">Создать и ждать соперника</button></div><div class="sec">Открытые столики${L ? " · " + L.rows.length : ""}</div>`;
+    if (!L) return h + `<div class="t2" style="text-align:center;margin:20px">Загружаю…</div>`;
+    return h + (L.rows.length ? L.rows.map(x => `<div class="card"><span style="font-size:24px">🎲</span><div class="grow"><div class="t1" style="font-size:15px">${esc(x.n1)}</div><div class="t2" style="margin:0;font-size:12px">Ставка ${fmt(x.stake)}</div></div>${btn("Сесть", "dcjoin", `data-i="${x.id}" data-s="${x.stake}"`, S.pts >= x.stake ? "" : "dis")}</div>`).join("") : `<div class="t2" style="text-align:center;margin:20px">Пока нет столиков. Создай первый и подожди соперника!</div>`);
+  }
+  const t = cz.dc; if (!t) return back + `<div class="t2" style="text-align:center;margin:30px">Загружаю столик…</div>`;
+  const done = t.status === "done", opp = t.status === "wait" ? "Ждём соперника…" : esc(t.seat === 1 ? t.n2 : t.n1), hit = done ? t.rf : 0;
+  const oppRow = [0, 1, 2, 3, 4].map(i => t.status === "wait" ? `<div class="dcd ph"></div>` : done && !cz.dHide ? dieH(t.oppDice[i], t.oppDice[i] === hit ? "hit" : "") : dieH(0, "cup")).join("");
+  const myRow = [0, 1, 2, 3, 4].map(i => t.dice ? dieH(t.dice[i], (cz.droll ? "roll " : "") + (done && t.dice[i] === hit ? "hit" : "")) : `<div class="dcd ph"></div>`).join("");
+  const cur = t.bid, who = cur ? (t.bseat === t.seat ? "Ты" : esc(t.bseat === 1 ? t.n1 : t.n2)) : "";
+  let mid = "", ctl = "";
+  if (t.status === "wait") { mid = `<div class="t2" style="text-align:center">Ставка ${fmt(t.stake)}. Как только кто-то сядет, мы тебе сообщим.</div>`; ctl = `<button class="btn o" data-a="dccancel" style="width:100%;justify-content:center;margin-top:10px">Отменить столик</button>`; }
+  else if (t.status === "play" || done) {
+    mid = cur ? `<div class="dcbid"><span class="t2" style="margin:0;font-size:11px">ЗАЯВКА · ${who}</span><div class="dcbv"><b>${cur[0]}</b> × ${dieH(cur[1], "s")}</div></div>` : `<div class="dcbid"><span class="t2" style="margin:0">Заявок пока нет. ${t.turn === t.seat ? "Ты начинаешь!" : "Начинает соперник."}</span></div>`;
+    if (t.status === "play") {
+      if (t.turn === t.seat) {
+        const q = cz.dq, f = cz.df, ok = dcValid(q, f, cur);
+        ctl = `<div class="dcctl"><div class="dcq"><button class="btn t" data-a="dcq" data-v="-1">−</button><div class="dcqv"><span class="t2" style="margin:0;font-size:11px">СКОЛЬКО</span><b>${q}</b></div><button class="btn t" data-a="dcq" data-v="1">+</button></div><div class="dcf">${[1, 2, 3, 4, 5, 6].map(n => `<button class="dcfb${f === n ? " on" : ""}" data-a="dcf" data-v="${n}">${dieH(n, "s")}</button>`).join("")}</div><button class="btn${ok ? "" : " dis"}" data-a="dcbid" style="width:100%;height:50px;justify-content:center;font-size:16px">Заявить: ${q} × цифра ${f}</button>${cur ? `<button class="btn o" data-a="dccall" style="width:100%;height:46px;justify-content:center;margin-top:8px;color:#ff8a80">Не верю! 🤥</button>` : ""}<div class="t2" style="text-align:center;margin:8px 0 0;font-size:12px">Твой ход, осталось <b id="dct">${t.left}</b> с</div></div>`;
+      } else ctl = `<div class="t2" style="text-align:center;margin:14px">Ход соперника… <b id="dct">${t.left}</b> с</div>`;
+    } else {
+      const w = t.winner === 1, why = t.reason === "time" ? (w ? "Время соперника вышло" : "Твоё время вышло") : `Заявка ${t.rq}×${t.rf}: на столе ${t.cnt}. ${w ? "Соперник ошибся" : "Заявка оказалась верной"}`;
+      ctl = `<div id="czres" class="czres ${w ? "win" : "lose"}">${cz.dHide ? "" : (w ? "Победа! " : "Поражение. ") + why + ": " + (w ? "+" + fmt(t.pay - t.stake) : "−" + fmt(t.stake))}</div><button class="btn" data-a="czgo" data-k="6" style="width:100%;height:54px;justify-content:center;font-size:17px;margin-top:10px">К столикам</button>`;
+    }
+  } else { mid = ""; ctl = `<div class="t2" style="text-align:center;margin:14px">Столик закрыт.</div><button class="btn" data-a="czgo" data-k="6" style="width:100%;justify-content:center">К столикам</button>`; }
+  const hist = t.hist && t.hist.length ? `<div class="dchist">${t.hist.slice().reverse().map(x => `<span>${x[0] === t.seat ? "Ты" : "Он"}: ${x[1]}×${x[2]}</span>`).join("")}</div>` : "";
+  const phr = t.status === "wait" ? "" : `<div class="p2ph">${DCPH.map((x, i) => `<button class="p2chip" data-a="dcsay" data-i="${i}">${esc(x)}</button>`).join("")}</div>`;
+  return back + bal + `<div class="p2n">${opp}</div>${dcbub(t.oppMsg, "o")}<div class="dcrow">${oppRow}</div>${mid}${hist}<div class="dcrow">${myRow}</div><div class="p2n" style="color:var(--pri)">Ты · ${esc(me.name)}</div>${dcbub(t.myMsg, "m")}${ctl}${phr}`;
+};
+const _czgoD = A.czgo;
+A.czgo = function (e) {
+  if (+e.dataset.k === 6 && !(S.pts < 0)) { if (cz.busy) return; cz.sub = 6; cz.dc = null; cz.dtid = 0; cz.dlobby = null; render(); dcLobby(); return; }
+  return _czgoD.apply(this, arguments);
+};
+async function dcLobby() {
+  const r = await api("dc_list", {}); if (!r || r.error) return; cz.dlobby = r;
+  for (const id of r.claims || []) { const c = await api("dc_claim", {id}); if (c && c.amount > 0) { S.pts += c.amount; mark(); save(true); toast("Кости: +" + fmt(c.amount)); } }
+  if (r.mine && cz.sub === 6 && !cz.dtid) { cz.dtid = r.mine; cz.sub = 7; cz.dc = null; cz.dfin = 0; cz.dshown = 0; render(); dcPoll(); return; }
+  if (cz.sub === 6 && !cz.busy) render();
+}
+A.dccreate = async function () {
+  if (cz.busy) return; const bet = czBet(); if (S.pts < bet || bet < 100) return toast("Не хватает монет");
+  cz.busy = true; S.pts -= bet; mark(); czUpd(); const r = await api("dc_create", {stake: bet}); cz.busy = false;
+  if (!r || r.error) { S.pts += bet; mark(); czUpd(); return toast((r && r.error) || "Нет связи"); }
+  cz.dtid = r.id; cz.sub = 7; cz.dc = null; cz.dfin = 0; cz.dshown = 0; render(); dcPoll();
+};
+A.dcjoin = async function (e) {
+  if (cz.busy) return; const id = +e.dataset.i, stake = +e.dataset.s; if (S.pts < stake) return toast("Не хватает монет");
+  cz.busy = true; const r = await api("dc_join", {id}); cz.busy = false;
+  if (!r || r.error) { toast((r && r.error) || "Нет связи"); dcLobby(); return; }
+  S.pts -= r.stake; mark(); cz.dtid = id; cz.sub = 7; cz.dc = null; cz.dfin = 0; cz.dshown = 0; render(); dcPoll();
+};
+A.dccancel = async function () { const r = await api("dc_cancel", {id: cz.dtid}); if (r && r.error) return toast(r.error); dcPoll(); };
+A.dcq = function (e) { const t = cz.dc; if (!t) return; cz.dq = Math.max(1, Math.min(10, cz.dq + +e.dataset.v)); render(); };
+A.dcf = function (e) { cz.df = +e.dataset.v; render(); };
+A.dcbid = async function () {
+  const t = cz.dc; if (!t || t.turn !== t.seat || cz.dsend) return; if (!dcValid(cz.dq, cz.df, t.bid)) return toast("Заявка должна быть выше предыдущей");
+  cz.dsend = 1; const r = await api("dc_bid", {id: cz.dtid, q: cz.dq, f: cz.df}); cz.dsend = 0;
+  if (!r || r.error) { toast((r && r.error) || "Нет связи"); dcPoll(); return; } try { hap("tick"); } catch (x) {} await dcApply(r);
+};
+A.dccall = async function () {
+  const t = cz.dc; if (!t || t.turn !== t.seat || !t.bid || cz.dsend) return; cz.dsend = 1; const r = await api("dc_call", {id: cz.dtid}); cz.dsend = 0;
+  if (!r || r.error) { toast((r && r.error) || "Нет связи"); dcPoll(); return; } await dcApply(r);
+};
+let dcSayAt = 0;
+A.dcsay = async function (e) {
+  if (!cz.dtid || Date.now() - dcSayAt < 2000) return; dcSayAt = Date.now(); const code = +e.dataset.i;
+  if (cz.dc) { cz.dc.myMsg = {code, n: ((cz.dc.myMsg && cz.dc.myMsg.n) || 0) + 1, at: Date.now()}; render(); }
+  const r = await api("dc_say", {id: cz.dtid, code}); if (r && r.error) toast(r.error); else setTimeout(() => { if (cz.sub === 7) render(); }, 6100);
+};
+let dcBusy = false;
+async function dcPoll() {
+  if (dcBusy || cz.sub !== 7 || !cz.dtid) return; dcBusy = true;
+  try { const r = await api("dc_state", {id: cz.dtid}); if (r && r.error) { toast(r.error); cz.dtid = 0; cz.sub = 6; render(); dcLobby(); } else if (r) await dcApply(r); } catch (e) {}
+  dcBusy = false;
+}
+async function dcApply(r) {
+  for (const k of ["oppMsg", "myMsg"]) if (r[k]) { r[k].at = Date.now() - r[k].ago * 1000; if (r[k].ago < 6) setTimeout(() => { if (cz.sub === 7) render(); }, 6100 - r[k].ago * 1000); }
+  const prev = cz.dc, sig = [r.status, r.turn, r.bid ? r.bid.join("-") : "", (r.hist || []).length, r.winner, r.oppMsg ? r.oppMsg.n : 0, r.myMsg ? r.myMsg.n : 0].join("|"); cz.dc = r;
+  if (sig === cz.dsig) { const e = document.getElementById("dct"); if (e) e.textContent = r.left; return; } cz.dsig = sig;
+  if (r.status === "play") {
+    const nx = dcNext(r.bid); if (!prev || prev.turn !== r.turn || (prev.bid && prev.bid.join() !== (r.bid || []).join()) || !prev.bid !== !r.bid || cz.dq === undefined) { cz.dq = nx[0]; cz.df = nx[1]; }
+    if (!cz.dshown) { cz.dshown = 1; cz.droll = true; try { hap("medium"); } catch (x) {} setTimeout(() => { cz.droll = false; if (cz.sub === 7) render(); }, 800); }
+  }
+  if (r.status === "done" && !cz.dfin) {
+    cz.dfin = 1; cz.dHide = true; render(); await sleep(900); cz.dHide = false; render();
+    const c = await api("dc_claim", {id: r.id}); if (c && c.amount > 0) { S.pts += c.amount; mark(); if (c.amount > r.stake) save(true); czUpd(); }
+    if (r.winner === 1) { try { fxConfetti(90); jingle(2); hap("ok"); } catch (x) {} }
+    return;
+  }
+  if (r.status === "cancel") { if (!r.claimed) { const c = await api("dc_claim", {id: r.id}); if (c && c.amount > 0) { S.pts += c.amount; mark(); toast("Ставка возвращена: +" + fmt(c.amount)); } } cz.dtid = 0; cz.sub = 6; cz.dc = null; render(); dcLobby(); return; }
+  render();
+}
+setInterval(() => { if (tab === 6 && !document.hidden && cz.sub === 7) dcPoll(); }, 1500);
+setInterval(() => { if (tab === 6 && !document.hidden && cz.sub === 6 && !cz.busy) dcLobby(); }, 3500);
+for (const k of ["dccreate", "dcjoin"]) { const f = A[k]; A[k] = function () { if (S.pts < 0) return kickOut(); return f.apply(this, arguments); }; }
