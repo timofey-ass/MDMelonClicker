@@ -1,9 +1,9 @@
 // ============ PART 3: админка, промокоды, чат, профили, значки, MD3-формы ============
-let isAdm = false, myBadges = "", lastBc = 0, onlineN = 0;
+let isAdm = false, myId = 0, myBadges = "", lastBc = 0, onlineN = 0;
 const _api0 = api;
 api = async function (path, body) {
   const r = await _api0(path, body);
-  if (path === "auth" && r && !r.error) { isAdm = !!r.admin; myBadges = r.badges || ""; }
+  if (path === "auth" && r && !r.error) { isAdm = !!r.admin; myId = r.id || 0; myBadges = r.badges || ""; }
   return r;
 };
 
@@ -442,49 +442,62 @@ A.catinfo = function (e) {
 A.catequip = function (e) { closeModal(); A.equip(e); };
 
 let wsSub = 0, wsRar = 0, wsImg = "", wsMine = null, wsPend = null, ideaData = null; const wsAR = {};
+let wsLk = {cat: {}, idea: {}}, wsMyLk = {cat: {}, idea: {}};
 async function wsLoad() {
   const m = await api("uc_mine", {}); wsMine = m.rows || [];
-  if (isAdm) { const q = await api("uc_pending", {}); wsPend = q.rows || []; (wsPend).forEach(x => { if (KEEP["wn" + x.id] === undefined) KEEP["wn" + x.id] = x.name; }); }
+  if (isAdm) { const q = await api("uc_pending", {}); wsPend = q.rows || []; (wsPend).forEach(x => { if (KEEP["wn" + x.id] === undefined) KEEP["wn" + x.id] = x.name; if (KEEP["wg" + x.id] === undefined) KEEP["wg" + x.id] = String(x.ask || 0); }); }
   ideaData = await api("idea_list", {});
+  const l = await api("ws_likes", {}); if (l && l.rows) { wsLk = {cat: {}, idea: {}}; wsMyLk = {cat: {}, idea: {}}; l.rows.forEach(x => { if (wsLk[x.k]) wsLk[x.k][x.cid] = x.n; }); (l.mine || []).forEach(x => { if (wsMyLk[x.k]) wsMyLk[x.k][x.cid] = 1; }); }
   if (tab === 5 && moreSub === 4) render();
 }
 const wsRarChips = (cur, act, id) => `<div style="display:flex;gap:6px;flex-wrap:wrap;margin:6px 0">${RARS.slice(0, act === "wsadr" || act === "ucrar" ? 10 : 7).map((R, r) => `<button class="chip ${cur === r ? "p" : ""}" style="border:0;font-family:inherit;color:${cur === r ? "" : RC[r]}" data-a="${act}" data-v="${r}" data-i="${id}">${R[0]}</button>`).join("")}</div>`;
 const STT = {new: "На проверке", ok: "Одобрено", rej: "Отклонено"};
+const wsLike = (k, id) => `<button class="chip ${wsMyLk[k][id] ? "p" : ""}" style="border:0;font-family:inherit" data-a="wslike" data-k="${k}" data-i="${id}">${wsMyLk[k][id] ? "♥" : "♡"} ${wsLk[k][id] || 0}</button>`;
 function tWorkshop() {
-  let h = `<div class="seg"><button class="${wsSub === 0 ? "on" : ""}" data-a="wssub" data-i="0">Коты</button><button class="${wsSub === 1 ? "on" : ""}" data-a="wssub" data-i="1">Идеи</button></div>`;
+  const nP = isAdm ? (wsPend ? wsPend.length : 0) + (ideaData && ideaData.pend ? ideaData.pend.length : 0) : 0;
+  const tabs = [["Коты", 0], ["Идеи", 1], ["Создать", 2]]; if (isAdm) tabs.push(["Заявки" + (nP ? " · " + nP : ""), 3]);
+  if (wsSub === 3 && !isAdm) wsSub = 0;
+  let h = `<div class="seg">${tabs.map(t => `<button class="${wsSub === t[1] ? "on" : ""}" data-a="wssub" data-i="${t[1]}">${t[0]}</button>`).join("")}</div>`;
   if (wsSub === 0) {
-    h += `<div class="card col"><div class="t1" style="color:var(--pri)">Предложить кота</div><div class="t2" style="font-size:12px">Загрузи картинку, придумай название и предложи редкость. Админ проверит и может изменить название и редкость. Если одобрят, кот появится в игре с твоим именем создателя.</div><input data-keep="wsname" placeholder="Название кота" maxlength="24">${wsRarChips(wsRar, "wsrar", 0)}<div style="display:flex;align-items:center;gap:10px"><label class="btn o" for="wsfile">${wsImg ? "Другая картинка" : "Выбрать картинку"}</label><input type="file" id="wsfile" accept="image/*" hidden>${wsImg ? `<img src="${wsImg}" style="width:72px;height:72px;border-radius:14px;object-fit:cover">` : ""}</div>${btn("Отправить на проверку", "wssend")}</div>`;
-    if (isAdm) {
-      h += `<div class="sec">Заявки на модерации${wsPend ? " · " + wsPend.length : ""}</div>`;
-      if (!wsPend) h += `<div class="t2" style="text-align:center;margin:12px">Загружаю…</div>`;
-      else if (!wsPend.length) h += `<div class="t2" style="text-align:center;margin:12px">Заявок нет</div>`;
-      else wsPend.forEach(x => { const cr = wsAR[x.id] !== undefined ? wsAR[x.id] : x.rar; h += `<div class="card col"><div style="display:flex;gap:12px;align-items:center"><img src="/ucat/${x.id}.jpg" style="width:84px;height:84px;border-radius:16px;object-fit:cover;flex:none"><div class="grow"><div class="t2" style="margin:0;font-size:12px">от <b>${esc(x.uname)}</b></div><div class="t2" style="margin:2px 0 0;font-size:12px">Предложил: ${esc(x.name)} · <span style="color:${RC[x.rar]}">${RARS[x.rar][0]}</span></div></div></div><input data-keep="wn${x.id}" placeholder="Название" maxlength="24">${wsRarChips(cr, "wsadr", x.id)}<div style="display:flex;gap:8px">${btn("Отклонить", "ucno", `data-i="${x.id}"`, "o")}${btn("Одобрить", "ucok", `data-i="${x.id}"`)}</div></div>`; });
-    }
-    if (wsMine && wsMine.length) { h += `<div class="sec">Мои заявки</div>` + wsMine.map(x => `<div class="card"><div class="grow"><div class="t1" style="font-size:14px">${esc(x.name)}</div><div class="t2" style="font-size:12px">${RARS[x.rar][0]}</div></div><span class="chip ${x.status === "ok" ? "p" : ""}">${STT[x.status] || x.status}</span></div>`).join(""); }
-    const ucs = ITEMS.map((it, i) => i >= BASE_N && !it[7] && (isAdm || !it[6]) ? i : -1).filter(i => i >= 0);
-    h += `<div class="sec">Коты игроков${ucs.length ? " · " + ucs.length : ""}</div>`;
-    h += ucs.length ? `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">${ucs.map(i => `<div class="cell" data-a="catinfo" data-i="${i}" style="padding:8px 4px">${catEl(i, 76, {})}<span style="color:${RC[ITEMS[i][2]]}">${esc(ITEMS[i][1])}</span><span style="color:var(--onv);font-weight:500">${esc(ITEMS[i][4])}</span></div>`).join("")}</div>` : `<div class="t2" style="text-align:center;margin:12px">Пока нет котов от игроков. Будь первым!</div>`;
-  } else {
-    h += `<div class="card col"><div class="t1" style="color:var(--pri)">Предложить идею</div><div class="t2" style="font-size:12px">Если админ добавит твою идею в игру, ты получишь значок «Гений».</div><textarea data-keep="idea" rows="3" maxlength="300" placeholder="Что добавить в игру?"></textarea>${btn("Отправить идею", "ideasend")}</div>`;
-    const d = ideaData;
+    const ucs = ITEMS.map((it, i) => i >= BASE_N && !it[7] && (isAdm || !it[6]) ? i : -1).filter(i => i >= 0).sort((a, b) => (wsLk.cat[ITEMS[b][5]] || 0) - (wsLk.cat[ITEMS[a][5]] || 0) || b - a);
+    h += `<div class="t2" style="font-size:12px;margin:2px 4px 8px">Коты, которых придумали игроки. Ставь ♥ понравившимся: самые любимые поднимаются вверх.</div>`;
+    h += ucs.length ? `<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">${ucs.map((i, n) => { const it = ITEMS[i], lk = it[6] ? "" : (it[3] === myId ? `<span class="chip" style="border:0">♥ ${wsLk.cat[it[5]] || 0}</span>` : wsLike("cat", it[5])); return `<div class="card col" style="align-items:center;gap:6px;padding:12px 8px"><div data-a="catinfo" data-i="${i}" style="position:relative">${catEl(i, 110, {})}${n < 3 && (wsLk.cat[it[5]] || 0) > 0 ? `<span style="position:absolute;top:-4px;left:-4px;background:var(--pri);color:#000;border-radius:10px;padding:1px 7px;font-size:11px;font-weight:700">#${n + 1}</span>` : ""}</div><div class="t1" style="font-size:14px;text-align:center;color:${RC[it[2]]}">${esc(it[1])}</div><div class="t2" style="margin:0;font-size:11px">${it[6] ? "MDMelon" : esc(it[4] || "Игрок")}</div>${lk}</div>`; }).join("")}</div>` : `<div class="t2" style="text-align:center;margin:20px">Пока нет котов от игроков. Будь первым: вкладка «Создать».</div>`;
+  } else if (wsSub === 1) {
+    const d = ideaData; h += `<div class="t2" style="font-size:12px;margin:2px 4px 8px">Идеи, которые добавили в игру. Ставь ♥ лучшим.</div>`;
     if (!d) return h + `<div class="t2" style="text-align:center;margin:12px">Загружаю…</div>`;
-    if (isAdm && d.pend && d.pend.length) h += `<div class="sec">Идеи на рассмотрении · ${d.pend.length}</div>` + d.pend.map(x => `<div class="card col"><div class="t2" style="margin:0;font-size:12px">от <b>${esc(x.uname)}</b></div><div style="font-size:14px;white-space:pre-wrap">${esc(x.text)}</div><div style="display:flex;gap:8px">${btn("Отклонить", "ideano", `data-i="${x.id}"`, "o")}${btn("Добавить · Гений", "ideaok", `data-i="${x.id}"`)}</div></div>`).join("");
-    if (d.mine && d.mine.length) h += `<div class="sec">Мои идеи</div>` + d.mine.map(x => `<div class="card"><div class="grow t2" style="margin:0;font-size:13px;white-space:pre-wrap">${esc(x.text)}</div><span class="chip">${STT[x.status] || x.status}</span></div>`).join("");
-    h += `<div class="sec">Добавленные идеи</div>` + (d.ok && d.ok.length ? d.ok.map(x => `<div class="card">${bdg("g", 20)}<div class="grow"><div style="font-size:14px;white-space:pre-wrap">${esc(x.text)}</div><div class="t2" style="margin:2px 0 0;font-size:11px">${esc(x.uname)}</div></div></div>`).join("") : `<div class="t2" style="text-align:center;margin:12px">Пока ни одной</div>`);
+    const ok = (d.ok || []).slice().sort((a, b) => (wsLk.idea[b.id] || 0) - (wsLk.idea[a.id] || 0) || b.id - a.id);
+    h += ok.length ? ok.map(x => `<div class="card">${bdg("g", 20)}<div class="grow"><div style="font-size:14px;white-space:pre-wrap">${esc(x.text)}</div><div class="t2" style="margin:2px 0 0;font-size:11px">${esc(x.uname)}</div></div>${x.uid === myId ? "" : wsLike("idea", x.id)}</div>`).join("") : `<div class="t2" style="text-align:center;margin:20px">Пока ни одной добавленной идеи.</div>`;
+  } else if (wsSub === 2) {
+    h += `<div class="card col" style="border:1px solid rgba(255,82,82,.35)"><div class="t1" style="color:#ff8a80">Правила мастерской</div><div class="t2" style="font-size:12px;margin:0">Принимаем только то, что <b>по теме игры</b>: коты (в стиле игры) и идеи про MDMelonClicker.<br>Не одобряю: 18+, оскорбления, политику, чужие логотипы и рисунки, пустые или случайные картинки, спам.<br>Не по теме — отклоню.</div></div>`;
+    h += `<div class="card col"><div class="t1" style="color:var(--pri)">Новый кот</div><input data-keep="wsname" placeholder="Название кота" maxlength="24"><div class="t2" style="margin:2px 0 0;font-size:12px">Редкость (админ может изменить)</div>${wsRarChips(wsRar, "wsrar", 0)}<div class="t2" style="margin:2px 0 0;font-size:12px">Сколько 💎 хочешь за кота (0–500, админ может изменить)</div><input data-keep="wsask" inputmode="numeric" placeholder="Например 50" maxlength="3"><div style="display:flex;align-items:center;gap:10px"><label class="btn o" for="wsfile">${wsImg ? "Другая картинка" : "Выбрать картинку"}</label><input type="file" id="wsfile" accept="image/*" hidden>${wsImg ? `<img src="${wsImg}" style="width:72px;height:72px;border-radius:14px;object-fit:cover">` : ""}</div>${btn("Отправить на проверку", "wssend")}</div>`;
+    h += `<div class="card col"><div class="t1" style="color:var(--pri)">Новая идея</div><div class="t2" style="font-size:12px;margin:0">Если админ добавит идею в игру, получишь значок «Гений».</div><textarea data-keep="idea" rows="3" maxlength="300" placeholder="Что добавить в игру?"></textarea>${btn("Отправить идею", "ideasend")}</div>`;
+    const my = [].concat((wsMine || []).map(x => `<div class="card"><div class="grow"><div class="t1" style="font-size:14px">🐱 ${esc(x.name)}</div><div class="t2" style="font-size:12px;margin:0">${RARS[x.rar][0]}${x.status === "ok" ? (x.reward ? " · награда 💎" + x.reward : "") : x.ask ? " · просишь 💎" + x.ask : ""}</div></div><span class="chip ${x.status === "ok" ? "p" : ""}">${STT[x.status] || x.status}</span></div>`), ((ideaData && ideaData.mine) || []).map(x => `<div class="card"><div class="grow t2" style="margin:0;font-size:13px;white-space:pre-wrap">💡 ${esc(x.text)}</div><span class="chip">${STT[x.status] || x.status}</span></div>`));
+    if (my.length) h += `<div class="sec">Мои заявки</div>` + my.join("");
+  } else {
+    h += `<div class="sec">Коты на проверке${wsPend ? " · " + wsPend.length : ""}</div>`;
+    if (!wsPend) h += `<div class="t2" style="text-align:center;margin:12px">Загружаю…</div>`;
+    else if (!wsPend.length) h += `<div class="t2" style="text-align:center;margin:12px">Заявок нет</div>`;
+    else wsPend.forEach(x => { const cr = wsAR[x.id] !== undefined ? wsAR[x.id] : x.rar; h += `<div class="card col"><div style="display:flex;gap:12px;align-items:center"><img src="/ucat/${x.id}.jpg" style="width:84px;height:84px;border-radius:16px;object-fit:cover;flex:none"><div class="grow"><div class="t2" style="margin:0;font-size:12px">от <b>${esc(x.uname)}</b></div><div class="t2" style="margin:2px 0 0;font-size:12px">${esc(x.name)} · <span style="color:${RC[x.rar]}">${RARS[x.rar][0]}</span> · просит 💎${x.ask || 0}</div></div></div><input data-keep="wn${x.id}" placeholder="Название" maxlength="24">${wsRarChips(cr, "wsadr", x.id)}<div class="t2" style="margin:0;font-size:12px">Награда в 💎</div><input data-keep="wg${x.id}" inputmode="numeric" placeholder="0" maxlength="5"><div style="display:flex;gap:8px">${btn("Отклонить", "ucno", `data-i="${x.id}"`, "o")}${btn("Одобрить", "ucok", `data-i="${x.id}"`)}</div></div>`; });
+    const d = ideaData; h += `<div class="sec">Идеи на проверке${d && d.pend ? " · " + d.pend.length : ""}</div>`;
+    h += d && d.pend && d.pend.length ? d.pend.map(x => `<div class="card col"><div class="t2" style="margin:0;font-size:12px">от <b>${esc(x.uname)}</b></div><div style="font-size:14px;white-space:pre-wrap">${esc(x.text)}</div><div style="display:flex;gap:8px">${btn("Отклонить", "ideano", `data-i="${x.id}"`, "o")}${btn("Добавить · Гений", "ideaok", `data-i="${x.id}"`)}</div></div>`).join("") : `<div class="t2" style="text-align:center;margin:12px">Идей нет</div>`;
   }
   return h;
 }
+A.wslike = async function (e) {
+  const k = e.dataset.k, id = +e.dataset.i; const r = await api("ws_like", {k, id}); if (!r || r.error) return toast((r && r.error) || "Нет связи");
+  if (r.liked) wsMyLk[k][id] = 1; else delete wsMyLk[k][id]; wsLk[k][id] = r.n; render();
+};
 A.wssub = function (e) { wsSub = +e.dataset.i; render(); };
 A.wsrar = function (e) { wsRar = +e.dataset.v; render(); };
 A.wsadr = function (e) { wsAR[+e.dataset.i] = +e.dataset.v; render(); };
 A.wssend = async function () {
   if (!wsImg) return toast("Выбери картинку");
-  const r = await api("uc_submit", {name: KEEP.wsname || "", rar: wsRar, img: wsImg}); if (r.error) return toast(r.error);
-  toast("Заявка отправлена на проверку"); wsImg = ""; KEEP.wsname = ""; wsLoad(); render();
+  const r = await api("uc_submit", {name: KEEP.wsname || "", rar: wsRar, img: wsImg, ask: parseInt(KEEP.wsask) || 0}); if (r.error) return toast(r.error);
+  toast("Заявка отправлена на проверку"); wsImg = ""; KEEP.wsname = ""; KEEP.wsask = ""; wsLoad(); render();
 };
 A.ucok = async function (e) {
   const id = +e.dataset.i, x = (wsPend || []).find(q => q.id === id); if (!x) return;
-  const r = await api("uc_approve", {id, name: KEEP["wn" + id] || x.name, rar: wsAR[id] !== undefined ? wsAR[id] : x.rar}); if (r.error) return toast(r.error);
+  const r = await api("uc_approve", {id, name: KEEP["wn" + id] || x.name, rar: wsAR[id] !== undefined ? wsAR[id] : x.rar, gems: parseInt(KEEP["wg" + id]) || 0}); if (r.error) return toast(r.error);
   toast("Кот одобрен"); await wsLoad(); await loadUcats(); render();
 };
 A.ucno = async function (e) { const r = await api("uc_reject", {id: +e.dataset.i}); if (r.error) return toast(r.error); toast("Заявка отклонена"); wsLoad(); };

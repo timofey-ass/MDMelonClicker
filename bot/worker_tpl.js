@@ -46,6 +46,8 @@ async function init(db) {
   ]);
   for (const c of ["badges TEXT DEFAULT ''", "banned INTEGER DEFAULT 0", "seen INTEGER DEFAULT 0", "un TEXT DEFAULT ''"]) { try { await db.prepare("ALTER TABLE users ADD COLUMN " + c).run(); } catch (e) {} }
   try { await db.prepare("ALTER TABLE ucats ADD COLUMN bc INTEGER DEFAULT 0").run(); } catch (e) {}
+  for (const c of ["ask INTEGER DEFAULT 0", "reward INTEGER DEFAULT 0"]) { try { await db.prepare("ALTER TABLE ucats ADD COLUMN " + c).run(); } catch (e) {} }
+  try { await db.prepare("CREATE TABLE IF NOT EXISTS wslikes (k TEXT, cid INTEGER, uid INTEGER, PRIMARY KEY (k, cid, uid))").run(); } catch (e) {}
   try { await db.prepare("CREATE UNIQUE INDEX IF NOT EXISTS ucats_bc ON ucats(bc) WHERE bc > 0").run(); } catch (e) {}
   ready = true;
 }
@@ -377,29 +379,32 @@ async function api(path, req, env) {
     const nm = String(b.name || "").trim().replace(/\s+/g, " ").slice(0, 24), rar = Math.floor(Number(b.rar)), img = String(b.img || "");
     if (nm.length < 2) return J({error: "Название от 2 символов"});
     if (!(rar >= 0 && rar <= 6)) return J({error: "Неверная редкость"});
+    const ask = Math.max(0, Math.min(500, Math.floor(Number(b.ask) || 0)));
     if (!img.startsWith("data:image/jpeg;base64,") || img.length > 220000) return J({error: "Нужна картинка (JPEG до ~150 КБ)"});
     const cnt = (await db.prepare("SELECT COUNT(*) AS c FROM ucats WHERE uid=? AND status='new'").bind(id).first()).c;
     if (cnt >= 3) return J({error: "Не больше 3 заявок на проверке"});
-    await db.prepare("INSERT INTO ucats (uid,uname,name,rar,img,ts) VALUES (?,?,?,?,?,?)").bind(id, name, nm, rar, img.slice(23), now).run();
+    await db.prepare("INSERT INTO ucats (uid,uname,name,rar,img,ts,ask) VALUES (?,?,?,?,?,?,?)").bind(id, name, nm, rar, img.slice(23), now, ask).run();
     if (!adm0) tg0(ADMIN, "🐱 Новая заявка в мастерскую от " + name + ": " + nm);
     return J({ok: true});
   }
   if (path === "uc_mine") {
-    const rows = (await db.prepare("SELECT id,name,rar,status FROM ucats WHERE uid=? ORDER BY id DESC LIMIT 20").bind(id).all()).results;
+    const rows = (await db.prepare("SELECT id,name,rar,status,ask,reward FROM ucats WHERE uid=? ORDER BY id DESC LIMIT 20").bind(id).all()).results;
     return J({rows});
   }
   if (path === "uc_pending" && adm0) {
-    const rows = (await db.prepare("SELECT id,uid,uname,name,rar FROM ucats WHERE status='new' ORDER BY id LIMIT 30").all()).results;
+    const rows = (await db.prepare("SELECT id,uid,uname,name,rar,ask FROM ucats WHERE status='new' ORDER BY id LIMIT 30").all()).results;
     return J({rows});
   }
   if (path === "uc_approve" && adm0) {
     const nm = String(b.name || "").trim().replace(/\s+/g, " ").slice(0, 24), rar = Math.floor(Number(b.rar)), c = await db.prepare("SELECT * FROM ucats WHERE id=? AND status='new'").bind(Number(b.id)).first();
     if (!c) return J({error: "Заявка не найдена"}); if (nm.length < 2 || !(rar >= 0 && rar <= 9)) return J({error: "Неверные данные"});
     const idx = (await db.prepare("SELECT COALESCE(MAX(idx),?-1)+1 AS i FROM ucats WHERE idx IS NOT NULL").bind(N_ITEMS).first()).i;
-    const r = await db.prepare("UPDATE ucats SET status='ok', name=?, rar=?, idx=? WHERE id=? AND status='new'").bind(nm, rar, idx, c.id).run();
+    const gm = Math.max(0, Math.min(10000, Math.floor(b.gems === undefined ? (c.ask || 0) : Number(b.gems) || 0)));
+    const r = await db.prepare("UPDATE ucats SET status='ok', name=?, rar=?, idx=?, reward=? WHERE id=? AND status='new'").bind(nm, rar, idx, gm, c.id).run();
     if (r.meta.changes !== 1) return J({error: "Уже обработано"});
     await db.prepare("INSERT INTO grants (uid,kind,a,b,ts) VALUES (?,?,?,?,?)").bind(c.uid, "cat", idx, 1, now).run();
-    tg0(c.uid, "✅ Твой кот «" + nm + "» одобрен и добавлен в игру! Он уже у тебя в коллекции.");
+    if (gm > 0) await db.prepare("INSERT INTO grants (uid,kind,a,b,ts) VALUES (?,?,?,?,?)").bind(c.uid, "gems", gm, 0, now).run();
+    tg0(c.uid, "✅ Твой кот «" + nm + "» одобрен и добавлен в игру! Он уже у тебя в коллекции." + (gm > 0 ? " Награда: " + gm + " кристаллов." : ""));
     return J({ok: true, idx});
   }
   if (path === "uc_setrar" && adm0) {
@@ -428,8 +433,22 @@ async function api(path, req, env) {
     if (!adm0) tg0(ADMIN, "💡 Новая идея от " + name + ": " + tx);
     return J({ok: true});
   }
+  if (path === "ws_likes") {
+    const rows = (await db.prepare("SELECT k,cid,COUNT(*) AS n FROM wslikes GROUP BY k,cid").all()).results;
+    const mine = (await db.prepare("SELECT k,cid FROM wslikes WHERE uid=?").bind(id).all()).results;
+    return J({rows, mine});
+  }
+  if (path === "ws_like") {
+    const k = b.k === "idea" ? "idea" : "cat", cid = Math.floor(Number(b.id));
+    const t = k === "cat" ? await db.prepare("SELECT uid FROM ucats WHERE id=? AND status='ok' AND COALESCE(bc,0)=0").bind(cid).first() : await db.prepare("SELECT uid FROM ideas WHERE id=? AND status='ok'").bind(cid).first();
+    if (!t) return J({error: "Не найдено"}); if (t.uid === id) return J({error: "Свои работы лайкать нельзя"});
+    const ex = await db.prepare("SELECT 1 AS x FROM wslikes WHERE k=? AND cid=? AND uid=?").bind(k, cid, id).first();
+    if (ex) await db.prepare("DELETE FROM wslikes WHERE k=? AND cid=? AND uid=?").bind(k, cid, id).run(); else await db.prepare("INSERT OR IGNORE INTO wslikes (k,cid,uid) VALUES (?,?,?)").bind(k, cid, id).run();
+    const n = (await db.prepare("SELECT COUNT(*) AS c FROM wslikes WHERE k=? AND cid=?").bind(k, cid).first()).c;
+    return J({ok: true, liked: !ex, n});
+  }
   if (path === "idea_list") {
-    const ok = (await db.prepare("SELECT id,uname,text FROM ideas WHERE status='ok' ORDER BY id DESC LIMIT 20").all()).results;
+    const ok = (await db.prepare("SELECT id,uid,uname,text FROM ideas WHERE status='ok' ORDER BY id DESC LIMIT 60").all()).results;
     const mine = (await db.prepare("SELECT id,text,status FROM ideas WHERE uid=? AND status!='ok' ORDER BY id DESC LIMIT 10").bind(id).all()).results;
     const pend = adm0 ? (await db.prepare("SELECT id,uid,uname,text FROM ideas WHERE status='new' ORDER BY id LIMIT 30").all()).results : [];
     return J({ok, mine, pend});
