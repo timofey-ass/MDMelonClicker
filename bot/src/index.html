@@ -370,8 +370,9 @@ body.bmdark::before{display:none}
 @keyframes bcfl{from{opacity:.95}to{opacity:0}}
 .bkb{display:none!important}#nav .pill{max-width:50px}#nav.bk button:not(.nbk){display:none}#nav.bk .nbk .pill{max-width:none;height:48px;border-radius:24px;background:var(--prc);color:var(--onprc)}#nav.bk .nbk{font-size:11px!important}#nav button{font-size:10px!important;min-width:0;letter-spacing:-.2px}
 .drw{position:fixed;inset:0;z-index:70;pointer-events:none}
-.drs{position:absolute;inset:0;background:rgba(0,0,0,.55);opacity:0;transition:opacity .25s}
-.drp{position:absolute;left:0;top:0;bottom:0;width:min(84%,330px);background:var(--surf);border-radius:0 28px 28px 0;padding:calc(28px + env(safe-area-inset-top)) 0 20px;transform:translateX(-104%);transition:transform .3s cubic-bezier(.2,.9,.3,1);overflow-y:auto;display:flex;flex-direction:column;box-shadow:6px 0 30px rgba(0,0,0,.4)}
+.drs{position:absolute;inset:0;background:rgba(0,0,0,.35);opacity:0;transition:opacity .25s}
+.drp{position:absolute;right:0;top:0;bottom:0;width:min(84%,330px);background:var(--surf);border-radius:28px 0 0 28px;padding:calc(28px + env(safe-area-inset-top)) 0 20px;transform:translateX(104%);transition:transform .3s cubic-bezier(.2,.9,.3,1);overflow-y:auto;display:flex;flex-direction:column;box-shadow:-6px 0 30px rgba(0,0,0,.4)}
+#app{transition:transform .3s cubic-bezier(.2,.9,.3,1),border-radius .3s;transform-origin:50% 50%}body.drwo #app{transform:translateX(-72px) scale(.93);border-radius:26px;overflow:hidden}
 .drw.o{pointer-events:auto}.drw.o .drs{opacity:1}.drw.o .drp{transform:none}
 .drh{display:flex;align-items:flex-start;justify-content:space-between;padding:0 20px}
 .dra{width:76px;height:76px;border-radius:50%;background:var(--prc);color:var(--onprc);display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:700;overflow:hidden}
@@ -2367,8 +2368,8 @@ function drwFill() {
     <div class="drv">MDMelonClicker v${CHANGES[0][0]}</div>`;
 }
 function drwOpen(on) {
-  if (!drwEl) { drwEl = document.createElement("div"); drwEl.className = "drw"; drwEl.innerHTML = `<div class="drs" data-a="drw"></div><div class="drp"></div>`; document.body.appendChild(drwEl); let sx = 0; drwEl.addEventListener("touchstart", e => { sx = e.touches[0].clientX; }, {passive: true}); drwEl.addEventListener("touchend", e => { if (e.changedTouches[0].clientX - sx < -60) drwOpen(false); }, {passive: true}); }
-  if (on) drwFill(); void drwEl.offsetWidth; drwEl.classList.toggle("o", on); hap("light");
+  if (!drwEl) { drwEl = document.createElement("div"); drwEl.className = "drw"; drwEl.innerHTML = `<div class="drs" data-a="drw"></div><div class="drp"></div>`; document.body.appendChild(drwEl); let sx = 0; drwEl.addEventListener("touchstart", e => { sx = e.touches[0].clientX; }, {passive: true}); drwEl.addEventListener("touchend", e => { if (e.changedTouches[0].clientX - sx > 60) drwOpen(false); }, {passive: true}); }
+  if (on) drwFill(); void drwEl.offsetWidth; drwEl.classList.toggle("o", on); document.body.classList.toggle("drwo", on); hap("light");
 }
 A.drw = function () { drwOpen(!(drwEl && drwEl.classList.contains("o"))); };
 A.drwgo = function (e) { drwOpen(false); A.mnu(e); };

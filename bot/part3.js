@@ -1223,8 +1223,8 @@ function drwFill() {
     <div class="drv">MDMelonClicker v${CHANGES[0][0]}</div>`;
 }
 function drwOpen(on) {
-  if (!drwEl) { drwEl = document.createElement("div"); drwEl.className = "drw"; drwEl.innerHTML = `<div class="drs" data-a="drw"></div><div class="drp"></div>`; document.body.appendChild(drwEl); let sx = 0; drwEl.addEventListener("touchstart", e => { sx = e.touches[0].clientX; }, {passive: true}); drwEl.addEventListener("touchend", e => { if (e.changedTouches[0].clientX - sx < -60) drwOpen(false); }, {passive: true}); }
-  if (on) drwFill(); void drwEl.offsetWidth; drwEl.classList.toggle("o", on); hap("light");
+  if (!drwEl) { drwEl = document.createElement("div"); drwEl.className = "drw"; drwEl.innerHTML = `<div class="drs" data-a="drw"></div><div class="drp"></div>`; document.body.appendChild(drwEl); let sx = 0; drwEl.addEventListener("touchstart", e => { sx = e.touches[0].clientX; }, {passive: true}); drwEl.addEventListener("touchend", e => { if (e.changedTouches[0].clientX - sx > 60) drwOpen(false); }, {passive: true}); }
+  if (on) drwFill(); void drwEl.offsetWidth; drwEl.classList.toggle("o", on); document.body.classList.toggle("drwo", on); hap("light");
 }
 A.drw = function () { drwOpen(!(drwEl && drwEl.classList.contains("o"))); };
 A.drwgo = function (e) { drwOpen(false); A.mnu(e); };
