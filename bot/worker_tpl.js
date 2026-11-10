@@ -2,7 +2,8 @@ const HTML = __HTML__;
 const ATLAS = "https://raw.githubusercontent.com/timofey-ass/MDMelonClicker/HEAD/mdcats2.jpg";
 const BOT_USER = "mdmelonbot";
 const N_ITEMS = 103;
-const BC_CATS = [["Киллер в плаще", 3], ["Кот-дон", 3], ["Вор-домушник", 2], ["Торговец с рынка", 3], ["Контрабандный ящик", 2], ["Кот-алхимик", 3], ["Кот-чемодан", 2], ["Призрак рынка", 4], ["Золотой слиток", 4]];
+const BC_CATS = [["Киллер в плаще", 3], ["Кот-дон", 3], ["Вор-домушник", 2], ["Торговец с рынка", 3], ["Контрабандный ящик", 2], ["Кот-алхимик", 3], ["Кот-чемодан", 2], ["Призрак рынка", 4], ["Золотой слиток", 4], ["Золотой арбуз-лидер", 9]];
+const LB_HOLD = 72 * 3600, BC_LEADER = 10;
 const ADMIN = 1796286471;
 let ready = false;
 
@@ -33,6 +34,8 @@ async function init(db) {
     db.prepare("CREATE INDEX IF NOT EXISTS idx_total ON users(total)"),
     db.prepare("CREATE INDEX IF NOT EXISTS idx_offers ON offers(status)"),
     db.prepare("CREATE TABLE IF NOT EXISTS grants (id INTEGER PRIMARY KEY AUTOINCREMENT, uid INTEGER, kind TEXT, a REAL, b INTEGER, ts INTEGER)"),
+    db.prepare("CREATE TABLE IF NOT EXISTS lbhold (rank INTEGER PRIMARY KEY, uid INTEGER, since INTEGER)"),
+    db.prepare("CREATE TABLE IF NOT EXISTS lbrew (uid INTEGER PRIMARY KEY, ts INTEGER)"),
     db.prepare("CREATE TABLE IF NOT EXISTS promos (code TEXT PRIMARY KEY, kind TEXT, a REAL, b INTEGER, mx INTEGER, used INTEGER DEFAULT 0)"),
     db.prepare("CREATE TABLE IF NOT EXISTS promo_uses (code TEXT, uid INTEGER, PRIMARY KEY(code, uid))"),
     db.prepare("CREATE TABLE IF NOT EXISTS bcast (id INTEGER PRIMARY KEY AUTOINCREMENT, text TEXT, ts INTEGER)"),
@@ -80,6 +83,32 @@ const inv = (s, k) => s.inv[k] || 0;
 const add = (s, k, d) => { const v = inv(s, k) + d; if (v > 0) s.inv[k] = v; else delete s.inv[k]; };
 
 async function ucSig(db) { const r = await db.prepare("SELECT COUNT(*) AS c, COALESCE(SUM(rar*(idx%97+1)+idx),0) AS s FROM ucats WHERE status='ok'").first(); return r.c * 1000003 + r.s; }
+async function ensureBc(db, now) {
+  if ((await db.prepare("SELECT COUNT(*) AS c FROM ucats WHERE bc>0").first()).c < BC_CATS.length) {
+    for (let k = 0; k < BC_CATS.length; k++) { const c = BC_CATS[k]; await db.prepare("INSERT OR IGNORE INTO ucats (uid,uname,name,rar,img,status,idx,ts,bc) SELECT 0,'MDMelon',?,?,'','ok',1+(SELECT COALESCE(MAX(idx),?-1) FROM ucats WHERE idx IS NOT NULL),?,?").bind(c[0], c[1], N_ITEMS, now, k + 1).run(); }
+  }
+}
+async function lbTrack(db, env, now) {
+  const top = (await db.prepare("SELECT id FROM users WHERE total>0 ORDER BY total DESC LIMIT 3").all()).results;
+  const cur = (await db.prepare("SELECT rank,uid,since FROM lbhold").all()).results;
+  for (let r = 1; r <= 3; r++) {
+    const t = top[r - 1], c = cur.find(x => x.rank === r);
+    if (!t) { if (c) await db.prepare("DELETE FROM lbhold WHERE rank=?").bind(r).run(); continue; }
+    if (!c || c.uid !== t.id) await db.prepare("INSERT OR REPLACE INTO lbhold (rank,uid,since) VALUES (?,?,?)").bind(r, t.id, now).run();
+  }
+  const w = await db.prepare("SELECT uid,since FROM lbhold WHERE rank=1").first();
+  if (w && now - w.since >= LB_HOLD) {
+    const ins = await db.prepare("INSERT OR IGNORE INTO lbrew (uid,ts) VALUES (?,?)").bind(w.uid, now).run();
+    if (ins.meta.changes === 1) {
+      await ensureBc(db, now);
+      const cat = await db.prepare("SELECT idx FROM ucats WHERE bc=? AND idx IS NOT NULL").bind(BC_LEADER).first();
+      if (cat) await db.prepare("INSERT INTO grants (uid,kind,a,b,ts) VALUES (?,?,?,?,?)").bind(w.uid, "cat", cat.idx, 1, now).run();
+      const u = await db.prepare("SELECT badges FROM users WHERE id=?").bind(w.uid).first(); const bs = String((u && u.badges) || "");
+      if (!bs.includes("l")) await db.prepare("UPDATE users SET badges=? WHERE id=?").bind((bs + "l").slice(0, 6), w.uid).run();
+      if (env.BOT_TOKEN) await tgcall(env, "sendMessage", {chat_id: w.uid, text: "🏆 Ты продержался 3 дня на 1 месте в таблице лидеров! Тебе выдан Золотой арбуз-лидер и значок. Открой игру, чтобы забрать кота."}).catch(() => {});
+    }
+  }
+}
 async function api(path, req, env) {
   const db = env.DB; if (!db) return J({error: "Не подключена база DB"}, 500);
   await init(db);
@@ -129,7 +158,10 @@ async function api(path, req, env) {
     const rows = (await db.prepare("SELECT id,name,total,badges FROM users WHERE total>0 ORDER BY total DESC LIMIT 50").all()).results.map(r => ({...r, badges: bd(r.id, r.badges)}));
     const u = await getUser(db, id); let rank = 0;
     if (u) rank = (await db.prepare("SELECT COUNT(*)+1 AS r FROM users WHERE total>?").bind(u.total).first()).r;
-    return J({rows, rank});
+    await lbTrack(db, env, now);
+    const hold = (await db.prepare("SELECT rank,uid,since FROM lbhold ORDER BY rank").all()).results;
+    const done = (await db.prepare("SELECT COUNT(*) AS c FROM lbrew").first()).c;
+    return J({rows, rank, hold, done, now, need: LB_HOLD});
   }
   if (path === "offers") {
     const o = (await db.prepare("SELECT o.id,o.seller,o.sname,o.give,o.want,u.badges FROM offers o LEFT JOIN users u ON u.id=o.seller WHERE o.status='open' ORDER BY o.id DESC LIMIT 100").all()).results.map(r => ({...r, badges: bd(r.seller, r.badges)}));
@@ -478,9 +510,7 @@ async function api(path, req, env) {
     return J({amount});
   }
   if (path === "ucats") {
-    if ((await db.prepare("SELECT COUNT(*) AS c FROM ucats WHERE bc>0").first()).c < BC_CATS.length) {
-      await db.batch(BC_CATS.map((c, k) => db.prepare("INSERT OR IGNORE INTO ucats (uid,uname,name,rar,img,status,idx,ts,bc) SELECT 0,'MDMelon',?,?,'','ok',1+(SELECT COALESCE(MAX(idx),?-1) FROM ucats WHERE idx IS NOT NULL),?,?").bind(c[0], c[1], N_ITEMS, now, k + 1)));
-    }
+    await ensureBc(db, now);
     const rows = (await db.prepare("SELECT id,idx,name,rar,uid,uname,bc FROM ucats WHERE status='ok' ORDER BY idx").all()).results;
     const del = (await db.prepare("SELECT idx FROM ucats WHERE status='del' AND idx IS NOT NULL").all()).results.map(x => x.idx);
     return J({rows, del, sig: await ucSig(db)});
@@ -568,7 +598,7 @@ async function api(path, req, env) {
     await db.prepare("UPDATE ideas SET status=? WHERE id=?").bind(path === "idea_ok" ? "ok" : "rej", i.id).run();
     if (path === "idea_ok") {
       const u = await getUser(db, i.uid); const cur = String((u && u.badges) || "");
-      if (u && !cur.includes("g")) await db.prepare("UPDATE users SET badges=? WHERE id=?").bind((cur + "g").slice(0, 4), i.uid).run();
+      if (u && !cur.includes("g")) await db.prepare("UPDATE users SET badges=? WHERE id=?").bind((cur + "g").slice(0, 6), i.uid).run();
       tg0(i.uid, "💡 Твою идею добавили в игру! Тебе выдан значок «Гений».");
     }
     return J({ok: true});
@@ -576,6 +606,7 @@ async function api(path, req, env) {
   if (path === "poll") {
     if (maintT && id !== ADMIN) return J({maint: maintT});
     await db.prepare("UPDATE users SET seen=? WHERE id=?").bind(now, id).run();
+    try { const lt = await db.prepare("SELECT v FROM kv WHERE k='lbt'").first(); if (!lt || now - Number(lt.v) >= 60) { await db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES ('lbt',?)").bind(String(now)).run(); await lbTrack(db, env, now); } } catch (e) {}
     const g = (await db.prepare("SELECT id,kind,a,b FROM grants WHERE uid=? ORDER BY id LIMIT 50").bind(id).all()).results;
     for (const x of g) await db.prepare("DELETE FROM grants WHERE id=?").bind(x.id).run();
     const bc = await db.prepare("SELECT id,text FROM bcast WHERE id>? AND ts>? ORDER BY id DESC LIMIT 1").bind(Number(b.bc) || 0, now - 120).first();
@@ -681,7 +712,7 @@ async function api(path, req, env) {
     if (path === "adm_maint") { const on = !!b.on, text = String(b.text || "").trim().slice(0, 200) || "Скоро вернёмся, играть можно будет чуть позже."; await db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES ('maint',?)").bind(JSON.stringify({on, text})).run(); return J({ok: true, on, text}); }
     if (path === "adm_del") { await db.prepare("DELETE FROM chat WHERE id=?").bind(Number(b.id)).run(); return J({ok: true}); }
     if (path === "adm_ban") { await db.prepare("UPDATE users SET banned=? WHERE id=?").bind(b.on ? 1 : 0, Number(b.uid)).run(); if (b.on) await db.prepare("DELETE FROM chat WHERE uid=?").bind(Number(b.uid)).run(); return J({ok: true}); }
-    if (path === "adm_badges") { const v = String(b.badges || "").replace(/[^ctsg]/g, "").slice(0, 4); await db.prepare("UPDATE users SET badges=? WHERE id=?").bind(v, Number(b.uid)).run(); return J({ok: true, badges: bd(Number(b.uid), v)}); }
+    if (path === "adm_badges") { const v = String(b.badges || "").replace(/[^ctsgl]/g, "").slice(0, 6); await db.prepare("UPDATE users SET badges=? WHERE id=?").bind(v, Number(b.uid)).run(); return J({ok: true, badges: bd(Number(b.uid), v)}); }
     if (path === "adm_promo_new") {
       const code = String(b.code || "").trim().toUpperCase().replace(/[^A-Z0-9_А-Я-]/g, "").slice(0, 32), kind = String(b.kind);
       if (!code || !["pts", "gems", "cat"].includes(kind)) return J({error: "Неверные данные"});
