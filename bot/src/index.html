@@ -383,8 +383,17 @@ body.bmdark::before{display:none}
 .dri .ic{color:var(--pri)}.dri:active{background:var(--sch)}
 .drv{padding:12px 24px 0;font-size:12px;color:var(--out)}
 .ov{background:color-mix(in srgb,var(--surf) 94%,transparent)!important}
-.lbprize{background:linear-gradient(135deg,rgba(255,213,79,.2),rgba(255,152,0,.08));border:1px solid rgba(255,213,79,.35);gap:10px}
-.lbpimg{width:96px;height:96px;flex:none;border-radius:20px;background-size:cover;background-position:center;box-shadow:0 0 22px rgba(255,213,79,.55)}
+.lbprize{position:relative;overflow:hidden;gap:8px;padding:10px 12px;margin:8px 0;border:1px solid rgba(255,213,79,.55);background:linear-gradient(110deg,rgba(255,193,7,.18),rgba(255,236,150,.32) 40%,rgba(255,152,0,.16) 70%,rgba(255,193,7,.18));background-size:240% 100%;animation:lbbg 4s ease-in-out infinite;box-shadow:0 0 18px rgba(255,193,7,.25)}
+@keyframes lbbg{0%,100%{background-position:0 0}50%{background-position:100% 0}}
+.lbprize::after{content:"";position:absolute;top:-20%;bottom:-20%;width:46px;left:-70px;transform:skewX(-20deg);background:linear-gradient(90deg,transparent,rgba(255,255,255,.55),transparent);animation:lbsh 3.2s ease-in-out infinite;pointer-events:none}
+@keyframes lbsh{0%,40%{left:-70px}100%{left:115%}}
+.lbpimg{width:60px;height:60px;flex:none;border-radius:16px;background-size:cover;background-position:center;box-shadow:0 0 14px rgba(255,213,79,.7);animation:lbglow 2s ease-in-out infinite}
+@keyframes lbglow{50%{box-shadow:0 0 26px rgba(255,235,120,1)}}
+.lbtt{font-size:16px;font-weight:800;display:flex;align-items:center;gap:6px;background:linear-gradient(90deg,#ffb300,#fff3a0,#ffb300);background-size:200% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:lbtx 2.4s linear infinite}
+.lbtt .bdg{color:#ffd54f}
+@keyframes lbtx{to{background-position:-200% 0}}
+.lbsp{position:absolute;width:8px;height:8px;pointer-events:none;background:#fff;clip-path:polygon(50% 0,62% 38%,100% 50%,62% 62%,50% 100%,38% 62%,0 50%,38% 38%);opacity:0;animation:lbtw 2.4s ease-in-out infinite}
+@keyframes lbtw{0%,100%{opacity:0;transform:scale(.3) rotate(0)}50%{opacity:1;transform:scale(1.2) rotate(90deg)}}
 </style></head><body>
 <div id="load"><div class="lw"><div class="lglow"></div><div class="lm" id="lm">🍉</div><div class="lsh"></div></div><div class="lti">MDMelonClicker</div><div id="lt">Подключаюсь…</div><div class="tr"><i id="lbar"></i></div><div id="ltip"></div></div>
 <div id="app"><div id="top"><h1 id="ttl">MDMelonClicker</h1><span id="gemc"></span></div><div id="view"></div><div id="nav"></div></div>
@@ -1291,8 +1300,8 @@ const lbDur = s => { const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 6
 function lbPrize() {
   const need = lbData.need || 259200, h1 = (lbData.hold || []).find(x => x.rank === 1), row1 = lbData.rows[0], held = h1 ? lbHeld(h1) : 0, f = Math.min(1, held / need), mineLead = h1 && h1.uid === me.id, got = String(myBadges || "").includes("l");
   const img = ADM_IMG.replace("admin/0.jpg", "bc/9.jpg?v=1");
-  const st = got ? `<div style="color:var(--good);font-weight:700;font-size:13px">✓ Ты уже получил эту награду</div>` : mineLead ? `<div style="font-weight:700;font-size:13px;color:var(--gold)">Ты на 1 месте уже ${lbDur(held)}! Осталось ${lbDur(Math.max(0, need - held))}</div>` : h1 && row1 ? `<div class="t2" style="margin:0;font-size:12px">Сейчас на 1 месте: <b>${esc(row1.name)}</b> · ${lbDur(held)} из 3 д</div>` : `<div class="t2" style="margin:0;font-size:12px">Первое место свободно. Займи его!</div>`;
-  return `<div class="card col lbprize"><div style="display:flex;gap:14px;align-items:center"><div class="lbpimg" style="background-image:url(${img})"></div><div class="grow"><div class="t1" style="font-size:17px;color:var(--gold)">Золотой лидер</div><div class="t2" style="margin:3px 0 6px;font-size:12px">Продержись на 1 месте 3 дня и получи бесплатного Золотого кота и значок ${bdg("l", 14)}</div>${st}</div></div>${bar(f)}<div class="t2" style="margin:0;font-size:11px;text-align:center">Награду уже получили: ${lbData.done || 0}</div></div>`;
+  const st = got ? `<div style="color:var(--good);font-weight:700;font-size:12px">✓ Награда получена</div>` : mineLead ? `<div style="font-weight:700;font-size:12px;color:var(--gold)">Ты лидер ${lbDur(held)} · осталось ${lbDur(Math.max(0, need - held))}</div>` : h1 && row1 ? `<div class="t2" style="margin:0;font-size:11px">1 место: <b>${esc(row1.name)}</b> · ${lbDur(held)} из 3 д</div>` : `<div class="t2" style="margin:0;font-size:12px">Первое место свободно. Займи его!</div>`;
+  return `<div class="card col lbprize"><i class="lbsp" style="left:46%;top:10px"></i><i class="lbsp" style="left:72%;top:44px;animation-delay:.7s"></i><i class="lbsp" style="left:90%;top:12px;animation-delay:1.3s"></i><i class="lbsp" style="left:30%;top:58px;animation-delay:1.9s"></i><div style="display:flex;gap:10px;align-items:center"><div class="lbpimg" style="background-image:url(${img})"></div><div class="grow"><div class="lbtt">Золотой лидер ${bdg("l", 14)}</div><div class="t2" style="margin:1px 0 3px;font-size:11px;line-height:1.25">3 дня на 1 месте = Золотой кот и значок</div>${st}</div></div>${bar(f)}</div>`;
 }
 tTop = function () {
   let h = `<div class="seg"><button class="${sub === 0 ? "on" : ""}" data-a="sub" data-i="0">Лидеры</button><button class="${sub === 1 ? "on" : ""}" data-a="sub" data-i="1">Обмен</button><button class="${sub === 2 ? "on" : ""}" data-a="sub" data-i="2">Чат</button></div>`;
