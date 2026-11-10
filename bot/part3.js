@@ -407,10 +407,10 @@ masNext(20000);
 // ---------- «Ещё»: меню из пяти кнопок
 let moreSub = 0;
 const mbtn = (icon, label, k, cls) => `<button class="mbtn ${cls || ""}" data-a="mnu" data-k="${k}">${ic(icon, 24)}<span class="grow">${label}</span>${ic("arrow", 20)}</button>`;
-const mback = `<button class="btn t" data-a="mnu" data-k="back" style="margin:0 0 8px">← Ещё</button>`;
+const mback = `<button class="btn t bkb" data-a="mnu" data-k="back">← Назад</button>`;
 A.mnu = function (e) {
   const k = e.dataset.k;
-  if (k === "back") { moreSub = 0; tab = 5; }
+  if (k === "back") { moreSub = 0; tab = 0; }
   else if (k === "lead" || k === "trade" || k === "chat") { tab = 4; sub = k === "lead" ? 0 : k === "trade" ? 1 : 2; }
   else { tab = 5; moreSub = {set: 1, info: 2, adm: 3, ws: 4}[k]; if (k === "ws") wsLoad(); }
   render(); $("#view").scrollTop = 0;
@@ -429,7 +429,7 @@ tMore = function () {
       `<div class="card col"><div class="t1" style="color:var(--pri)">Что нового</div>${CHANGES.map(c => `<div style="font-size:13px;font-weight:700;margin-top:8px">v${c[0]}</div>${c[1].map(x => `<div class="t2" style="font-size:12px;margin-top:2px">• ${x}</div>`).join("")}`).join("")}</div>`;
   }
   const fn = ["Нет", "Снежинки", "Тыквы"], fv = [0, 1, 2]; SETS.forEach((x, i) => { if (S.sets.includes(x[0])) { fn.push(x[1]); fv.push(3 + i); } });
-  return mback + `<div class="card col"><div class="t1" style="color:var(--pri)">Оформление</div>${optRow("Тема", THEMES.map(t => t[0]), "th", THEMES.map((_, i) => i), LS("th", 0))}${optRow("Падающий фон", fn, "fall", fv, LS("fall", 0))}</div>` +
+  return mback + `<div class="card col"><div class="t1" style="color:var(--pri)">Оформление</div><div class="card click" style="margin:4px 0 0;padding:8px 0;background:none;border:0" data-a="ltheme"><div class="t1 grow" style="font-size:14px">Светлая тема</div><div class="sw ${LS("lt", 0) ? "on" : ""}"></div></div>${optRow("Цвет", THEMES.map(t => t[0]), "th", THEMES.map((_, i) => i), LS("th", 0))}${optRow("Падающий фон", fn, "fall", fv, LS("fall", 0))}</div>` +
     `<div class="card col"><div class="t1" style="color:var(--pri)">Игра</div>${tog("Вибрация", "hap", LS("hap", 1))}${tog("Звуки кейсов", "snd", LS("snd", 1))}${tog("Анимации клика", "fxt", LS("fxt", 1))}${tog("Анимации открытия кейсов", "fxc", LS("fxc", 1))}</div>` +
     `<div class="card col"><div class="t1" style="color:var(--pri)">Промокод</div><div style="display:flex;gap:8px"><input data-keep="promo" placeholder="Введи промокод" style="text-transform:uppercase">${btn("Ок", "promo")}</div></div>` +
     `<button class="btn t" data-a="reset" style="width:100%;justify-content:center;margin-top:4px">Сбросить весь прогресс</button>`;
@@ -662,7 +662,7 @@ A.czgo = async function (e) {
   render(); czInfo(); $("#view").scrollTop = 0;
 };
 tCasino = function () {
-  const back = `<button class="btn t" data-a="czgo" data-k="0" style="margin:0 0 8px">← Казино</button>`;
+  const back = `<button class="btn t bkb" data-a="czgo" data-k="0">← Казино</button>`;
   const jp = `<div class="czjpc"><div class="czjt">🎰 ДЖЕКПОТ</div><div class="czjp czjv">${cz.jp === null ? "…" : fmt(cz.jp)}</div><div id="czlast" class="czjs"></div></div>`;
   const bal = `<div class="card" style="padding:10px 16px"><span class="t2 grow" style="margin:0">Баланс</span><b id="czbal" style="font-size:18px">${fmt(S.pts)}</b></div>`;
   if (cz.sub === 0) return jp + burnCard() + `<button class="mbtn" data-a="czgo" data-k="1"><span style="font-size:28px">🎡</span><span class="grow">Рулетка<div class="t2" style="margin:0;font-size:12px;font-weight:500">Красное и чёрное ×2, зелёное ×24 и сектор с джекпотом</div></span>${ic("arrow", 20)}</button><button class="mbtn" data-a="czgo" data-k="2" style="height:70px"><span style="font-size:28px">🃏</span><span class="grow">Покер<div class="t2" style="margin:0;font-size:12px;font-weight:500">Простой: 5 карт, одна замена, раздаёт арбуз</div></span>${ic("arrow", 20)}</button><button class="mbtn" data-a="czgo" data-k="3" style="height:70px"><span style="font-size:28px">👥</span><span class="grow">Покер на двоих<div class="t2" style="margin:0;font-size:12px;font-weight:500">Создай столик или сядь за чужой, победитель забирает банк</div></span>${ic("arrow", 20)}</button><button class="mbtn" data-a="czgo" data-k="6" style="height:70px"><span style="font-size:28px">🎲</span><span class="grow">Кости-блеф на двоих<div class="t2" style="margin:0;font-size:12px;font-weight:500">Спрятанные кубики: заявляй, блефуй или скажи «Не верю!»</div></span>${ic("arrow", 20)}</button><div class="t2" style="margin:14px 6px;font-size:12px">Играть можно только на монеты. Выигрыш не идёт в таблицу лидеров и не считается за забег. Играй осторожно!</div>`;
@@ -789,7 +789,7 @@ const _tCas = tCasino;
 tCasino = function () {
   if (cz.sub < 3) return _tCas();
   const act4 = cz.sub === 4 && (!cz.t || cz.t.status === "wait" || cz.t.status === "play");
-  const back = act4 ? "" : `<button class="btn t" data-a="czgo" data-k="${cz.sub === 4 ? 3 : 0}" style="margin:0 0 8px">← ${cz.sub === 4 ? "К столикам" : "Казино"}</button>`;
+  const back = act4 ? "" : `<button class="btn t bkb" data-a="czgo" data-k="${cz.sub === 4 ? 3 : 0}" >← ${cz.sub === 4 ? "К столикам" : "Казино"}</button>`;
   const bal = `<div class="card" style="padding:10px 16px"><span class="t2 grow" style="margin:0">Баланс</span><b id="czbal" style="font-size:18px">${fmt(S.pts)}</b></div>`;
   if (cz.sub === 3) {
     const L = cz.lobby;
@@ -1027,7 +1027,7 @@ A.bcopen = function (e) {
 };
 tCasino = function () {
   if (cz.sub !== 5) return _tCas3();
-  const B = cz.bm, back = `<button class="btn t" data-a="czgo" data-k="0" style="margin:0 0 8px">← Казино</button>`;
+  const B = cz.bm, back = `<button class="btn t bkb" data-a="czgo" data-k="0">← Казино</button>`;
   let h = `<div class="bmpage${cz.bmFx ? " bmfx" : ""}">${back}${bmLogo}<div class="bmtalk"><div class="bmeyes2"><b></b><b></b></div>Псст… Кристаллы есть? Товар редкий, берут быстро. Завтра будет другой.</div>`;
   if (!B) return h + `<div class="t2" style="text-align:center;margin:30px">Спускаюсь…</div></div>`;
   h += `<div class="card" style="padding:10px 16px;background:#1a0d12"><span class="t2 grow" style="margin:0">Баланс</span><b style="font-size:18px">💎 ${fmt(S.gems)}</b></div>`;
@@ -1090,7 +1090,7 @@ const _tCasD = tCasino;
 tCasino = function () {
   if (cz.sub !== 6 && cz.sub !== 7) return _tCasD();
   const act7 = cz.sub === 7 && (!cz.dc || cz.dc.status === "wait" || cz.dc.status === "play");
-  const back = act7 ? "" : `<button class="btn t" data-a="czgo" data-k="${cz.sub === 7 ? 6 : 0}" style="margin:0 0 8px">← ${cz.sub === 7 ? "К столикам" : "Казино"}</button>`;
+  const back = act7 ? "" : `<button class="btn t bkb" data-a="czgo" data-k="${cz.sub === 7 ? 6 : 0}" >← ${cz.sub === 7 ? "К столикам" : "Казино"}</button>`;
   const bal = `<div class="card" style="padding:10px 16px"><span class="t2 grow" style="margin:0">Баланс</span><b id="czbal" style="font-size:18px">${fmt(S.pts)}</b></div>`;
   if (cz.sub === 6) {
     const L = cz.dlobby;
@@ -1195,3 +1195,37 @@ A.czgo = function (e) {
   if ((a4 && k !== 4) || (a7 && k !== 7)) return toast("Сначала закрой свой столик");
   return _czgoG.apply(this, arguments);
 };
+
+
+// ---------- 6.0.0: интерфейс
+IC.menu = '<path d="M4 7h16M4 12h16M4 17h16"/>'; IC.sun = '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>'; IC.moon = '<path d="M20 14.5A8 8 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5z"/>';
+const _stL = setTheme;
+setTheme = function (i) {
+  _stL(i); if (!LS("lt", 0)) { document.documentElement.style.colorScheme = "dark"; return; }
+  const h = THEMES[i][1] === null ? 28 : THEMES[i][1], r = document.documentElement.style;
+  const m = {"--surf": hsv(h, .05, .98), "--sc": hsv(h, .09, .95), "--sch": hsv(h, .14, .90), "--pri": hsv(h, .82, .56), "--onpri": "#ffffff", "--prc": hsv(h, .30, .96), "--onprc": hsv(h, .9, .22), "--on": hsv(h, .30, .12), "--onv": hsv(h, .22, .30), "--out": hsv(h, .14, .46)};
+  m["--g1"] = mix(m["--surf"], m["--pri"], .18); m["--g2"] = mix(m["--surf"], m["--pri"], .06);
+  for (const k in m) r.setProperty(k, m[k]); r.colorScheme = "light";
+  try { tg && (tg.setHeaderColor(m["--surf"]), tg.setBackgroundColor(m["--surf"])); } catch (e) {}
+};
+A.ltheme = function () { LSset("lt", LS("lt", 0) ? 0 : 1); setTheme(LS("th", 0)); drwFill(); render(); };
+buildNav = function () { $("#nav").innerHTML = NAVT.map(i => NAV[i]).map((n, k) => k === NAVT.length - 1 ? `<button data-a="drw"><span class="pill">${ic("menu", 24)}</span>Меню</button>` : `<button data-a="tab" data-i="${NAVT[k]}"><span class="pill">${ic(n[1], 24)}</span>${n[0]}</button>`).join(""); };
+buildNav();
+// боковая панель
+let drwEl = null;
+function drwFill() {
+  if (!drwEl) return; const u = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) || {}, lt = LS("lt", 0);
+  const av = u.photo_url ? `<img src="${esc(u.photo_url)}" style="width:100%;height:100%;object-fit:cover" onerror="this.remove()">` : esc((me.name || "?").trim().charAt(0).toUpperCase());
+  const it = (icon, label, k) => `<button class="dri" data-a="drwgo" data-k="${k}">${ic(icon, 26)}<span>${label}</span></button>`;
+  drwEl.querySelector(".drp").innerHTML = `<div class="drh"><div class="dra">${av}</div><button class="drt" data-a="ltheme" aria-label="Тема">${ic(lt ? "moon" : "sun", 26)}</button></div>
+    <div class="drn">${nm(me.name, myBadges)}</div><div class="dru">${u.username ? "@" + esc(u.username) : "ID " + me.id}</div>
+    <div class="drl">${it("podium", "Лидеры", "lead")}${it("swap", "Обмен", "trade")}${it("cat", "Чат", "chat")}${it("cube", "Мастерская", "ws")}<div class="drd"></div>${it("tune", "Настройки", "set")}${it("check", "Информация", "info")}${isAdm ? it("crown", "Админка", "adm") : ""}</div>
+    <div class="drv">MDMelonClicker v${CHANGES[0][0]}</div>`;
+}
+function drwOpen(on) {
+  if (!drwEl) { drwEl = document.createElement("div"); drwEl.className = "drw"; drwEl.innerHTML = `<div class="drs" data-a="drw"></div><div class="drp"></div>`; document.body.appendChild(drwEl); let sx = 0; drwEl.addEventListener("touchstart", e => { sx = e.touches[0].clientX; }, {passive: true}); drwEl.addEventListener("touchend", e => { if (e.changedTouches[0].clientX - sx < -60) drwOpen(false); }, {passive: true}); }
+  if (on) drwFill(); void drwEl.offsetWidth; drwEl.classList.toggle("o", on); hap("light");
+}
+A.drw = function () { drwOpen(!(drwEl && drwEl.classList.contains("o"))); };
+A.drwgo = function (e) { drwOpen(false); A.mnu(e); };
+(function () { const vw = $("#view"); new MutationObserver(() => { const all = vw.querySelectorAll(".bkb"); for (let k = 1; k < all.length; k++) all[k].remove(); const b = all[0]; if (b && b !== vw.lastElementChild) vw.appendChild(b); }).observe(vw, {childList: true, subtree: true}); })();

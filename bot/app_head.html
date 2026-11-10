@@ -14,9 +14,9 @@ html,body{margin:0;height:100%;background:var(--surf);color:var(--on);font-famil
 .chip.p{background:var(--prc);color:var(--onprc)}
 #view{flex:1;overflow-y:auto;overflow-x:hidden;padding:4px 16px 16px;-webkit-overflow-scrolling:touch}
 #view::-webkit-scrollbar{display:none}
-#nav{display:flex;background:var(--sc);padding:8px 4px calc(8px + env(safe-area-inset-bottom));gap:2px}
+#nav{display:flex;background:var(--sc);padding:10px 8px calc(10px + env(safe-area-inset-bottom));gap:4px;border-radius:28px 28px 0 0;box-shadow:0 -2px 14px rgba(0,0,0,.18)}
 #nav button{flex:1;background:none;border:0;color:var(--onv);font:600 11px inherit;display:flex;flex-direction:column;align-items:center;gap:4px;padding:0;font-family:inherit;position:relative}
-#nav .pill{width:56px;height:30px;border-radius:15px;display:flex;align-items:center;justify-content:center;transition:background .2s}
+#nav .pill{width:100%;max-width:62px;height:40px;border-radius:20px;background:var(--surf);display:flex;align-items:center;justify-content:center;transition:background .2s,transform .15s}#nav button:active .pill{transform:scale(.92)}
 #nav button.on{color:var(--on)}
 #nav button.on .pill{background:var(--prc);color:var(--onprc)}
 .ic{flex:none;vertical-align:middle}.chip .ic,.btn .ic{margin:0 -1px}.star{width:44px;height:44px}
@@ -368,6 +368,20 @@ body.bmdark::before{display:none}
 @keyframes bcshake2{0%,100%{transform:rotate(-9deg) scale(1.12)}50%{transform:rotate(9deg) scale(1.12)}}
 .bcflash{position:absolute;inset:0;background:#fff;animation:bcfl .6s ease-out forwards;pointer-events:none}
 @keyframes bcfl{from{opacity:.95}to{opacity:0}}
+.bkb{position:sticky;bottom:6px;width:100%;justify-content:center;margin:14px 0 0;z-index:5;background:var(--sch);box-shadow:0 4px 14px rgba(0,0,0,.25)}
+.drw{position:fixed;inset:0;z-index:70;pointer-events:none}
+.drs{position:absolute;inset:0;background:rgba(0,0,0,.55);opacity:0;transition:opacity .25s}
+.drp{position:absolute;left:0;top:0;bottom:0;width:min(84%,330px);background:var(--surf);border-radius:0 28px 28px 0;padding:calc(28px + env(safe-area-inset-top)) 0 20px;transform:translateX(-104%);transition:transform .3s cubic-bezier(.2,.9,.3,1);overflow-y:auto;display:flex;flex-direction:column;box-shadow:6px 0 30px rgba(0,0,0,.4)}
+.drw.o{pointer-events:auto}.drw.o .drs{opacity:1}.drw.o .drp{transform:none}
+.drh{display:flex;align-items:flex-start;justify-content:space-between;padding:0 20px}
+.dra{width:76px;height:76px;border-radius:50%;background:var(--prc);color:var(--onprc);display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:700;overflow:hidden}
+.drt{width:52px;height:52px;border-radius:50%;border:0;background:var(--prc);color:var(--onprc);display:flex;align-items:center;justify-content:center}
+.drn{font-size:22px;font-weight:700;padding:14px 20px 0}.dru{font-size:15px;color:var(--onv);padding:2px 20px 14px}
+.drl{flex:1}.drd{height:1px;background:var(--sch);margin:8px 0}
+.dri{display:flex;align-items:center;gap:24px;width:100%;height:56px;padding:0 24px;border:0;background:none;color:var(--on);font-size:17px;font-weight:600;font-family:inherit;text-align:left}
+.dri .ic{color:var(--pri)}.dri:active{background:var(--sch)}
+.drv{padding:12px 24px 0;font-size:12px;color:var(--out)}
+.ov{background:color-mix(in srgb,var(--surf) 94%,transparent)!important}
 </style></head><body>
 <div id="load"><div class="lw"><div class="lglow"></div><div class="lm" id="lm">🍉</div><div class="lsh"></div></div><div class="lti">MDMelonClicker</div><div id="lt">Подключаюсь…</div><div class="tr"><i id="lbar"></i></div><div id="ltip"></div></div>
 <div id="app"><div id="top"><h1 id="ttl">MDMelonClicker</h1><span id="gemc"></span></div><div id="view"></div><div id="nav"></div></div>
