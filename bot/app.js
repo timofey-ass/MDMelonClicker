@@ -304,7 +304,7 @@ function floatTxt(txt, color, size, x, y) { const f = $("#field"); if (!f) retur
 const TAX_AT = 1e12, TAX_TAP = .2, TAX_OFF = .05;
 function tap() {
   const t = now(); let g = tapValue(); const crit = Math.random() < Math.min(.65, .05 + .03 * S.crit); if (crit) g *= 5;
-  if (S.pts >= TAX_AT) { const tx = g * TAX_TAP; g -= tx; S.burnT = (S.burnT || 0) + tx; }
+  if (S.pts >= TAX_AT) g *= 1 - TAX_TAP;
   S.pts += g; S.run += g; S.total += g; S.taps++;
   if (t >= fever) { combo = Math.min(100, combo + 7); if (combo >= 100) { fever = t + 6 + S.fev; S.fevers++; toast("🔥 Лихорадка! x2"); hap("heavy"); } }
   hap(crit ? "medium" : "light"); floatTxt((crit ? "КРИТ +" : "+") + fmt(g), crit ? "#ffd54f" : "var(--on)", crit ? 26 : 20); mark();
