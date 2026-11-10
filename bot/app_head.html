@@ -14,7 +14,7 @@ html,body{margin:0;height:100%;background:var(--surf);color:var(--on);font-famil
 .chip.p{background:var(--prc);color:var(--onprc)}
 #view{flex:1;overflow-y:auto;overflow-x:hidden;padding:4px 16px 16px;-webkit-overflow-scrolling:touch}
 #view::-webkit-scrollbar{display:none}
-#nav{display:flex;background:var(--sc);padding:10px 8px calc(10px + env(safe-area-inset-bottom));gap:4px;border-radius:28px 28px 0 0;box-shadow:0 -2px 14px rgba(0,0,0,.18)}
+#nav{display:flex;background:var(--sc);padding:10px 4px calc(10px + env(safe-area-inset-bottom));gap:4px;border-radius:28px 28px 0 0;box-shadow:0 -2px 14px rgba(0,0,0,.18)}
 #nav button{flex:1;background:none;border:0;color:var(--onv);font:600 11px inherit;display:flex;flex-direction:column;align-items:center;gap:4px;padding:0;font-family:inherit;position:relative}
 #nav .pill{width:100%;max-width:62px;height:40px;border-radius:20px;background:var(--surf);display:flex;align-items:center;justify-content:center;transition:background .2s,transform .15s}#nav button:active .pill{transform:scale(.92)}
 #nav button.on{color:var(--on)}
@@ -368,7 +368,7 @@ body.bmdark::before{display:none}
 @keyframes bcshake2{0%,100%{transform:rotate(-9deg) scale(1.12)}50%{transform:rotate(9deg) scale(1.12)}}
 .bcflash{position:absolute;inset:0;background:#fff;animation:bcfl .6s ease-out forwards;pointer-events:none}
 @keyframes bcfl{from{opacity:.95}to{opacity:0}}
-.bkb{position:sticky;bottom:6px;width:100%;justify-content:center;margin:14px 0 0;z-index:5;background:var(--sch);box-shadow:0 4px 14px rgba(0,0,0,.25)}
+.bkb{display:none!important}#nav .pill{max-width:50px}#nav button{font-size:10px!important;min-width:0;letter-spacing:-.2px}
 .drw{position:fixed;inset:0;z-index:70;pointer-events:none}
 .drs{position:absolute;inset:0;background:rgba(0,0,0,.55);opacity:0;transition:opacity .25s}
 .drp{position:absolute;left:0;top:0;bottom:0;width:min(84%,330px);background:var(--surf);border-radius:0 28px 28px 0;padding:calc(28px + env(safe-area-inset-top)) 0 20px;transform:translateX(-104%);transition:transform .3s cubic-bezier(.2,.9,.3,1);overflow-y:auto;display:flex;flex-direction:column;box-shadow:6px 0 30px rgba(0,0,0,.4)}
