@@ -1228,4 +1228,11 @@ function drwOpen(on) {
 }
 A.drw = function () { drwOpen(!(drwEl && drwEl.classList.contains("o"))); };
 A.drwgo = function (e) { drwOpen(false); A.mnu(e); };
-(function () { const vw = $("#view"); new MutationObserver(() => { const all = vw.querySelectorAll(".bkb"); for (let k = 1; k < all.length; k++) all[k].remove(); const b = all[0]; if (b && b !== vw.lastElementChild) vw.appendChild(b); }).observe(vw, {childList: true, subtree: true}); })();
+function navBackSync() {
+  const nv = $("#nav"), vw = $("#view"), has = !!vw.querySelector(".bkb"), cur = nv.querySelector(".nbk");
+  if (has && !cur) nv.insertAdjacentHTML("afterbegin", `<button class="nbk" data-a="navback"><span class="pill"><span style="display:flex;transform:rotate(180deg)">${ic("arrow", 24)}</span></span>Назад</button>`);
+  else if (!has && cur) cur.remove();
+}
+A.navback = function () { const b = $("#view .bkb"); if (b) b.click(); };
+const _setNavB = setNav; setNav = function () { const c = $("#nav .nbk"); if (c) c.remove(); _setNavB(); navBackSync(); };
+(function () { const vw = $("#view"); new MutationObserver(() => { const all = vw.querySelectorAll(".bkb"); for (let k = 1; k < all.length; k++) all[k].remove(); navBackSync(); }).observe(vw, {childList: true, subtree: true}); })();
