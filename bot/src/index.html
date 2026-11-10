@@ -330,6 +330,14 @@ body.bmdark::before{display:none}
 .dchist{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin:4px 0 8px}.dchist span{font-size:11px;padding:3px 8px;border-radius:10px;background:rgba(255,255,255,.07)}
 .dcctl{margin-top:6px}.dcq{display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:8px}.dcqv{text-align:center;min-width:70px}.dcqv b{font-size:28px;display:block}
 .dcf{display:flex;justify-content:center;gap:8px;margin-bottom:10px}.dcfb{border:2px solid transparent;background:rgba(255,255,255,.06);border-radius:12px;padding:5px}.dcfb.on{border-color:var(--pri);background:rgba(255,255,255,.14)}
+.ldov{position:fixed;inset:0;z-index:99990;background:rgba(0,0,0,.62);display:flex;align-items:center;justify-content:center;animation:ldin .25s;transition:opacity .25s}.ldov.out{opacity:0}
+@keyframes ldin{from{opacity:0}to{opacity:1}}
+.ldc{width:min(300px,80vw);text-align:center}.ldt{font-size:16px;font-weight:700;margin-bottom:14px;line-height:1.3}
+.ldbar{position:relative;height:16px;border-radius:10px;background:rgba(255,255,255,.12);overflow:hidden}
+.ldbar i{position:absolute;inset:0;width:200%;background:repeating-linear-gradient(100deg,transparent 0,var(--pri) 22px,transparent 44px);opacity:.5;border-radius:10px;animation:ldw 1.1s linear infinite}
+.ldbar i:nth-child(2){opacity:.35;animation-duration:1.6s;animation-direction:reverse;top:3px;bottom:3px}
+.ldbar i:nth-child(3){opacity:.8;animation-duration:.8s;top:6px;bottom:6px}
+@keyframes ldw{from{transform:translateX(-44px)}to{transform:translateX(0)}}
 </style></head><body>
 <div id="load"><div class="lw"><div class="lglow"></div><div class="lm" id="lm">🍉</div><div class="lsh"></div></div><div class="lti">MDMelonClicker</div><div id="lt">Подключаюсь…</div><div class="tr"><i id="lbar"></i></div><div id="ltip"></div></div>
 <div id="app"><div id="top"><h1 id="ttl">MDMelonClicker</h1><span id="gemc"></span></div><div id="view"></div><div id="nav"></div></div>
@@ -624,7 +632,16 @@ function startOffer() {
     o.querySelectorAll("[data-pick]").forEach(e => e.onclick = () => { offer[e.dataset.pick] = +e.dataset.i; const st = o.scrollTop; draw(); o.scrollTop = st; });
   }; draw();
 }
-A.mkoffer = async function () { if (offer.give === null || offer.want === null) return toast("Выбери обоих котов"); if (offer.give === offer.want) return toast("Коты должны отличаться"); await save(true); const r = await api("offer", offer); if (r.error) return toast(r.error); adopt(r); offData = null; closeOv(); sub = 1; toast("Предложение создано"); render(); };
+let ldOn = null;
+async function withLoad(text, fn) {
+  if (ldOn) return; const o = document.createElement("div"); o.className = "ldov";
+  o.innerHTML = `<div class="ldc"><div class="ldt">${text}</div><div class="ldbar"><i></i><i></i><i></i></div></div>`; document.body.appendChild(o); ldOn = o; const t0 = Date.now();
+  try { return await fn(); } finally { await new Promise(r => setTimeout(r, Math.max(0, 900 - (Date.now() - t0)))); o.classList.add("out"); setTimeout(() => o.remove(), 250); ldOn = null; }
+}
+A.mkoffer = function () {
+  if (ldOn) return; if (offer.give === null || offer.want === null) return toast("Выбери обоих котов"); if (offer.give === offer.want) return toast("Коты должны отличаться");
+  return withLoad("Создание обмена", async () => { await save(true); const r = await api("offer", offer); if (r.error) return toast(r.error); adopt(r); offData = null; closeOv(); sub = 1; toast("Предложение создано"); render(); });
+};
 
 document.addEventListener("click", e => { const el = e.target.closest("[data-a]"); if (!el) return; if (el.classList.contains("dis") && el.dataset.a !== "accept") { hap("light"); return; } const f = A[el.dataset.a]; if (f) f(el); });
 
@@ -1564,10 +1581,12 @@ A.wslike = async function (e) {
 A.wssub = function (e) { wsSub = +e.dataset.i; render(); };
 A.wsrar = function (e) { wsRar = +e.dataset.v; render(); };
 A.wsadr = function (e) { wsAR[+e.dataset.i] = +e.dataset.v; render(); };
-A.wssend = async function () {
-  if (!wsImg) return toast("Выбери картинку");
+A.wssend = function () {
+  if (ldOn) return; if (!wsImg) return toast("Выбери картинку");
+  return withLoad("Создание идеи или запроса на добавление кота", async () => {
   const r = await api("uc_submit", {name: KEEP.wsname || "", rar: wsRar, img: wsImg, ask: parseInt(KEEP.wsask) || 0}); if (r.error) return toast(r.error);
   toast("Заявка отправлена на проверку"); wsImg = ""; KEEP.wsname = ""; KEEP.wsask = ""; wsLoad(); render();
+  });
 };
 A.ucok = async function (e) {
   const id = +e.dataset.i, x = (wsPend || []).find(q => q.id === id); if (!x) return;
@@ -1575,7 +1594,7 @@ A.ucok = async function (e) {
   toast("Кот одобрен"); await wsLoad(); await loadUcats(); render();
 };
 A.ucno = async function (e) { const r = await api("uc_reject", {id: +e.dataset.i}); if (r.error) return toast(r.error); toast("Заявка отклонена"); wsLoad(); };
-A.ideasend = async function () { const r = await api("idea_submit", {text: KEEP.idea || ""}); if (r.error) return toast(r.error); toast("Идея отправлена"); KEEP.idea = ""; wsLoad(); render(); };
+A.ideasend = function () { if (ldOn) return; return withLoad("Создание идеи или запроса на добавление кота", async () => { const r = await api("idea_submit", {text: KEEP.idea || ""}); if (r.error) return toast(r.error); toast("Идея отправлена"); KEEP.idea = ""; wsLoad(); render(); }); };
 A.ideaok = async function (e) { const r = await api("idea_ok", {id: +e.dataset.i}); if (r.error) return toast(r.error); toast("Идея добавлена, игроку выдан значок Гений"); wsLoad(); };
 A.ideano = async function (e) { const r = await api("idea_rej", {id: +e.dataset.i}); if (r.error) return toast(r.error); toast("Идея отклонена"); wsLoad(); };
 document.addEventListener("change", e => {

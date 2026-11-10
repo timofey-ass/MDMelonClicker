@@ -146,9 +146,10 @@ async function api(path, req, env) {
     if (!Number.isInteger(give) || !Number.isInteger(want) || give < 0 || want < 0 || give === 70 || give === 71 || want === 70 || want === 71 || give >= N_ITEMS + nUc || want >= N_ITEMS + nUc || give === want) return J({error: "Неверные коты"});
     const cnt = (await db.prepare("SELECT COUNT(*) AS c FROM offers WHERE seller=? AND status='open'").bind(id).first()).c;
     if (cnt >= 5) return J({error: "Не больше 5 предложений"});
+    const ins = await db.prepare("INSERT INTO offers (seller,sname,give,want,ts) SELECT ?,?,?,?,? WHERE NOT EXISTS (SELECT 1 FROM offers WHERE seller=? AND give=? AND want=? AND status='open' AND ts>?)").bind(id, name, give, want, now, id, give, want, now - 15).run();
+    if (ins.meta.changes !== 1) return J({error: "Такое предложение уже создано"});
     const r = await mutate(db, id, s => { if (inv(s, give) < 1) return "У тебя нет этого кота"; add(s, give, -1); tidy(s); });
-    if (r.error) return J(r);
-    await db.prepare("INSERT INTO offers (seller,sname,give,want,ts) VALUES (?,?,?,?,?)").bind(id, name, give, want, now).run();
+    if (r.error) { await db.prepare("DELETE FROM offers WHERE id=?").bind(ins.meta.last_row_id).run(); return J(r); }
     return J(r);
   }
   if (path === "cancel") {

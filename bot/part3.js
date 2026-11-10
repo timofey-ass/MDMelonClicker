@@ -490,10 +490,12 @@ A.wslike = async function (e) {
 A.wssub = function (e) { wsSub = +e.dataset.i; render(); };
 A.wsrar = function (e) { wsRar = +e.dataset.v; render(); };
 A.wsadr = function (e) { wsAR[+e.dataset.i] = +e.dataset.v; render(); };
-A.wssend = async function () {
-  if (!wsImg) return toast("Выбери картинку");
+A.wssend = function () {
+  if (ldOn) return; if (!wsImg) return toast("Выбери картинку");
+  return withLoad("Создание идеи или запроса на добавление кота", async () => {
   const r = await api("uc_submit", {name: KEEP.wsname || "", rar: wsRar, img: wsImg, ask: parseInt(KEEP.wsask) || 0}); if (r.error) return toast(r.error);
   toast("Заявка отправлена на проверку"); wsImg = ""; KEEP.wsname = ""; KEEP.wsask = ""; wsLoad(); render();
+  });
 };
 A.ucok = async function (e) {
   const id = +e.dataset.i, x = (wsPend || []).find(q => q.id === id); if (!x) return;
@@ -501,7 +503,7 @@ A.ucok = async function (e) {
   toast("Кот одобрен"); await wsLoad(); await loadUcats(); render();
 };
 A.ucno = async function (e) { const r = await api("uc_reject", {id: +e.dataset.i}); if (r.error) return toast(r.error); toast("Заявка отклонена"); wsLoad(); };
-A.ideasend = async function () { const r = await api("idea_submit", {text: KEEP.idea || ""}); if (r.error) return toast(r.error); toast("Идея отправлена"); KEEP.idea = ""; wsLoad(); render(); };
+A.ideasend = function () { if (ldOn) return; return withLoad("Создание идеи или запроса на добавление кота", async () => { const r = await api("idea_submit", {text: KEEP.idea || ""}); if (r.error) return toast(r.error); toast("Идея отправлена"); KEEP.idea = ""; wsLoad(); render(); }); };
 A.ideaok = async function (e) { const r = await api("idea_ok", {id: +e.dataset.i}); if (r.error) return toast(r.error); toast("Идея добавлена, игроку выдан значок Гений"); wsLoad(); };
 A.ideano = async function (e) { const r = await api("idea_rej", {id: +e.dataset.i}); if (r.error) return toast(r.error); toast("Идея отклонена"); wsLoad(); };
 document.addEventListener("change", e => {
