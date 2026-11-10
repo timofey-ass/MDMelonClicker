@@ -357,6 +357,17 @@ body.bmdark::before{display:none}
 .rspinb:not(.dis)::after{content:"";position:absolute;top:0;bottom:0;width:60px;left:-80px;background:linear-gradient(100deg,transparent,rgba(255,255,255,.55),transparent);animation:rsps 2.6s ease-in-out infinite}
 @keyframes rspp{50%{transform:scale(1.025)}}
 @keyframes rsps{0%,55%{transform:translateX(0)}100%{transform:translateX(520px)}}
+.bca{position:relative;width:220px;height:220px;display:flex;align-items:center;justify-content:center;margin-top:20px}
+.bcglow{position:absolute;inset:-30px;border-radius:50%;background:radial-gradient(circle,rgba(154,140,255,.55),transparent 65%);animation:bcg 2s ease-in forwards}
+@keyframes bcg{from{opacity:0;transform:scale(.4)}to{opacity:1;transform:scale(1.5)}}
+.bcrays{position:absolute;inset:-60px;background:repeating-conic-gradient(rgba(255,255,255,.14) 0 8deg,transparent 8deg 24deg);border-radius:50%;animation:bcr 4s linear infinite,bcf 2s ease-in forwards;-webkit-mask:radial-gradient(circle,#000 25%,transparent 70%);mask:radial-gradient(circle,#000 25%,transparent 70%)}
+@keyframes bcr{to{transform:rotate(360deg)}}@keyframes bcf{from{opacity:0}to{opacity:1}}
+.bcbox{position:relative;font-size:120px;line-height:1;animation:bcshake .5s ease-in-out 2,bcshake2 .22s ease-in-out .9s infinite;filter:drop-shadow(0 6px 18px #000)}
+.bcbox.bcs2{animation:bcshake2 .12s ease-in-out infinite;filter:drop-shadow(0 0 26px #ffd54f)}
+@keyframes bcshake{0%,100%{transform:rotate(0)}25%{transform:rotate(-7deg) scale(1.04)}75%{transform:rotate(7deg) scale(1.04)}}
+@keyframes bcshake2{0%,100%{transform:rotate(-9deg) scale(1.12)}50%{transform:rotate(9deg) scale(1.12)}}
+.bcflash{position:absolute;inset:0;background:#fff;animation:bcfl .6s ease-out forwards;pointer-events:none}
+@keyframes bcfl{from{opacity:.95}to{opacity:0}}
 </style></head><body>
 <div id="load"><div class="lw"><div class="lglow"></div><div class="lm" id="lm">🍉</div><div class="lsh"></div></div><div class="lti">MDMelonClicker</div><div id="lt">Подключаюсь…</div><div class="tr"><i id="lbar"></i></div><div id="ltip"></div></div>
 <div id="app"><div id="top"><h1 id="ttl">MDMelonClicker</h1><span id="gemc"></span></div><div id="view"></div><div id="nav"></div></div>
