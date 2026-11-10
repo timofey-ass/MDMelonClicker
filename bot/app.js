@@ -128,7 +128,6 @@ function tShop() {
   h += row("gem", "Перерождение", "Сброс прогресса за самоцветы. Каждые 25 самоцветов дают +10% ко всему навсегда", btn("", "prest", 'id="pres"', "o"));
   h += `<div style="display:flex;align-items:center" class="sec"><span class="grow" style="margin:0">Самоцветы</span><span class="chip p">${ic("gem", 14)}${S.gems}</span></div>`;
   for (const [k, icon, name, desc, base, cap] of PERKS) { const lv = perk(k), c = base * (lv + 1); h += row(icon, `${name} · ур. ${lv}/${cap}`, desc, lv >= cap ? `<span class="chip p">МАКС</span>` : btn(ic("gem", 14) + c, "perk", `data-i="${k}" ${cost(c, "gems")}`, "o")); }
-  h += `<div class="card col"><div class="t1">Кот на выбор</div><div class="t2">Гарантированный случайный кот нужной редкости</div><div class="buyrow">${[1, 2, 3, 4].map(r => btn(`${RARS[r][0]} ${ic("gem", 14)}${CAT_COST[r]}`, "buycat", `data-i="${r}" ${cost(CAT_COST[r], "gems")} style="color:${RC[r]}"`, "o")).join("")}</div></div>`;
   h += `<div class="sec">Улучшения</div>`;
   UPGR.forEach((u, i) => { const c = uCost(i), mx = S[UK[i]] >= u[5]; h += row(u[0], `${u[1]}  ур. ${S[UK[i]]}`, u[2], mx ? `<span class="chip p">МАКС</span>` : btn(fmt(c), "upg", `data-i="${i}" ${cost(c)}`)); });
   h += `<div class="sec">Генераторы</div>`;
@@ -243,7 +242,6 @@ const A = {
   boost() { const c = Math.max(5000, cps() * 300); if (S.pts < c) return; if (now() < S.boost + 180) return toast("Ускорение ещё остывает"); S.pts -= c; S.boost = now() + 60; mark(); hap(); render(); },
   prest() { const g = pendingGems(); if (g < 1) return toast("Нужно накопить хотя бы 1 000 000 за забег"); if (!armed) { armed = true; toast("Нажми ещё раз: сброс за 💎 " + g); setTimeout(() => armed = false, 4000); return; } armed = false; Object.assign(S, {pts: 0, run: 0, click: 0, crit: 0, fev: 0, b: BUILDS.map(() => 0), boost: 0}); S.gems += g; S.gt += g; S.prest++; fever = frenzy = 0; toast("💎 +" + g + ". Бонус теперь +" + 10 * S.gt + "%"); hap("ok"); mark(); save(true); render(); },
   perk(e) { const k = e.dataset.i, p = PERKS.find(x => x[0] === k), lv = perk(k), c = p[4] * (lv + 1); if (lv >= p[5]) return; if (S.gems < c) return toast("Не хватает самоцветов"); S.gems -= c; S.perks[k] = lv + 1; mark(); hap(); render(); },
-  buycat(e) { if (busy) return; const r = +e.dataset.i; if (S.gems < CAT_COST[r]) return toast("Не хватает самоцветов"); S.gems -= CAT_COST[r]; const w = pickR(r), k = grant(w, Math.random() < .06); afterCraft(w); showResult("gem", [w, k], "Кот на выбор"); },
   upg(e) { const i = +e.dataset.i, c = uCost(i); if (S.pts < c || S[UK[i]] >= UPGR[i][5]) return; S.pts -= c; S[UK[i]]++; mark(); hap(); render(); },
   bld(e) { const i = +e.dataset.i, n = bCount(i), c = bCost(i, n); if (S.pts < c) return; S.pts -= c; S.b[i] += n; checkAch(); mark(); hap(); render(); },
   free() { openCase(0, 1); },
@@ -751,8 +749,7 @@ boot = async function () {
   }, 200);
 };
 function buildNav2() {
-  const top = $("#top"); top.innerHTML = `<div class="grow"><div style="font-size:22px;font-weight:700" id="ttl">MDMelonClicker</div><div style="font-size:12px;color:var(--out);display:flex;align-items:center;gap:4px" id="sub"></div></div><button id="x" style="width:44px;height:44px;border-radius:50%;border:0;background:var(--sc);color:var(--onv);display:flex;align-items:center;justify-content:center">${ic("close", 22)}</button><span id="gemc" style="display:none"></span>`;
-  $("#x").onclick = () => { save(true); if (tg) tg.close(); };
+  const top = $("#top"); top.innerHTML = `<div class="grow"><div style="font-size:22px;font-weight:700" id="ttl">MDMelonClicker</div><div style="font-size:12px;color:var(--out);display:flex;align-items:center;gap:4px" id="sub"></div></div><span id="gemc" style="display:none"></span>`;
 }
 
 /*PART3*/
