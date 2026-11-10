@@ -213,9 +213,9 @@ body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;ba
 .tft{position:absolute;left:0;right:0;top:calc(38% + 140px);text-align:center;animation:catpop .4s .7s backwards}
 .czjpc{background:linear-gradient(135deg,#7a4a00,#d99a00 45%,#7a4a00);border-radius:22px;padding:14px;text-align:center;color:#fff;margin-bottom:10px;box-shadow:0 0 24px rgba(255,193,7,.25)}
 .czjt{font-size:12px;font-weight:800;letter-spacing:.14em;opacity:.9}.czjv{font-size:34px;font-weight:900;text-shadow:0 2px 10px rgba(0,0,0,.4)}.czjs{font-size:11px;opacity:.8}
-.rwrap{position:relative;width:260px;height:270px;margin:6px auto 0}
-.rptr{position:absolute;left:50%;top:-4px;transform:translateX(-50%);font-size:26px;color:#ffd54f;z-index:3;text-shadow:0 2px 6px #000}
-.rwheel{position:absolute;left:0;right:0;top:16px;margin:auto;width:250px;height:250px;border-radius:50%;border:6px solid #ffc107;box-shadow:0 6px 24px rgba(0,0,0,.5);will-change:transform}
+.rwrap{position:relative;width:290px;height:300px;margin:6px auto 0}
+.rptr{position:absolute;left:50%;top:2px;transform:translateX(-50%);transform-origin:50% 25%;font-size:28px;line-height:1;color:#ffd54f;z-index:4;text-shadow:0 2px 6px #000}
+.rwheel{position:absolute;left:0;right:0;top:26px;margin:auto;width:250px;height:250px;border-radius:50%;border:6px solid #ffc107;box-shadow:0 6px 24px rgba(0,0,0,.5);will-change:transform}
 .rlab{position:absolute;left:50%;top:50%;width:0;height:0;font-weight:900;color:#fff;font-size:15px;display:flex;align-items:center;justify-content:center}
 .rhub{position:absolute;left:50%;top:50%;width:62px;height:62px;margin:-31px;border-radius:50%;background:var(--surf);border:4px solid #ffc107;display:flex;align-items:center;justify-content:center;font-size:30px}
 .rhist{display:flex;gap:5px;justify-content:center;min-height:14px;margin:4px 0 10px}.rhist i{width:12px;height:12px;border-radius:50%;display:block}
@@ -338,6 +338,25 @@ body.bmdark::before{display:none}
 .ldbar i:nth-child(2){opacity:.35;animation-duration:1.6s;animation-direction:reverse;top:3px;bottom:3px}
 .ldbar i:nth-child(3){opacity:.8;animation-duration:.8s;top:6px;bottom:6px}
 @keyframes ldw{from{transform:translateX(-44px)}to{transform:translateX(0)}}
+.rwrap::before{content:"";position:absolute;left:50%;top:151px;width:330px;height:330px;margin:-165px;border-radius:50%;background:radial-gradient(circle,rgba(255,193,7,.38),transparent 64%);opacity:0;transition:opacity .5s;pointer-events:none}
+.rwrap.spin::before,.rwrap.win::before,.rwrap.jp::before{opacity:1}
+.rl{position:absolute;left:50%;top:151px;width:9px;height:9px;margin:-4.5px;border-radius:50%;background:#7a5a10;box-shadow:0 0 0 1px rgba(0,0,0,.4);transition:background .12s,box-shadow .12s}
+.rwrap:not(.spin):not(.win):not(.jp) .rl:nth-child(odd){animation:rltw 1.8s ease-in-out infinite}.rwrap:not(.spin):not(.win):not(.jp) .rl:nth-child(even){animation:rltw 1.8s ease-in-out .9s infinite}
+@keyframes rltw{50%{background:#ffd54f;box-shadow:0 0 8px #ffc107}}
+.rl.on{background:#fff6c2;box-shadow:0 0 12px 3px #ffc107}
+.rwrap.spin .rl{background:#9a7414}
+.rwrap.win .rl{animation:rlwin .35s 6}.rwrap.jp .rl{animation:rljp .5s linear 8}
+@keyframes rlwin{50%{background:#69f0ae;box-shadow:0 0 12px 3px #69f0ae}}
+@keyframes rljp{0%{background:#ff5252;box-shadow:0 0 12px 3px #ff5252}33%{background:#ffd54f;box-shadow:0 0 12px 3px #ffd54f}66%{background:#40c4ff;box-shadow:0 0 12px 3px #40c4ff}100%{background:#ff5252;box-shadow:0 0 12px 3px #ff5252}}
+.rball{position:absolute;left:50%;top:151px;width:13px;height:13px;margin:-6.5px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff,#cfd8dc 55%,#78909c);box-shadow:0 2px 5px rgba(0,0,0,.6);z-index:3}
+.rwin{position:absolute;inset:0;border-radius:50%;pointer-events:none;animation:rwinp .55s ease-in-out 4}
+@keyframes rwinp{50%{opacity:.15}}
+.rhub.pop{animation:rhpop .5s cubic-bezier(.3,1.6,.5,1)}
+@keyframes rhpop{from{transform:scale(.3) rotate(-40deg)}}
+.rspinb:not(.dis){position:relative;overflow:hidden;animation:rspp 1.8s ease-in-out infinite}
+.rspinb:not(.dis)::after{content:"";position:absolute;top:0;bottom:0;width:60px;left:-80px;background:linear-gradient(100deg,transparent,rgba(255,255,255,.55),transparent);animation:rsps 2.6s ease-in-out infinite}
+@keyframes rspp{50%{transform:scale(1.025)}}
+@keyframes rsps{0%,55%{transform:translateX(0)}100%{transform:translateX(520px)}}
 </style></head><body>
 <div id="load"><div class="lw"><div class="lglow"></div><div class="lm" id="lm">🍉</div><div class="lsh"></div></div><div class="lti">MDMelonClicker</div><div id="lt">Подключаюсь…</div><div class="tr"><i id="lbar"></i></div><div id="ltip"></div></div>
 <div id="app"><div id="top"><h1 id="ttl">MDMelonClicker</h1><span id="gemc"></span></div><div id="view"></div><div id="nav"></div></div>
