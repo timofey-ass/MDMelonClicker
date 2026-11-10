@@ -19,6 +19,7 @@ const BADGES = {
   t: ["Тестер", "#69f0ae", `<path d="M9 9a3 3 0 016 0v7a3 3 0 01-6 0zM12 9v10M5 11h4M15 11h4M5 17h4M15 17h4M9 6L7 4M15 6l2-2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`],
   g: ["Гений", "#b388ff", `<path d="M9 18h6M10 21h4M12 3a6 6 0 00-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0012 3z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`],
   s: ["Поддержал оплату лимитов на Клауд и создателя игры", "#ff8fb1", `<path d="M12 20s-7-4.4-7-10a4 4 0 017-2.4A4 4 0 0119 10c0 5.6-7 10-7 10z" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>`],
+  l: ["Продержался 3 дня на 1 месте в лидерах", "#ffd54f", `<path d="M8 4h8v5a4 4 0 01-8 0zM6 5H4v2a3 3 0 003 3M18 5h2v2a3 3 0 01-3 3M12 13v4M8 20h8M10 17h4v3h-4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`],
 };
 const bdg = (s, sz) => String(s || "").split("").filter(c => BADGES[c]).map(c => `<svg class="bdg" title="${BADGES[c][0]}" viewBox="0 0 24 24" width="${sz || 15}" height="${sz || 15}" style="color:${BADGES[c][1]}">${BADGES[c][2]}</svg>`).join("");
 const nm = (name, b) => `<span class="nm">${esc(name || "Игрок")}${bdg(b)}</span>`;
@@ -138,6 +139,14 @@ A.admresetall = async function (e) {
 A.pgive = function (e) { KEEP.admid = e.dataset.i; closeModal(); tab = 5; moreSub = 3; render(); $("#view").scrollTop = 0; };
 
 // ---------- Топ: лидеры, обмен, чат
+const lbHeld = hd => Math.max(0, (lbData.now || now()) + Math.floor((Date.now() - (lbData.at || Date.now())) / 1000) - hd.since);
+const lbDur = s => { const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60); return h >= 24 ? Math.floor(h / 24) + " д " + (h % 24) + " ч" : h > 0 ? h + " ч " + m + " мин" : m + " мин"; };
+function lbPrize() {
+  const need = lbData.need || 259200, h1 = (lbData.hold || []).find(x => x.rank === 1), row1 = lbData.rows[0], held = h1 ? lbHeld(h1) : 0, f = Math.min(1, held / need), mineLead = h1 && h1.uid === me.id, got = String(myBadges || "").includes("l");
+  const img = ADM_IMG.replace("admin/0.jpg", "bc/9.jpg?v=1");
+  const st = got ? `<div style="color:var(--good);font-weight:700;font-size:13px">✓ Ты уже получил эту награду</div>` : mineLead ? `<div style="font-weight:700;font-size:13px;color:var(--gold)">Ты на 1 месте уже ${lbDur(held)}! Осталось ${lbDur(Math.max(0, need - held))}</div>` : h1 && row1 ? `<div class="t2" style="margin:0;font-size:12px">Сейчас на 1 месте: <b>${esc(row1.name)}</b> · ${lbDur(held)} из 3 д</div>` : `<div class="t2" style="margin:0;font-size:12px">Первое место свободно. Займи его!</div>`;
+  return `<div class="card col lbprize"><div style="display:flex;gap:14px;align-items:center"><div class="lbpimg" style="background-image:url(${img})"></div><div class="grow"><div class="t1" style="font-size:17px;color:var(--gold)">Золотой лидер</div><div class="t2" style="margin:3px 0 6px;font-size:12px">Продержись на 1 месте 3 дня и получи бесплатного Золотого кота и значок ${bdg("l", 14)}</div>${st}</div></div>${bar(f)}<div class="t2" style="margin:0;font-size:11px;text-align:center">Награду уже получили: ${lbData.done || 0}</div></div>`;
+}
 tTop = function () {
   let h = `<div class="seg"><button class="${sub === 0 ? "on" : ""}" data-a="sub" data-i="0">Лидеры</button><button class="${sub === 1 ? "on" : ""}" data-a="sub" data-i="1">Обмен</button><button class="${sub === 2 ? "on" : ""}" data-a="sub" data-i="2">Чат</button></div>`;
   if (sub === 2) {
@@ -146,8 +155,9 @@ tTop = function () {
   if (sub === 0) {
     h += `<div class="card"><div class="grow"><div class="t1" style="display:flex;align-items:center;gap:8px">${ic("medal", 18)}Таблица лидеров</div><div class="t2">Очки: накоплено за всё время</div></div>${btn("Обновить", "reloadtop")}</div>`;
     if (!lbData) return h + `<div class="t2" style="text-align:center;margin:30px">Загружаю…</div>`;
+    h += lbPrize();
     h += `<div class="card" style="background:var(--sch)"><div class="t1 grow" style="color:var(--onprc)">Ты: ${nm(me.name, myBadges)}${lbData.rank ? " · место " + lbData.rank : ""}</div></div>`;
-    lbData.rows.forEach((r, i) => { h += `<div class="card ${r.id === me.id ? "p" : ""}"><div class="circ" style="width:38px;height:38px;font-size:15px;font-weight:700"><span style="color:${["#ffd54f", "#cfd8dc", "#d7966a"][i] || "inherit"}">${i + 1}</span></div>${av(r.name, r.id, 40)}<div class="grow"><div class="t1">${nm(r.name, r.badges)}</div></div><div class="t1">${fmt(r.total)}</div></div>`; });
+    lbData.rows.forEach((r, i) => { const hd = i < 3 ? (lbData.hold || []).find(x => x.rank === i + 1 && x.uid === r.id) : null; h += `<div class="card ${r.id === me.id ? "p" : ""}"><div class="circ" style="width:38px;height:38px;font-size:15px;font-weight:700"><span style="color:${["#ffd54f", "#cfd8dc", "#d7966a"][i] || "inherit"}">${i + 1}</span></div>${av(r.name, r.id, 40)}<div class="grow"><div class="t1">${nm(r.name, r.badges)}</div>${hd ? `<div class="t2" style="margin:0;font-size:12px">⏱ на этом месте ${lbDur(lbHeld(hd))}</div>` : ""}</div><div class="t1">${fmt(r.total)}</div></div>`; });
     return h;
   }
   h += `<div class="card"><div class="grow"><div class="t1" style="display:flex;align-items:center;gap:8px">${ic("swap", 18)}Обмен котами</div><div class="t2">Меняй дубликаты с другими игроками. Предложенный кот уходит в залог и возвращается при отмене.</div></div></div><div style="display:flex;gap:8px;margin-bottom:10px">${btn("Создать предложение", "newoffer")}${btn("Обновить", "reloadoff", "", "t")}</div>`;
@@ -982,7 +992,7 @@ function bmOffers(day) {
 cz.bm = null;
 const _tCas3 = tCasino;
 const BC_PRICE = 60, BC_W = {2: 50, 3: 42, 4: 8};
-const bcPool = () => ITEMS.map((it, i) => it[6] ? i : -1).filter(i => i >= 0);
+const bcPool = () => ITEMS.map((it, i) => it[6] && it[6] !== 10 ? i : -1).filter(i => i >= 0);
 function bcRoll() {
   const pool = bcPool(); if (!pool.length) return -1; const q = Math.random() * 100, r = q < BC_W[4] ? 4 : q < BC_W[4] + BC_W[3] ? 3 : 2;
   const l = pool.filter(i => ITEMS[i][2] === r), ll = l.length ? l : pool; return ll[Math.floor(Math.random() * ll.length)];

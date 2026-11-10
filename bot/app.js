@@ -368,7 +368,7 @@ async function save(force) {
   }
   if (r.error) return; rev = r.rev; if (S) { dirty = false; snap = cloneInv(); }
 }
-async function loadTop() { const r = await api("top", {}); if (r.rows) { lbData = r; if (tab === 4 && sub === 0) render(); } else toast(r.error || "Не удалось загрузить"); }
+async function loadTop() { const r = await api("top", {}); if (r.rows) { lbData = r; lbData.at = Date.now(); if (tab === 4 && sub === 0) render(); } else toast(r.error || "Не удалось загрузить"); }
 async function loadOffers() { const r = await api("offers", {}); if (r.offers) { offData = r.offers; if (tab === 4 && sub === 1) render(); } else toast(r.error || "Не удалось загрузить"); }
 async function decodeCode(code) {
   code = code.replace(/^\s*MDC1:/, "").replace(/\s+/g, "").replace(/-/g, "+").replace(/_/g, "/");
