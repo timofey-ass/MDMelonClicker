@@ -470,22 +470,29 @@ function bindCards(root) {
 function wavyClip() { let p = []; for (let i = 0; i < 120; i++) { const a = 2 * Math.PI * i / 120, r = 47 * (1 + .04 * Math.cos(12 * a)); p.push((50 + r * Math.cos(a)).toFixed(2) + "% " + (50 + r * Math.sin(a)).toFixed(2) + "%"); } return `polygon(${p.join(",")})`; }
 const WAVY = wavyClip();
 let coinT = 0, coinDown = false, idleRaf = 0;
+let refQ = 0;
+function refreshSoon() { if (refQ) return; refQ = requestAnimationFrame(() => { refQ = 0; refresh(); }); }
 function bindCoin() {
-  const c = $("#coin"); if (!c) return; const gl = c.querySelector(".gl");
+  const c = $("#coin"); if (!c) return; const gl = c.querySelector(".gl"), ptrs = new Set(); let rc = null;
   const move = e => {
-    const r = c.getBoundingClientRect(), nx = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)), ny = Math.min(1, Math.max(0, (e.clientY - r.top) / r.height));
+    if (!rc) rc = c.getBoundingClientRect(); const nx = Math.min(1, Math.max(0, (e.clientX - rc.left) / rc.width)), ny = Math.min(1, Math.max(0, (e.clientY - rc.top) / rc.height));
     c.style.transform = `perspective(700px) rotateY(${(nx - .5) * 28}deg) rotateX(${-(ny - .5) * 28}deg) scale(.92)`;
     gl.style.setProperty("--mx", nx * 100 + "%"); gl.style.setProperty("--my", ny * 100 + "%"); gl.style.setProperty("--ga", ".3"); coinT = performance.now();
   };
-  c.addEventListener("pointerdown", e => { if (busy || tab !== 0) return; e.preventDefault(); coinDown = true; c.style.transition = "transform .06s"; actx(); move(e); tap(); refresh(); });
-  c.addEventListener("pointermove", e => { if (coinDown) move(e); });
-  const up = () => { if (!coinDown) return; coinDown = false; c.style.transition = "transform .4s cubic-bezier(.34,1.8,.64,1)"; c.style.transform = ""; };
-  c.addEventListener("pointerup", up); c.addEventListener("pointercancel", up); c.addEventListener("pointerleave", up);
+  c.addEventListener("pointerdown", e => {
+    if (busy || tab !== 0) return; e.preventDefault();
+    if (!ptrs.size) { rc = c.getBoundingClientRect(); c.style.transition = "transform .06s"; actx(); } ptrs.add(e.pointerId); coinDown = true;
+    try { c.setPointerCapture(e.pointerId); } catch (x) {}
+    move(e); tap(); refreshSoon();
+  });
+  c.addEventListener("pointermove", e => { if (coinDown && ptrs.has(e.pointerId)) move(e); });
+  const up = e => { if (e && e.pointerId !== undefined) ptrs.delete(e.pointerId); else ptrs.clear(); if (ptrs.size || !coinDown) return; coinDown = false; rc = null; c.style.transition = "transform .4s cubic-bezier(.34,1.8,.64,1)"; c.style.transform = ""; };
+  c.addEventListener("pointerup", up); c.addEventListener("pointercancel", up); c.addEventListener("lostpointercapture", up);
   c.addEventListener("contextmenu", e => e.preventDefault());
   cancelAnimationFrame(idleRaf);
   const idle = t => {
     if (!document.body.contains(c)) return;
-    if (t - coinT > 1000) { const ph = (t / 4500) % 1; gl.style.setProperty("--mx", (ph * 160 - 30) + "%"); gl.style.setProperty("--my", (30 + 20 * ph) + "%"); gl.style.setProperty("--ga", ".27"); }
+    if (!document.hidden && t - coinT > 1000) { const ph = (t / 4500) % 1; gl.style.setProperty("--mx", (ph * 160 - 30) + "%"); gl.style.setProperty("--my", (30 + 20 * ph) + "%"); gl.style.setProperty("--ga", ".27"); }
     idleRaf = requestAnimationFrame(idle);
   };
   idleRaf = requestAnimationFrame(idle);
