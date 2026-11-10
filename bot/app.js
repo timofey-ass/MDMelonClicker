@@ -301,8 +301,10 @@ document.addEventListener("click", e => { const el = e.target.closest("[data-a]"
 
 // ---------- coin / loop
 function floatTxt(txt, color, size, x, y) { const f = $("#field"); if (!f) return; const e = document.createElement("div"); e.className = "fl"; e.textContent = txt; e.style.color = color; e.style.fontSize = size + "px"; e.style.marginLeft = (x !== undefined ? x : (Math.random() * 160 - 80)) + "px"; e.style.marginTop = (y !== undefined ? y : -100) + "px"; f.appendChild(e); setTimeout(() => e.remove(), 800); }
+const TAX_AT = 1e12, TAX_TAP = .2, TAX_OFF = .05;
 function tap() {
   const t = now(); let g = tapValue(); const crit = Math.random() < Math.min(.65, .05 + .03 * S.crit); if (crit) g *= 5;
+  if (S.pts >= TAX_AT) { const tx = g * TAX_TAP; g -= tx; S.burnT = (S.burnT || 0) + tx; }
   S.pts += g; S.run += g; S.total += g; S.taps++;
   if (t >= fever) { combo = Math.min(100, combo + 7); if (combo >= 100) { fever = t + 6 + S.fev; S.fevers++; toast("🔥 Лихорадка! x2"); hap("heavy"); } }
   hap(crit ? "medium" : "light"); floatTxt((crit ? "КРИТ +" : "+") + fmt(g), crit ? "#ffd54f" : "var(--on)", crit ? 26 : 20); mark();
@@ -742,7 +744,10 @@ boot = async function () {
   const w = setInterval(() => {
     if (!S || $("#load")) return; clearInterval(w);
     const gain = Math.min(Math.max(0, now() - (S.ts || now())), 8 * 3600) * cps();
+    const away = Math.max(0, now() - (S.ts || now())); let burned = 0;
     if (gain >= 1) { S.pts += gain; S.run += gain; S.total += gain; mark(); toast("Пока тебя не было: +" + fmt(gain)); }
+    for (let k = Math.min(24, Math.floor(away / 7200)); k > 0 && S.pts >= TAX_AT; k--) { const b = S.pts * TAX_OFF; S.pts -= b; burned += b; }
+    if (burned > 0) { S.burnT = (S.burnT || 0) + burned; mark(); setTimeout(() => toast("🏛 Налог за офлайн: −" + fmt(burned)), 2400); }
   }, 200);
 };
 function buildNav2() {

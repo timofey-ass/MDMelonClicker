@@ -665,7 +665,7 @@ tCasino = function () {
   const back = `<button class="btn t" data-a="czgo" data-k="0" style="margin:0 0 8px">← Казино</button>`;
   const jp = `<div class="czjpc"><div class="czjt">🎰 ДЖЕКПОТ</div><div class="czjp czjv">${cz.jp === null ? "…" : fmt(cz.jp)}</div><div id="czlast" class="czjs"></div></div>`;
   const bal = `<div class="card" style="padding:10px 16px"><span class="t2 grow" style="margin:0">Баланс</span><b id="czbal" style="font-size:18px">${fmt(S.pts)}</b></div>`;
-  if (cz.sub === 0) return jp + `<button class="mbtn" data-a="czgo" data-k="1"><span style="font-size:28px">🎡</span><span class="grow">Рулетка<div class="t2" style="margin:0;font-size:12px;font-weight:500">Красное и чёрное ×2, зелёное ×24 и сектор с джекпотом</div></span>${ic("arrow", 20)}</button><button class="mbtn" data-a="czgo" data-k="2" style="height:70px"><span style="font-size:28px">🃏</span><span class="grow">Покер<div class="t2" style="margin:0;font-size:12px;font-weight:500">Простой: 5 карт, одна замена, раздаёт арбуз</div></span>${ic("arrow", 20)}</button><button class="mbtn" data-a="czgo" data-k="3" style="height:70px"><span style="font-size:28px">👥</span><span class="grow">Покер на двоих<div class="t2" style="margin:0;font-size:12px;font-weight:500">Создай столик или сядь за чужой, победитель забирает банк</div></span>${ic("arrow", 20)}</button><button class="mbtn" data-a="czgo" data-k="6" style="height:70px"><span style="font-size:28px">🎲</span><span class="grow">Кости-блеф на двоих<div class="t2" style="margin:0;font-size:12px;font-weight:500">Спрятанные кубики: заявляй, блефуй или скажи «Не верю!»</div></span>${ic("arrow", 20)}</button><div class="t2" style="margin:14px 6px;font-size:12px">Играть можно только на монеты. Выигрыш не идёт в таблицу лидеров и не считается за забег. Играй осторожно!</div>`;
+  if (cz.sub === 0) return jp + burnCard() + `<button class="mbtn" data-a="czgo" data-k="1"><span style="font-size:28px">🎡</span><span class="grow">Рулетка<div class="t2" style="margin:0;font-size:12px;font-weight:500">Красное и чёрное ×2, зелёное ×24 и сектор с джекпотом</div></span>${ic("arrow", 20)}</button><button class="mbtn" data-a="czgo" data-k="2" style="height:70px"><span style="font-size:28px">🃏</span><span class="grow">Покер<div class="t2" style="margin:0;font-size:12px;font-weight:500">Простой: 5 карт, одна замена, раздаёт арбуз</div></span>${ic("arrow", 20)}</button><button class="mbtn" data-a="czgo" data-k="3" style="height:70px"><span style="font-size:28px">👥</span><span class="grow">Покер на двоих<div class="t2" style="margin:0;font-size:12px;font-weight:500">Создай столик или сядь за чужой, победитель забирает банк</div></span>${ic("arrow", 20)}</button><button class="mbtn" data-a="czgo" data-k="6" style="height:70px"><span style="font-size:28px">🎲</span><span class="grow">Кости-блеф на двоих<div class="t2" style="margin:0;font-size:12px;font-weight:500">Спрятанные кубики: заявляй, блефуй или скажи «Не верю!»</div></span>${ic("arrow", 20)}</button><div class="t2" style="margin:14px 6px;font-size:12px">Играть можно только на монеты. Выигрыш не идёт в таблицу лидеров и не считается за забег. Играй осторожно!</div>`;
   if (cz.sub === 1) {
     const stops = Array.from({length: ZN}, (_, i) => `${ZC[secCol(i)]} ${i * ZS}deg ${(i + 1) * ZS}deg`).join(",");
     const lab = (i, t) => `<span class="rlab" style="transform:rotate(${(i + .5) * ZS}deg) translateY(-104px)">${t}</span>`;
@@ -712,7 +712,7 @@ A.czspin = async function () {
   const hubSet = (e) => { if (hub) { hub.textContent = e; hub.classList.remove("pop"); void hub.offsetWidth; hub.classList.add("pop"); setTimeout(() => { if (hub.isConnected) { hub.textContent = "🍉"; hub.classList.remove("pop"); } }, 2400); } };
   if (r.jackpot) { if (rs2) { rs2.className = "czres win jp"; rs2.textContent = "ДЖЕКПОТ! +" + fmt(r.payout - bet); } if (wrap) { wrap.classList.add("jp"); setTimeout(() => wrap.classList.remove("jp"), 3200); } hubSet("👑"); try { fxConfetti(160); fxRing(cx, cy, "#ffd54f", 300, 800); fxBurst(cx, cy, 30, ["#ffd54f", "#fff", "#ff5252"], 170); fxFloat("ДЖЕКПОТ!", cx, cy - 20, "#ffd54f", 38); jingle(3); hap("ok"); const v = $("#view"); if (v) { v.classList.remove("shk"); void v.offsetWidth; v.classList.add("shk"); setTimeout(() => v.classList.remove("shk"), 300); } } catch (e) {} }
   else if (r.payout > 0) { if (rs2) { rs2.className = "czres win"; rs2.textContent = "Выигрыш +" + fmt(r.payout - bet); } if (wrap) { wrap.classList.add("win"); setTimeout(() => wrap.classList.remove("win"), 2200); } hubSet("😎"); try { fxConfetti(40); fxRing(cx, cy, "#69f0ae", 220, 650); fxBurst(cx, cy, 16, ["#ffd54f", "#69f0ae", "#fff"], 130); fxFloat("+" + fmt(r.payout - bet), cx, cy - 20, "#69f0ae", 30); jingle(1); hap("ok"); } catch (e) {} }
-  else { if (rs2) { rs2.className = "czres lose"; rs2.textContent = "Проигрыш −" + fmt(bet); } hubSet("🫠"); try { fxFloat("−" + fmt(bet), cx, cy - 20, "#ff6e6e", 24); } catch (e) {} }
+  else { S.burnC = (S.burnC || 0) + bet; if (rs2) { rs2.className = "czres lose"; rs2.textContent = "Проигрыш −" + fmt(bet); } hubSet("🫠"); try { fxFloat("−" + fmt(bet), cx, cy - 20, "#ff6e6e", 24); } catch (e) {} }
   if (tab === 6) czUpd();
 };
 // --- покер
@@ -733,6 +733,10 @@ async function pkReveal(idxs) {
   const slots = document.querySelectorAll("#pkrow .pks");
   for (const i of idxs) { const c = slots[i] && slots[i].querySelector(".pk3"); if (c) c.classList.remove("back"); await sleep(130); }
   await sleep(450);
+}
+function burnCard() {
+  const c = S.burnC || 0, t = S.burnT || 0;
+  return `<div class="card col" style="margin:10px 0;gap:6px;background:linear-gradient(135deg,rgba(255,87,34,.16),rgba(255,193,7,.08))"><div class="t1" style="font-size:15px">🔥 Сожжено монет</div><div style="display:flex;justify-content:space-between"><span class="t2" style="margin:0">Проиграно в казино</span><b>${fmt(c)}</b></div><div style="display:flex;justify-content:space-between"><span class="t2" style="margin:0">Налог на богатство</span><b>${fmt(t)}</b></div><div style="display:flex;justify-content:space-between;border-top:1px solid rgba(255,255,255,.12);padding-top:6px"><span class="t2" style="margin:0">Всего</span><b style="color:#ff8a50">${fmt(c + t)}</b></div><div class="t2" style="margin:2px 0 0;font-size:11px">🏛 Налог: если у тебя от 1 трлн, с каждого клика −20%, а пока ты не в сети −5% от всех монет каждые 2 часа.</div></div>`;
 }
 A.czdeal = async function () {
   if (cz.busy) return; const bet = czBet(); if (S.pts < bet || bet < 100) return toast("Не хватает монет");
@@ -758,7 +762,7 @@ A.czdraw = async function () {
   r.hand.forEach((c, i) => { if (!cz.hold[i]) { ch.push(i); const w = slots[i].querySelector(".pkw"); w.innerHTML = pkCard(c, true); } });
   pkSay("Меняю!", 1000); ch.forEach((i, k) => pkFly(i, k * 170));
   await sleep((ch.length ? (ch.length - 1) * 170 : 0) + 640); await pkReveal(ch);
-  cz.hand = r.hand; S.pts += r.payout; mark(); if (r.payout > cz.pbet) save(true);
+  cz.hand = r.hand; S.pts += r.payout; mark(); if (r.payout > cz.pbet) save(true); if (r.mult === 0) S.burnC = (S.burnC || 0) + cz.pbet;
   const ev = $("#pkev"); if (ev) ev.textContent = r.name;
   const win = r.payout - r.pbet || 0, prof = r.payout - cz.pbet;
   cz.res = r.mult > 0 ? `${r.name}: +${fmt(prof)}${r.mult === 1 ? " (ставка возвращена)" : ""}` : `Ничего — −${fmt(cz.pbet)}`;
