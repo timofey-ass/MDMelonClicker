@@ -736,7 +736,7 @@ async function pkReveal(idxs) {
 }
 function burnCard() {
   const c = S.burnC || 0, t = S.burnT || 0;
-  return `<div class="card col" style="margin:10px 0;gap:6px;background:linear-gradient(135deg,rgba(255,87,34,.16),rgba(255,193,7,.08))"><div class="t1" style="font-size:15px">🔥 Сожжено монет</div><div style="display:flex;justify-content:space-between"><span class="t2" style="margin:0">Проиграно в казино</span><b>${fmt(c)}</b></div><div style="display:flex;justify-content:space-between"><span class="t2" style="margin:0">Налог на богатство</span><b>${fmt(t)}</b></div><div style="display:flex;justify-content:space-between;border-top:1px solid rgba(255,255,255,.12);padding-top:6px"><span class="t2" style="margin:0">Всего</span><b style="color:#ff8a50">${fmt(c + t)}</b></div><div class="t2" style="margin:2px 0 0;font-size:11px">🏛 Налог: от 1 трлн: клик приносит на 40% меньше, а офлайн каждые 2 часа сгорает 5% монет. От 1 квинтиллиона (Qi): клик на 50% меньше и каждый час сгорает 25% всех монет.</div></div>`;
+  return `<div class="card col" style="margin:10px 0;gap:6px;background:linear-gradient(135deg,rgba(255,87,34,.16),rgba(255,193,7,.08))"><div class="t1" style="font-size:15px">🔥 Сожжено монет</div><div style="display:flex;justify-content:space-between"><span class="t2" style="margin:0">Проиграно в казино</span><b>${fmt(c)}</b></div><div style="display:flex;justify-content:space-between"><span class="t2" style="margin:0">Налог на богатство</span><b>${fmt(t)}</b></div><div style="display:flex;justify-content:space-between;border-top:1px solid rgba(255,255,255,.12);padding-top:6px"><span class="t2" style="margin:0">Всего</span><b style="color:#ff8a50">${fmt(c + t)}</b></div><div class="t2" style="margin:2px 0 0;font-size:11px">🏛 Налог: от 1 трлн: клик приносит на 40% меньше, а офлайн каждые 2 часа сгорает 5% монет. От 1 квадриллиона (Qa) налоги не складываются, а заменяются: клик на 50% меньше и каждый час сгорает 25% всех монет.</div></div>`;
 }
 A.czdeal = async function () {
   if (cz.busy) return; const bet = czBet(); if (S.pts < bet || bet < 100) return toast("Не хватает монет");
@@ -1238,7 +1238,7 @@ A.navback = function () { const b = $("#view .bkb"); if (b) b.click(); };
 const _setNavB = setNav; setNav = function () { const c = $("#nav .nbk"); if (c) c.remove(); _setNavB(); navBackSync(); };
 (function () { const vw = $("#view"); new MutationObserver(() => { const all = vw.querySelectorAll(".bkb"); for (let k = 1; k < all.length; k++) all[k].remove(); navBackSync(); }).observe(vw, {childList: true, subtree: true}); })();
 
-// ---------- налог 2 уровня (от 1 Qi)
+// ---------- налог 2 уровня (от 1 Qa)
 function taxTick() {
   if (!S || $("#load")) return;
   if (S.pts < TAX2_AT) { if (S.tx2) { S.tx2 = 0; mark(); } return; }

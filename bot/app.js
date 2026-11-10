@@ -299,7 +299,7 @@ document.addEventListener("click", e => { const el = e.target.closest("[data-a]"
 
 // ---------- coin / loop
 function floatTxt(txt, color, size, x, y) { const f = $("#field"); if (!f) return; const e = document.createElement("div"); e.className = "fl"; e.textContent = txt; e.style.color = color; e.style.fontSize = size + "px"; e.style.marginLeft = (x !== undefined ? x : (Math.random() * 160 - 80)) + "px"; e.style.marginTop = (y !== undefined ? y : -100) + "px"; f.appendChild(e); setTimeout(() => e.remove(), 800); }
-const TAX_AT = 1e12, TAX_TAP = .4, TAX_OFF = .05, TAX2_AT = 1e18, TAX2_TAP = .5, TAX2_HR = .25;
+const TAX_AT = 1e12, TAX_TAP = .4, TAX_OFF = .05, TAX2_AT = 1e15, TAX2_TAP = .5, TAX2_HR = .25;
 function tap() {
   const t = now(); let g = tapValue(); const crit = Math.random() < Math.min(.65, .05 + .03 * S.crit); if (crit) g *= 5;
   if (S.pts >= TAX_AT) g *= S.pts >= TAX2_AT ? 1 - TAX2_TAP : 1 - TAX_TAP;
