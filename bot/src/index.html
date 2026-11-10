@@ -816,22 +816,29 @@ function bindCards(root) {
 function wavyClip() { let p = []; for (let i = 0; i < 120; i++) { const a = 2 * Math.PI * i / 120, r = 47 * (1 + .04 * Math.cos(12 * a)); p.push((50 + r * Math.cos(a)).toFixed(2) + "% " + (50 + r * Math.sin(a)).toFixed(2) + "%"); } return `polygon(${p.join(",")})`; }
 const WAVY = wavyClip();
 let coinT = 0, coinDown = false, idleRaf = 0;
+let refQ = 0;
+function refreshSoon() { if (refQ) return; refQ = requestAnimationFrame(() => { refQ = 0; refresh(); }); }
 function bindCoin() {
-  const c = $("#coin"); if (!c) return; const gl = c.querySelector(".gl");
+  const c = $("#coin"); if (!c) return; const gl = c.querySelector(".gl"), ptrs = new Set(); let rc = null;
   const move = e => {
-    const r = c.getBoundingClientRect(), nx = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)), ny = Math.min(1, Math.max(0, (e.clientY - r.top) / r.height));
+    if (!rc) rc = c.getBoundingClientRect(); const nx = Math.min(1, Math.max(0, (e.clientX - rc.left) / rc.width)), ny = Math.min(1, Math.max(0, (e.clientY - rc.top) / rc.height));
     c.style.transform = `perspective(700px) rotateY(${(nx - .5) * 28}deg) rotateX(${-(ny - .5) * 28}deg) scale(.92)`;
     gl.style.setProperty("--mx", nx * 100 + "%"); gl.style.setProperty("--my", ny * 100 + "%"); gl.style.setProperty("--ga", ".3"); coinT = performance.now();
   };
-  c.addEventListener("pointerdown", e => { if (busy || tab !== 0) return; e.preventDefault(); coinDown = true; c.style.transition = "transform .06s"; actx(); move(e); tap(); refresh(); });
-  c.addEventListener("pointermove", e => { if (coinDown) move(e); });
-  const up = () => { if (!coinDown) return; coinDown = false; c.style.transition = "transform .4s cubic-bezier(.34,1.8,.64,1)"; c.style.transform = ""; };
-  c.addEventListener("pointerup", up); c.addEventListener("pointercancel", up); c.addEventListener("pointerleave", up);
+  c.addEventListener("pointerdown", e => {
+    if (busy || tab !== 0) return; e.preventDefault();
+    if (!ptrs.size) { rc = c.getBoundingClientRect(); c.style.transition = "transform .06s"; actx(); } ptrs.add(e.pointerId); coinDown = true;
+    try { c.setPointerCapture(e.pointerId); } catch (x) {}
+    move(e); tap(); refreshSoon();
+  });
+  c.addEventListener("pointermove", e => { if (coinDown && ptrs.has(e.pointerId)) move(e); });
+  const up = e => { if (e && e.pointerId !== undefined) ptrs.delete(e.pointerId); else ptrs.clear(); if (ptrs.size || !coinDown) return; coinDown = false; rc = null; c.style.transition = "transform .4s cubic-bezier(.34,1.8,.64,1)"; c.style.transform = ""; };
+  c.addEventListener("pointerup", up); c.addEventListener("pointercancel", up); c.addEventListener("lostpointercapture", up);
   c.addEventListener("contextmenu", e => e.preventDefault());
   cancelAnimationFrame(idleRaf);
   const idle = t => {
     if (!document.body.contains(c)) return;
-    if (t - coinT > 1000) { const ph = (t / 4500) % 1; gl.style.setProperty("--mx", (ph * 160 - 30) + "%"); gl.style.setProperty("--my", (30 + 20 * ph) + "%"); gl.style.setProperty("--ga", ".27"); }
+    if (!document.hidden && t - coinT > 1000) { const ph = (t / 4500) % 1; gl.style.setProperty("--mx", (ph * 160 - 30) + "%"); gl.style.setProperty("--my", (30 + 20 * ph) + "%"); gl.style.setProperty("--ga", ".27"); }
     idleRaf = requestAnimationFrame(idle);
   };
   idleRaf = requestAnimationFrame(idle);
@@ -1347,41 +1354,66 @@ render = function () {
 const PCOL = ["#ffd54f", "#fff", "#ffb300", "#ffe082"];
 let lastPt = {x: innerWidth / 2, y: innerHeight / 2};
 document.addEventListener("pointerdown", e => { lastPt = {x: e.clientX, y: e.clientY}; }, true);
-function fxPart(x, y, txt, col, size, dx, dy, dur, rot, grav) { if (!LS("fxt", 1)) return;
-  const p = document.createElement("div"); p.className = "fxp"; p.textContent = txt; p.style.color = col; p.style.fontSize = size + "px"; p.style.left = x + "px"; p.style.top = y + "px";
-  document.body.appendChild(p);
-  try { p.animate([{transform: "translate(-50%,-50%) scale(.4) rotate(0)", opacity: 1}, {transform: `translate(calc(-50% + ${dx * .6}px),calc(-50% + ${dy * .6}px)) scale(1.1) rotate(${rot * .5}deg)`, opacity: 1, offset: .45}, {transform: `translate(calc(-50% + ${dx}px),calc(-50% + ${dy + (grav || 0)}px)) scale(.3) rotate(${rot}deg)`, opacity: 0}], {duration: dur, easing: "cubic-bezier(.2,.7,.3,1)"}); } catch (e) {}
-  setTimeout(() => p.remove(), dur + 50);
+let _fxc = -9999, _fxv = 1;
+const fxOn = () => { const n = performance.now(); if (n - _fxc > 1500) { _fxv = LS("fxt", 1); _fxc = n; } return _fxv; };
+const FX = {cv: null, cx: null, p: [], raf: 0, d: 1, last: 0}, FX_MAX = 260;
+function fxSize() { if (!FX.cv) return; FX.d = Math.min(devicePixelRatio || 1, 2); FX.cv.width = Math.round(innerWidth * FX.d); FX.cv.height = Math.round(innerHeight * FX.d); }
+function fxAdd(o, delay) {
+  if (!fxOn()) return;
+  if (!FX.cv) { const c = document.createElement("canvas"); c.style.cssText = "position:fixed;left:0;top:0;width:100%;height:100%;pointer-events:none;z-index:61"; document.body.appendChild(c); FX.cv = c; FX.cx = c.getContext("2d"); fxSize(); addEventListener("resize", fxSize); }
+  o.t = -(delay || 0) / 1000; if (FX.p.length >= FX_MAX) FX.p.splice(0, FX.p.length - FX_MAX + 1); FX.p.push(o);
+  if (!FX.raf) { FX.last = performance.now(); FX.raf = requestAnimationFrame(fxLoop); }
 }
-function fxRing(x, y, col, size, dur) { if (!LS("fxt", 1)) return;
-  const r = document.createElement("div"); r.className = "fxr"; r.style.left = x - size / 2 + "px"; r.style.top = y - size / 2 + "px"; r.style.width = r.style.height = size + "px"; r.style.borderColor = col; document.body.appendChild(r);
-  try { r.animate([{transform: "scale(.2)", opacity: .9}, {transform: "scale(1.6)", opacity: 0}], {duration: dur || 480, easing: "ease-out"}); } catch (e) {}
-  setTimeout(() => r.remove(), (dur || 480) + 50);
+function fxShape(cx, sh, r) {
+  cx.beginPath();
+  if (sh === "o") cx.arc(0, 0, r, 0, 6.2832);
+  else if (sh === "s") cx.rect(-r, -r * .6, r * 2, r * 1.2);
+  else if (sh === "t") { cx.moveTo(0, -r); cx.lineTo(r, r * .8); cx.lineTo(-r, r * .8); cx.closePath(); }
+  else if (sh === "d") { cx.moveTo(0, -r); cx.lineTo(r * .7, 0); cx.lineTo(0, r); cx.lineTo(-r * .7, 0); cx.closePath(); }
+  else { const n = sh === "5" ? 5 : 4; for (let i = 0; i < n * 2; i++) { const a = i * Math.PI / n - Math.PI / 2, q = i % 2 ? r * .4 : r; i ? cx.lineTo(Math.cos(a) * q, Math.sin(a) * q) : cx.moveTo(Math.cos(a) * q, Math.sin(a) * q); } cx.closePath(); }
+  cx.fill();
 }
+function fxLoop(t) {
+  const dt = Math.min(.05, (t - FX.last) / 1000); FX.last = t; const cx = FX.cx, d = FX.d, a = FX.p; let n = 0;
+  cx.setTransform(1, 0, 0, 1, 0, 0); cx.clearRect(0, 0, FX.cv.width, FX.cv.height);
+  for (let i = 0; i < a.length; i++) {
+    const p = a[i]; p.t += dt; if (p.t < 0) { a[n++] = p; continue; } const k = p.t / p.d; if (k >= 1) continue; a[n++] = p;
+    const e = 1 - Math.pow(1 - k, 3); let x, y, sc, al, rot = (p.rot || 0) * k * .01745;
+    if (p.k === "c") { x = p.x + p.dx * k + Math.sin(k * 9 + p.ph) * 16; y = p.y + p.dy * Math.pow(k, 1.15); sc = 1; al = k < .8 ? 1 : 1 - (k - .8) / .2; }
+    else if (p.k === "f") { x = p.x + p.dx * e; y = p.y - p.rise * e; sc = k < .2 ? .5 + 3.25 * k : 1.15 - .25 * (k - .2) / .8; al = k < .2 ? k / .2 : 1 - (k - .2) / .8; }
+    else if (p.k === "r") { cx.setTransform(d, 0, 0, d, 0, 0); cx.globalAlpha = Math.max(0, p.a0 * (1 - k)); cx.strokeStyle = p.col; cx.lineWidth = 3; cx.beginPath(); cx.arc(p.x, p.y, p.r * (.2 + 1.4 * e), 0, 6.2832); cx.stroke(); continue; }
+    else { x = p.x + p.dx * e; y = p.y + p.dy * e + (p.g || 0) * k * k; sc = k < .45 ? .4 + 1.55 * k : 1.1 - .8 * (k - .45) / .55; al = k < .45 ? 1 : 1 - (k - .45) / .55; }
+    cx.globalAlpha = Math.max(0, al); cx.setTransform(d * Math.cos(rot) * sc, d * Math.sin(rot) * sc, -d * Math.sin(rot) * sc, d * Math.cos(rot) * sc, x * d, y * d);
+    if (p.k === "f") { cx.font = `800 ${p.sz}px system-ui,-apple-system,sans-serif`; cx.textAlign = "center"; cx.textBaseline = "middle"; cx.lineWidth = 4; cx.lineJoin = "round"; cx.strokeStyle = "rgba(0,0,0,.55)"; cx.strokeText(p.txt, 0, 0); cx.fillStyle = p.col; cx.fillText(p.txt, 0, 0); }
+    else { cx.fillStyle = p.col; fxShape(cx, p.sh, p.sz * .5); }
+  }
+  a.length = n; cx.globalAlpha = 1;
+  if (n) FX.raf = requestAnimationFrame(fxLoop); else { FX.raf = 0; cx.setTransform(1, 0, 0, 1, 0, 0); cx.clearRect(0, 0, FX.cv.width, FX.cv.height); }
+}
+const FXS = {"■": "s", "●": "o", "▲": "t", "◆": "d", "✦": "4", "✧": "4", "★": "5"};
+function fxPart(x, y, txt, col, size, dx, dy, dur, rot, grav) { fxAdd({k: "p", sh: FXS[txt] || "o", col, sz: size, x, y, dx, dy, d: dur / 1000, rot, g: grav}); }
+function fxRing(x, y, col, size, dur) { fxAdd({k: "r", col, x, y, r: size / 2, d: (dur || 480) / 1000, a0: .9}); }
 function fxBurst(x, y, n, cols, spd) {
   for (let i = 0; i < n; i++) { const a = rnd(0, 6.283), r = rnd(.5, 1) * (spd || 90); fxPart(x, y, ["✦", "●", "★", "◆", "✧"][rint(0, 4)], cols[rint(0, cols.length - 1)], rint(9, 20), Math.cos(a) * r, Math.sin(a) * r - 20, rint(420, 800), rint(-260, 260), rint(20, 60)); }
 }
-function fxConfetti(n) { if (!LS("fxt", 1)) return;
-  const cs = ["#ff5252", "#ffd740", "#69f0ae", "#40c4ff", "#e040fb", "#fff"];
-  for (let i = 0; i < n; i++) setTimeout(() => fxPart(rnd(0, innerWidth), -10, ["■", "●", "▲", "✦"][rint(0, 3)], cs[rint(0, 5)], rint(10, 18), rint(-60, 60), innerHeight * rnd(.5, 1), rint(1400, 2600), rint(-500, 500), 0), i * 14);
+function fxConfetti(n) {
+  const cs = ["#ff5252", "#ffd740", "#69f0ae", "#40c4ff", "#e040fb", "#fff"]; n = Math.min(n, 130);
+  for (let i = 0; i < n; i++) fxAdd({k: "c", sh: ["s", "o", "t", "4"][rint(0, 3)], col: cs[rint(0, 5)], sz: rint(10, 18), x: rnd(0, innerWidth), y: -12, dx: rint(-60, 60), dy: (innerHeight + 30) * rnd(.6, 1), d: rnd(1.5, 2.6), rot: rint(-500, 500), ph: rnd(0, 6.28)}, i * 12);
 }
-function fxFloat(txt, x, y, col, size) { if (!LS("fxt", 1)) return;
-  const e = document.createElement("div"); e.className = "fxf"; e.textContent = txt; e.style.left = x + "px"; e.style.top = y + "px"; e.style.color = col; e.style.fontSize = size + "px"; document.body.appendChild(e);
-  const dx = rint(-30, 30);
-  try { e.animate([{transform: "translate(-50%,-50%) scale(.5)", opacity: 0}, {transform: `translate(calc(-50% + ${dx * .4}px),-90%) scale(1.15)`, opacity: 1, offset: .2}, {transform: `translate(calc(-50% + ${dx}px),-260%) scale(.9)`, opacity: 0}], {duration: 900, easing: "ease-out"}); } catch (x) {}
-  setTimeout(() => e.remove(), 950);
-}
+function fxFloat(txt, x, y, col, size) { let c = 0; for (const p of FX.p) if (p.k === "f") c++; if (c >= 7) return; fxAdd({k: "f", txt, col, sz: size, x, y, dx: rint(-30, 30), rise: size * 2.6, d: .9}); }
+let fxNoFl = 0; const _floatTxt = floatTxt; floatTxt = function () { if (fxNoFl) return; return _floatTxt.apply(this, arguments); };
 const _tap0 = tap;
 tap = function () {
-  const before = S.pts, c0 = S.crit, tt0 = S.total, rr0 = S.run; _tap0();
+  const before = S.pts, c0 = S.crit, tt0 = S.total, rr0 = S.run; fxNoFl = fxOn() ? 1 : 0; try { _tap0(); } finally { fxNoFl = 0; }
   if (("71" in S.inv) && S.pts > before) { const g0 = S.pts - before; S.pts = Math.max(0, before - g0); S.total = tt0; S.run = rr0; const {x, y} = lastPt; fxRing(x, y, "#ff1744", 110, 500); fxBurst(x, y, 8, ["#ff1744", "#ff5252", "#fff"], 100); fxFloat("−" + fmt(g0), x, y - 30, "#ff5252", 24); return; }
-  const g = S.pts - before, crit = g > tapValue() * 3, fe = now() < fever, f = now() < frenzy;
+  if (!fxOn()) return;
+  const g = S.pts - before, crit = g > tapValue() * 3, fe = now() < fever, f = now() < frenzy, heavy = FX.p.length > 140;
   const {x, y} = lastPt, cols = fe ? ["#ff6d00", "#ffab00", "#ffff00", "#fff"] : f ? ["#e040fb", "#ffd740", "#fff"] : PCOL;
-  fxRing(x, y, crit ? "#fff" : cols[0], crit ? 130 : 80, crit ? 560 : 420);
-  fxBurst(x, y, crit ? 18 : fe ? 10 : 6, cols, crit ? 130 : 90);
+  if (!heavy) fxRing(x, y, crit ? "#fff" : cols[0], crit ? 130 : 80, crit ? 560 : 420);
+  fxBurst(x, y, heavy ? 2 : crit ? 14 : fe ? 8 : 5, cols, crit ? 130 : 90);
   fxFloat((crit ? "КРИТ +" : "+") + fmt(g), x, y - 30, crit ? "#fff" : fe ? "#ffab00" : "#ffd54f", crit ? 30 : 21);
-  if (crit) { const v = $("#view"); if (v) { v.classList.remove("shk"); void v.offsetWidth; v.classList.add("shk"); setTimeout(() => v.classList.remove("shk"), 300); } fxRing(x, y, "#ffd54f", 200, 650); }
-  if (S.taps % 25 === 0) fxConfetti(14);
+  if (crit) { const v = $("#view"); if (v) { v.classList.remove("shk"); void v.offsetWidth; v.classList.add("shk"); setTimeout(() => v.classList.remove("shk"), 300); } if (!heavy) fxRing(x, y, "#ffd54f", 200, 650); }
+  if (S.taps % 25 === 0) fxConfetti(10);
 };
 // ripple на кнопках
 document.addEventListener("pointerdown", e => {
