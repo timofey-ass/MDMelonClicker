@@ -286,7 +286,16 @@ function startOffer() {
     o.querySelectorAll("[data-pick]").forEach(e => e.onclick = () => { offer[e.dataset.pick] = +e.dataset.i; const st = o.scrollTop; draw(); o.scrollTop = st; });
   }; draw();
 }
-A.mkoffer = async function () { if (offer.give === null || offer.want === null) return toast("Выбери обоих котов"); if (offer.give === offer.want) return toast("Коты должны отличаться"); await save(true); const r = await api("offer", offer); if (r.error) return toast(r.error); adopt(r); offData = null; closeOv(); sub = 1; toast("Предложение создано"); render(); };
+let ldOn = null;
+async function withLoad(text, fn) {
+  if (ldOn) return; const o = document.createElement("div"); o.className = "ldov";
+  o.innerHTML = `<div class="ldc"><div class="ldt">${text}</div><div class="ldbar"><i></i><i></i><i></i></div></div>`; document.body.appendChild(o); ldOn = o; const t0 = Date.now();
+  try { return await fn(); } finally { await new Promise(r => setTimeout(r, Math.max(0, 900 - (Date.now() - t0)))); o.classList.add("out"); setTimeout(() => o.remove(), 250); ldOn = null; }
+}
+A.mkoffer = function () {
+  if (ldOn) return; if (offer.give === null || offer.want === null) return toast("Выбери обоих котов"); if (offer.give === offer.want) return toast("Коты должны отличаться");
+  return withLoad("Создание обмена", async () => { await save(true); const r = await api("offer", offer); if (r.error) return toast(r.error); adopt(r); offData = null; closeOv(); sub = 1; toast("Предложение создано"); render(); });
+};
 
 document.addEventListener("click", e => { const el = e.target.closest("[data-a]"); if (!el) return; if (el.classList.contains("dis") && el.dataset.a !== "accept") { hap("light"); return; } const f = A[el.dataset.a]; if (f) f(el); });
 
