@@ -1001,16 +1001,24 @@ A.bcopen = function (e) {
   }
   mark(); save(true);
   const gemCell = g => `<div class="cell"><div style="color:var(--onv)">${ic("gem", 56)}</div><span style="color:#9a8cff;font-weight:700">+${g} 💎</span><span style="color:var(--onv);font-weight:500">Кристаллы</span></div>`;
-  if (n === 1 && wins[0].w !== undefined) showResult("gem", [wins[0].w, wins[0].kd], "Чёрный кейс");
-  else {
-    const o = ov(`<h2>Чёрный кейс${n > 1 ? " ×" + n : ""}</h2><div style="animation:bn .5s 3;color:var(--on)">${ic("gem", 120)}</div>`); hap("medium");
+  const best = Math.max(...wins.map(x => x.w === undefined ? 1 : ITEMS[x.w][2])), glowC = x => x >= 4 ? "#ff5252" : x >= 3 ? "#ffd54f" : x >= 2 ? "#b388ff" : "#9a8cff";
+  const ttl = `<h2>Чёрный кейс${n > 1 ? " ×" + n : ""}</h2>`;
+  const o = ov(`${ttl}<div class="bca" id="bca"><div class="bcrays"></div><div class="bcglow" id="bcglow"></div><div class="bcbox" id="bcbox">📦</div></div><div class="t2" id="bcsub" style="margin-top:18px">Открываем…</div>`); hap("medium");
+  let st = 0; const tk = setInterval(() => { if (!document.body.contains(o)) return clearInterval(tk); st++; try { tone(120 + st * 38, 90, .06, "triangle"); hap("light"); } catch (x) {} }, 230);
+  const box = o.querySelector("#bcbox"), gl = o.querySelector("#bcglow");
+  setTimeout(() => { if (box) box.classList.add("bcs2"); if (gl) gl.style.background = `radial-gradient(circle,${glowC(best)},transparent 65%)`; }, 900);
+  setTimeout(() => {
+    clearInterval(tk); if (!document.body.contains(o)) return;
+    const a = o.querySelector("#bca"), r = a ? a.getBoundingClientRect() : null, cx = r ? r.x + r.width / 2 : innerWidth / 2, cy = r ? r.y + r.height / 2 : 300;
+    const fl = document.createElement("div"); fl.className = "bcflash"; o.appendChild(fl); hap("ok");
+    try { fxRing(cx, cy, glowC(best), 320, 700); fxBurst(cx, cy, 26, [glowC(best), "#fff", "#ffd54f"], 170); if (best >= 3) { fxConfetti(best >= 4 ? 120 : 60); jingle(2); } else jingle(1); } catch (x) {}
     setTimeout(() => {
-      if (!document.body.contains(o)) return; hap("ok");
-      const body = n === 1 ? `<div class="rv"><div style="color:var(--onv);filter:drop-shadow(0 0 24px #9a8cff)">${ic("gem", 120)}</div><div style="font-size:26px;font-weight:700;color:#9a8cff">+${wins[0].g} 💎</div><div class="t2">Кристаллы</div></div>`
-        : `<div class="rgrid">${wins.map(x => x.w === undefined ? gemCell(x.g) : `<div class="cell">${catEl(x.w, 64, {holo: S.holo.includes(x.w)})}<span class="rar${ITEMS[x.w][2]}">${ITEMS[x.w][1]}</span><span style="color:var(--onv);font-weight:500">${KIND[x.kd]}</span></div>`).join("")}</div>`;
-      o.innerHTML = `<h2>Чёрный кейс${n > 1 ? " ×" + n : ""}</h2>${body}<div style="margin-top:20px;display:flex;gap:10px">${btn("Закрыть", "close")}</div>`; render();
-    }, 1100);
-  }
+      if (!document.body.contains(o)) return;
+      const body = n === 1 ? (wins[0].w !== undefined ? rvHtml(wins[0].w, wins[0].kd) : `<div class="rv"><div style="color:var(--onv);filter:drop-shadow(0 0 24px #9a8cff);transform:scale(0);animation:pop .45s .05s forwards">${ic("gem", 120)}</div><div style="font-size:26px;font-weight:700;color:#9a8cff">+${wins[0].g} 💎</div><div class="t2">Кристаллы</div></div>`)
+        : `<div class="rgrid">${wins.map((x, k) => (x.w === undefined ? gemCell(x.g) : `<div class="cell">${catEl(x.w, 64, {holo: S.holo.includes(x.w)})}<span class="rar${ITEMS[x.w][2]}">${ITEMS[x.w][1]}</span><span style="color:var(--onv);font-weight:500">${KIND[x.kd]}</span></div>`).replace('class="cell"', `class="cell" style="animation:pop .4s ${k * .12}s backwards"`)).join("")}</div>`;
+      o.innerHTML = `${ttl}${body}<div style="margin-top:20px;display:flex;gap:10px">${btn("Закрыть", "close")}</div>`; render();
+    }, 350);
+  }, 2000);
   render();
 };
 tCasino = function () {

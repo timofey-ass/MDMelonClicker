@@ -357,6 +357,17 @@ body.bmdark::before{display:none}
 .rspinb:not(.dis)::after{content:"";position:absolute;top:0;bottom:0;width:60px;left:-80px;background:linear-gradient(100deg,transparent,rgba(255,255,255,.55),transparent);animation:rsps 2.6s ease-in-out infinite}
 @keyframes rspp{50%{transform:scale(1.025)}}
 @keyframes rsps{0%,55%{transform:translateX(0)}100%{transform:translateX(520px)}}
+.bca{position:relative;width:220px;height:220px;display:flex;align-items:center;justify-content:center;margin-top:20px}
+.bcglow{position:absolute;inset:-30px;border-radius:50%;background:radial-gradient(circle,rgba(154,140,255,.55),transparent 65%);animation:bcg 2s ease-in forwards}
+@keyframes bcg{from{opacity:0;transform:scale(.4)}to{opacity:1;transform:scale(1.5)}}
+.bcrays{position:absolute;inset:-60px;background:repeating-conic-gradient(rgba(255,255,255,.14) 0 8deg,transparent 8deg 24deg);border-radius:50%;animation:bcr 4s linear infinite,bcf 2s ease-in forwards;-webkit-mask:radial-gradient(circle,#000 25%,transparent 70%);mask:radial-gradient(circle,#000 25%,transparent 70%)}
+@keyframes bcr{to{transform:rotate(360deg)}}@keyframes bcf{from{opacity:0}to{opacity:1}}
+.bcbox{position:relative;font-size:120px;line-height:1;animation:bcshake .5s ease-in-out 2,bcshake2 .22s ease-in-out .9s infinite;filter:drop-shadow(0 6px 18px #000)}
+.bcbox.bcs2{animation:bcshake2 .12s ease-in-out infinite;filter:drop-shadow(0 0 26px #ffd54f)}
+@keyframes bcshake{0%,100%{transform:rotate(0)}25%{transform:rotate(-7deg) scale(1.04)}75%{transform:rotate(7deg) scale(1.04)}}
+@keyframes bcshake2{0%,100%{transform:rotate(-9deg) scale(1.12)}50%{transform:rotate(9deg) scale(1.12)}}
+.bcflash{position:absolute;inset:0;background:#fff;animation:bcfl .6s ease-out forwards;pointer-events:none}
+@keyframes bcfl{from{opacity:.95}to{opacity:0}}
 </style></head><body>
 <div id="load"><div class="lw"><div class="lglow"></div><div class="lm" id="lm">🍉</div><div class="lsh"></div></div><div class="lti">MDMelonClicker</div><div id="lt">Подключаюсь…</div><div class="tr"><i id="lbar"></i></div><div id="ltip"></div></div>
 <div id="app"><div id="top"><h1 id="ttl">MDMelonClicker</h1><span id="gemc"></span></div><div id="view"></div><div id="nav"></div></div>
@@ -2118,16 +2129,24 @@ A.bcopen = function (e) {
   }
   mark(); save(true);
   const gemCell = g => `<div class="cell"><div style="color:var(--onv)">${ic("gem", 56)}</div><span style="color:#9a8cff;font-weight:700">+${g} 💎</span><span style="color:var(--onv);font-weight:500">Кристаллы</span></div>`;
-  if (n === 1 && wins[0].w !== undefined) showResult("gem", [wins[0].w, wins[0].kd], "Чёрный кейс");
-  else {
-    const o = ov(`<h2>Чёрный кейс${n > 1 ? " ×" + n : ""}</h2><div style="animation:bn .5s 3;color:var(--on)">${ic("gem", 120)}</div>`); hap("medium");
+  const best = Math.max(...wins.map(x => x.w === undefined ? 1 : ITEMS[x.w][2])), glowC = x => x >= 4 ? "#ff5252" : x >= 3 ? "#ffd54f" : x >= 2 ? "#b388ff" : "#9a8cff";
+  const ttl = `<h2>Чёрный кейс${n > 1 ? " ×" + n : ""}</h2>`;
+  const o = ov(`${ttl}<div class="bca" id="bca"><div class="bcrays"></div><div class="bcglow" id="bcglow"></div><div class="bcbox" id="bcbox">📦</div></div><div class="t2" id="bcsub" style="margin-top:18px">Открываем…</div>`); hap("medium");
+  let st = 0; const tk = setInterval(() => { if (!document.body.contains(o)) return clearInterval(tk); st++; try { tone(120 + st * 38, 90, .06, "triangle"); hap("light"); } catch (x) {} }, 230);
+  const box = o.querySelector("#bcbox"), gl = o.querySelector("#bcglow");
+  setTimeout(() => { if (box) box.classList.add("bcs2"); if (gl) gl.style.background = `radial-gradient(circle,${glowC(best)},transparent 65%)`; }, 900);
+  setTimeout(() => {
+    clearInterval(tk); if (!document.body.contains(o)) return;
+    const a = o.querySelector("#bca"), r = a ? a.getBoundingClientRect() : null, cx = r ? r.x + r.width / 2 : innerWidth / 2, cy = r ? r.y + r.height / 2 : 300;
+    const fl = document.createElement("div"); fl.className = "bcflash"; o.appendChild(fl); hap("ok");
+    try { fxRing(cx, cy, glowC(best), 320, 700); fxBurst(cx, cy, 26, [glowC(best), "#fff", "#ffd54f"], 170); if (best >= 3) { fxConfetti(best >= 4 ? 120 : 60); jingle(2); } else jingle(1); } catch (x) {}
     setTimeout(() => {
-      if (!document.body.contains(o)) return; hap("ok");
-      const body = n === 1 ? `<div class="rv"><div style="color:var(--onv);filter:drop-shadow(0 0 24px #9a8cff)">${ic("gem", 120)}</div><div style="font-size:26px;font-weight:700;color:#9a8cff">+${wins[0].g} 💎</div><div class="t2">Кристаллы</div></div>`
-        : `<div class="rgrid">${wins.map(x => x.w === undefined ? gemCell(x.g) : `<div class="cell">${catEl(x.w, 64, {holo: S.holo.includes(x.w)})}<span class="rar${ITEMS[x.w][2]}">${ITEMS[x.w][1]}</span><span style="color:var(--onv);font-weight:500">${KIND[x.kd]}</span></div>`).join("")}</div>`;
-      o.innerHTML = `<h2>Чёрный кейс${n > 1 ? " ×" + n : ""}</h2>${body}<div style="margin-top:20px;display:flex;gap:10px">${btn("Закрыть", "close")}</div>`; render();
-    }, 1100);
-  }
+      if (!document.body.contains(o)) return;
+      const body = n === 1 ? (wins[0].w !== undefined ? rvHtml(wins[0].w, wins[0].kd) : `<div class="rv"><div style="color:var(--onv);filter:drop-shadow(0 0 24px #9a8cff);transform:scale(0);animation:pop .45s .05s forwards">${ic("gem", 120)}</div><div style="font-size:26px;font-weight:700;color:#9a8cff">+${wins[0].g} 💎</div><div class="t2">Кристаллы</div></div>`)
+        : `<div class="rgrid">${wins.map((x, k) => (x.w === undefined ? gemCell(x.g) : `<div class="cell">${catEl(x.w, 64, {holo: S.holo.includes(x.w)})}<span class="rar${ITEMS[x.w][2]}">${ITEMS[x.w][1]}</span><span style="color:var(--onv);font-weight:500">${KIND[x.kd]}</span></div>`).replace('class="cell"', `class="cell" style="animation:pop .4s ${k * .12}s backwards"`)).join("")}</div>`;
+      o.innerHTML = `${ttl}${body}<div style="margin-top:20px;display:flex;gap:10px">${btn("Закрыть", "close")}</div>`; render();
+    }, 350);
+  }, 2000);
   render();
 };
 tCasino = function () {
