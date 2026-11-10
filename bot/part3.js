@@ -1232,6 +1232,7 @@ function navBackSync() {
   const nv = $("#nav"), vw = $("#view"), has = !!vw.querySelector(".bkb"), cur = nv.querySelector(".nbk");
   if (has && !cur) nv.insertAdjacentHTML("afterbegin", `<button class="nbk" data-a="navback"><span class="pill"><span style="display:flex;transform:rotate(180deg)">${ic("arrow", 24)}</span></span>Назад</button>`);
   else if (!has && cur) cur.remove();
+  nv.classList.toggle("bk", has);
 }
 A.navback = function () { const b = $("#view .bkb"); if (b) b.click(); };
 const _setNavB = setNav; setNav = function () { const c = $("#nav .nbk"); if (c) c.remove(); _setNavB(); navBackSync(); };

@@ -368,7 +368,7 @@ body.bmdark::before{display:none}
 @keyframes bcshake2{0%,100%{transform:rotate(-9deg) scale(1.12)}50%{transform:rotate(9deg) scale(1.12)}}
 .bcflash{position:absolute;inset:0;background:#fff;animation:bcfl .6s ease-out forwards;pointer-events:none}
 @keyframes bcfl{from{opacity:.95}to{opacity:0}}
-.bkb{display:none!important}#nav .pill{max-width:50px}#nav button{font-size:10px!important;min-width:0;letter-spacing:-.2px}
+.bkb{display:none!important}#nav .pill{max-width:50px}#nav.bk button:not(.nbk){display:none}#nav.bk .nbk .pill{max-width:none;height:48px;border-radius:24px;background:var(--prc);color:var(--onprc)}#nav.bk .nbk{font-size:11px!important}#nav button{font-size:10px!important;min-width:0;letter-spacing:-.2px}
 .drw{position:fixed;inset:0;z-index:70;pointer-events:none}
 .drs{position:absolute;inset:0;background:rgba(0,0,0,.55);opacity:0;transition:opacity .25s}
 .drp{position:absolute;left:0;top:0;bottom:0;width:min(84%,330px);background:var(--surf);border-radius:0 28px 28px 0;padding:calc(28px + env(safe-area-inset-top)) 0 20px;transform:translateX(-104%);transition:transform .3s cubic-bezier(.2,.9,.3,1);overflow-y:auto;display:flex;flex-direction:column;box-shadow:6px 0 30px rgba(0,0,0,.4)}
@@ -2376,6 +2376,7 @@ function navBackSync() {
   const nv = $("#nav"), vw = $("#view"), has = !!vw.querySelector(".bkb"), cur = nv.querySelector(".nbk");
   if (has && !cur) nv.insertAdjacentHTML("afterbegin", `<button class="nbk" data-a="navback"><span class="pill"><span style="display:flex;transform:rotate(180deg)">${ic("arrow", 24)}</span></span>Назад</button>`);
   else if (!has && cur) cur.remove();
+  nv.classList.toggle("bk", has);
 }
 A.navback = function () { const b = $("#view .bkb"); if (b) b.click(); };
 const _setNavB = setNav; setNav = function () { const c = $("#nav .nbk"); if (c) c.remove(); _setNavB(); navBackSync(); };
