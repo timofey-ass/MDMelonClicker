@@ -669,7 +669,7 @@ tCasino = function () {
   if (cz.sub === 1) {
     const stops = Array.from({length: ZN}, (_, i) => `${ZC[secCol(i)]} ${i * ZS}deg ${(i + 1) * ZS}deg`).join(",");
     const lab = (i, t) => `<span class="rlab" style="transform:rotate(${(i + .5) * ZS}deg) translateY(-104px)">${t}</span>`;
-    return back + jp + bal + `<div class="rwrap"><div class="rptr">▼</div><div id="rwheel" class="rwheel" style="background:repeating-conic-gradient(rgba(0,0,0,.45) 0 .5deg,transparent .5deg ${ZS}deg),conic-gradient(${stops});transform:rotate(${cz.rot}deg)">${lab(0, "0")}${lab(13, "★")}<span class="rhub">🍉</span></div></div><div class="rhist" id="rhist">${cz.hist.map(c => `<i style="background:${ZC[c]}"></i>`).join("")}</div><div class="rpicks">${[["r", "Красное ×2"], ["b", "Чёрное ×2"], ["g", "Зелёное ×24"]].map(x => `<button class="rpick${cz.pick === x[0] ? " on" : ""}" data-a="czpick" data-v="${x[0]}" style="--c:${ZC[x[0]]}">${x[1]}</button>`).join("")}</div>${czBetUi()}<div id="czres" class="czres"></div><button id="rspin" class="btn" data-a="czspin" style="width:100%;height:54px;justify-content:center;font-size:17px;margin-top:10px">Крутить</button><div class="t2" style="margin:12px 6px;font-size:12px">5% каждой ставки идёт в джекпот. Выпал сектор ★ — забираешь весь джекпот, на какой бы цвет ни ставил.</div>`;
+    return back + jp + bal + `<div class="rwrap" id="rwrap">${Array.from({length: ZN}, (_, i) => `<i class="rl" style="transform:rotate(${i * ZS}deg) translateY(-139px)"></i>`).join("")}<div class="rptr" id="rptr">▼</div><div id="rwheel" class="rwheel" style="background:repeating-conic-gradient(rgba(0,0,0,.45) 0 .5deg,transparent .5deg ${ZS}deg),conic-gradient(${stops});transform:rotate(${cz.rot}deg)">${lab(0, "0")}${lab(13, "★")}<span class="rhub" id="rhub">🍉</span></div><div class="rball" id="rball" style="${cz.lsec === undefined ? "opacity:0" : `transform:rotate(${(cz.lsec + .5) * ZS + cz.rot}deg) translateY(-86px)`}"></div></div><div class="rhist" id="rhist">${cz.hist.map(c => `<i style="background:${ZC[c]}"></i>`).join("")}</div><div class="rpicks">${[["r", "Красное ×2"], ["b", "Чёрное ×2"], ["g", "Зелёное ×24"]].map(x => `<button class="rpick${cz.pick === x[0] ? " on" : ""}" data-a="czpick" data-v="${x[0]}" style="--c:${ZC[x[0]]}">${x[1]}</button>`).join("")}</div>${czBetUi()}<div id="czres" class="czres"></div><button id="rspin" class="btn rspinb" data-a="czspin" style="width:100%;height:54px;justify-content:center;font-size:17px;margin-top:10px">Крутить</button><div class="t2" style="margin:12px 6px;font-size:12px">5% каждой ставки идёт в джекпот. Выпал сектор ★ — забираешь весь джекпот, на какой бы цвет ни ставил.</div>`;
   }
   const h = cz.hand, p = cz.phase;
   const slots = [0, 1, 2, 3, 4].map(i => `<div class="pks${cz.hold[i] ? " h" : ""}" data-a="czhold" data-i="${i}">${p ? `<div class="pkw">${pkCard(h[i], cz.dealing)}</div>` : `<div class="pkw"><div class="pk3 back"><div class="pkf bk"></div><div class="pkf bk"></div></div></div>`}<div class="pkh">ДЕРЖУ</div></div>`).join("");
@@ -680,17 +680,39 @@ A.czpick = function (e) { if (cz.busy) return; cz.pick = e.dataset.v; document.q
 A.czspin = async function () {
   if (cz.busy) return; const bet = czBet(); if (S.pts < bet || bet < 100) return toast("Не хватает монет");
   cz.busy = true; S.pts -= bet; mark(); czUpd(); const btn0 = $("#rspin"); if (btn0) btn0.classList.add("dis"); const rs = $("#czres"); if (rs) { rs.textContent = ""; rs.className = "czres"; }
+  const hub0 = $("#rhub"); if (hub0) hub0.textContent = "🍉"; const old = document.querySelector(".rwin"); if (old) old.remove();
   const r = await api("cz_roulette", {bet, pick: cz.pick});
   if (!r || r.error) { S.pts += bet; cz.busy = false; mark(); czUpd(); if (btn0) btn0.classList.remove("dis"); return toast((r && r.error) || "Нет связи"); }
-  const w = $("#rwheel"); cz.rot = (Math.floor(cz.rot / 360) + 6) * 360 - (r.sector + .5) * ZS + (Math.random() - .5) * ZS * .6;
-  if (w) { w.style.transition = "transform 4.2s cubic-bezier(.12,.7,.1,1)"; w.style.transform = `rotate(${cz.rot}deg)`; }
-  await sleep(4400);
+  const w = $("#rwheel"), wrap = $("#rwrap"), ptr = $("#rptr"), ball = $("#rball"), lights = [...document.querySelectorAll(".rl")], sec0 = r.sector;
+  const start = cz.rot, target = (Math.floor(cz.rot / 360) + 7) * 360 - (sec0 + .5) * ZS + (Math.random() - .5) * ZS * .6; cz.rot = target; cz.lsec = sec0;
+  if (w && wrap) {
+    wrap.classList.remove("win", "jp"); wrap.classList.add("spin"); try { tone(180, 260, .08, "sawtooth"); hap("medium"); } catch (e) {}
+    const T = 5.2, TW = .4, t0 = performance.now(); let lastSec = -1, lastTk = 0, lastL = -1;
+    await new Promise(done => {
+      const step = nowT => {
+        if (!w.isConnected) return done(); const t = (nowT - t0) / 1000; let rot;
+        if (t < TW) { const k = t / TW; rot = start - 12 * (k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2); }
+        else { const m = Math.min(1, (t - TW) / (T - TW)); rot = (start - 12) + (target - (start - 12)) * (1 - Math.pow(1 - m, 4.2)); }
+        w.style.transform = `rotate(${rot}deg)`;
+        const sec = Math.floor((((-rot) % 360) + 360) % 360 / ZS);
+        if (sec !== lastSec) { if (lastSec >= 0 && nowT - lastTk > 55) { lastTk = nowT; try { ptr.animate([{transform: "translateX(-50%) rotate(-28deg)"}, {transform: "translateX(-50%) rotate(0deg)"}], {duration: 120, easing: "ease-out"}); tone(900, 16, .035, "square"); tickHap(); } catch (e) {} } lastSec = sec; }
+        const li = Math.floor(t * 20) % ZN; if (li !== lastL) { if (lastL >= 0) lights[lastL].classList.remove("on"); lights[li].classList.add("on"); lastL = li; }
+        const D = -1900 * Math.pow(1 - Math.min(1, t / 4.4), 3), pocket = (sec0 + .5) * ZS + rot, fall = Math.min(1, Math.max(0, (t - 3.5) / .9)), bnc = fall < 1 ? 1 - Math.pow(1 - fall, 2) * Math.cos(fall * 9) : 1;
+        ball.style.opacity = 1; ball.style.transform = `rotate(${pocket + D}deg) translateY(${-(124 - 38 * bnc)}px)`;
+        if (t < T) requestAnimationFrame(step); else done();
+      }; requestAnimationFrame(step);
+    });
+    if (lastL !== undefined) lights.forEach(l => l.classList.remove("on")); wrap.classList.remove("spin");
+    if (w.isConnected) { w.style.transform = `rotate(${target}deg)`; const win = document.createElement("div"); win.className = "rwin"; win.style.background = `conic-gradient(from ${sec0 * ZS}deg,rgba(255,255,255,.7) 0deg ${ZS}deg,transparent ${ZS}deg)`; w.appendChild(win); }
+  } else await sleep(4400);
   S.pts += r.payout; mark(); if (r.payout > bet) save(true); cz.jp = r.jp; cz.last = r.last; const col = secCol(r.sector); cz.hist.push(col); if (cz.hist.length > 14) cz.hist.shift(); cz.busy = false; czUpd();
   const hi = $("#rhist"); if (hi) hi.innerHTML = cz.hist.map(c => `<i style="background:${ZC[c]}"></i>`).join("");
-  const rs2 = $("#czres"), b2 = $("#rspin"); if (b2) b2.classList.remove("dis");
-  if (r.jackpot) { if (rs2) { rs2.className = "czres win jp"; rs2.textContent = "ДЖЕКПОТ! +" + fmt(r.payout - bet); } try { fxConfetti(160); jingle(2); hap("ok"); } catch (e) {} }
-  else if (r.payout > 0) { if (rs2) { rs2.className = "czres win"; rs2.textContent = "Выигрыш +" + fmt(r.payout - bet); } try { fxConfetti(40); hap("ok"); } catch (e) {} }
-  else if (rs2) { rs2.className = "czres lose"; rs2.textContent = "Проигрыш −" + fmt(bet); }
+  const rs2 = $("#czres"), b2 = $("#rspin"), hub = $("#rhub"); if (b2) b2.classList.remove("dis");
+  const wr = w && w.isConnected ? w.getBoundingClientRect() : null, cx = wr ? wr.x + wr.width / 2 : innerWidth / 2, cy = wr ? wr.y + wr.height / 2 : 300;
+  const hubSet = (e) => { if (hub) { hub.textContent = e; hub.classList.remove("pop"); void hub.offsetWidth; hub.classList.add("pop"); setTimeout(() => { if (hub.isConnected) { hub.textContent = "🍉"; hub.classList.remove("pop"); } }, 2400); } };
+  if (r.jackpot) { if (rs2) { rs2.className = "czres win jp"; rs2.textContent = "ДЖЕКПОТ! +" + fmt(r.payout - bet); } if (wrap) { wrap.classList.add("jp"); setTimeout(() => wrap.classList.remove("jp"), 3200); } hubSet("👑"); try { fxConfetti(160); fxRing(cx, cy, "#ffd54f", 300, 800); fxBurst(cx, cy, 30, ["#ffd54f", "#fff", "#ff5252"], 170); fxFloat("ДЖЕКПОТ!", cx, cy - 20, "#ffd54f", 38); jingle(3); hap("ok"); const v = $("#view"); if (v) { v.classList.remove("shk"); void v.offsetWidth; v.classList.add("shk"); setTimeout(() => v.classList.remove("shk"), 300); } } catch (e) {} }
+  else if (r.payout > 0) { if (rs2) { rs2.className = "czres win"; rs2.textContent = "Выигрыш +" + fmt(r.payout - bet); } if (wrap) { wrap.classList.add("win"); setTimeout(() => wrap.classList.remove("win"), 2200); } hubSet("😎"); try { fxConfetti(40); fxRing(cx, cy, "#69f0ae", 220, 650); fxBurst(cx, cy, 16, ["#ffd54f", "#69f0ae", "#fff"], 130); fxFloat("+" + fmt(r.payout - bet), cx, cy - 20, "#69f0ae", 30); jingle(1); hap("ok"); } catch (e) {} }
+  else { if (rs2) { rs2.className = "czres lose"; rs2.textContent = "Проигрыш −" + fmt(bet); } hubSet("🫠"); try { fxFloat("−" + fmt(bet), cx, cy - 20, "#ff6e6e", 24); } catch (e) {} }
   if (tab === 6) czUpd();
 };
 // --- покер
