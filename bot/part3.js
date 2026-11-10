@@ -746,7 +746,7 @@ async function pkReveal(idxs) {
 }
 function burnCard() {
   const c = S.burnC || 0, t = S.burnT || 0;
-  return `<div class="card col" style="margin:10px 0;gap:6px;background:linear-gradient(135deg,rgba(255,87,34,.16),rgba(255,193,7,.08))"><div class="t1" style="font-size:15px">🔥 Сожжено монет</div><div style="display:flex;justify-content:space-between"><span class="t2" style="margin:0">Проиграно в казино</span><b>${fmt(c)}</b></div><div style="display:flex;justify-content:space-between"><span class="t2" style="margin:0">Налог на богатство</span><b>${fmt(t)}</b></div><div style="display:flex;justify-content:space-between;border-top:1px solid rgba(255,255,255,.12);padding-top:6px"><span class="t2" style="margin:0">Всего</span><b style="color:#ff8a50">${fmt(c + t)}</b></div><div class="t2" style="margin:2px 0 0;font-size:11px">🏛 Налог: от 1 трлн: клик приносит на 40% меньше, а офлайн каждые 2 часа сгорает 5% монет. От 1 квадриллиона (Qa) налоги не складываются, а заменяются: клик на 50% меньше и каждый час сгорает 25% всех монет.</div></div>`;
+  return `<div class="card col" style="margin:10px 0;gap:6px;background:linear-gradient(135deg,rgba(255,87,34,.16),rgba(255,193,7,.08))"><div class="t1" style="font-size:15px">🔥 Сожжено монет</div><div style="display:flex;justify-content:space-between"><span class="t2" style="margin:0">Проиграно в казино</span><b>${fmt(c)}</b></div><div style="display:flex;justify-content:space-between"><span class="t2" style="margin:0">Налог на богатство</span><b>${fmt(t)}</b></div><div style="display:flex;justify-content:space-between;border-top:1px solid rgba(255,255,255,.12);padding-top:6px"><span class="t2" style="margin:0">Всего</span><b style="color:#ff8a50">${fmt(c + t)}</b></div><div class="t2" style="margin:2px 0 0;font-size:11px">🏛 Налог: от 1 трлн: клик приносит на 40% меньше, а офлайн каждые 2 часа сгорает 5% монет. Налоги не складываются, работает только высший. От 1 квадриллиона (Qa): клик на 50% меньше, каждый час сгорает 25% монет. От 500 Qa: клик на 70% меньше, каждый час сгорает 40% монет.</div></div>`;
 }
 A.czdeal = async function () {
   if (cz.busy) return; const bet = czBet(); if (S.pts < bet || bet < 100) return toast("Не хватает монет");
@@ -1255,7 +1255,7 @@ function taxTick() {
   if (!S.tx2) { S.tx2 = now(); mark(); return; }
   let k = Math.min(48, Math.floor((now() - S.tx2) / 3600)); if (k < 1) return;
   S.tx2 += k * 3600; let burned = 0;
-  for (; k > 0 && S.pts >= TAX2_AT; k--) { const b = S.pts * TAX2_HR; S.pts -= b; burned += b; }
+  for (; k > 0 && S.pts >= TAX2_AT; k--) { const b = S.pts * (S.pts >= TAX3_AT ? TAX3_HR : TAX2_HR); S.pts -= b; burned += b; }
   if (S.pts < TAX2_AT) S.tx2 = 0;
   S.burnT = (S.burnT || 0) + burned; mark(); toast("🏛 Часовой налог: −" + fmt(burned)); try { hap("heavy"); } catch (e) {}
 }
