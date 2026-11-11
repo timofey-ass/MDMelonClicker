@@ -563,16 +563,35 @@ A.ucno = async function (e) { const r = await api("uc_reject", {id: +e.dataset.i
 A.ideasend = function () { if (ldOn) return; return withLoad("Создание идеи или запроса на добавление кота", async () => { const r = await api("idea_submit", {text: KEEP.idea || ""}); if (r.error) return toast(r.error); toast("Идея отправлена"); KEEP.idea = ""; wsLoad(); render(); }); };
 A.ideaok = async function (e) { const r = await api("idea_ok", {id: +e.dataset.i}); if (r.error) return toast(r.error); toast("Идея добавлена, игроку выдан значок Гений"); wsLoad(); };
 A.ideano = async function (e) { const r = await api("idea_rej", {id: +e.dataset.i}); if (r.error) return toast(r.error); toast("Идея отклонена"); wsLoad(); };
+function wsCrop(im, done) {
+  const V = 280, o = document.createElement("div"); o.className = "crpo";
+  o.innerHTML = `<div class="crpc"><div class="t1" style="text-align:center">Обрежь картинку</div><div class="t2" style="text-align:center;font-size:12px;margin:0">Двигай пальцем, масштаб — ползунком</div><canvas id="crpv" width="${V}" height="${V}"></canvas><input type="range" id="crpz" min="100" max="400" value="100"><div style="display:flex;gap:8px"><button class="btn o grow" id="crpx" style="justify-content:center">Отмена</button><button class="btn grow" id="crpok" style="justify-content:center">Готово</button></div></div>`;
+  document.body.appendChild(o);
+  const cv = o.querySelector("#crpv"), g = cv.getContext("2d"), zs = o.querySelector("#crpz"), base = V / Math.min(im.width, im.height);
+  let z = 1, ox = (V - im.width * base) / 2, oy = (V - im.height * base) / 2;
+  const clamp = () => { const w = im.width * base * z, h = im.height * base * z; ox = Math.min(0, Math.max(V - w, ox)); oy = Math.min(0, Math.max(V - h, oy)); };
+  const draw = () => { clamp(); g.fillStyle = "#111"; g.fillRect(0, 0, V, V); g.drawImage(im, ox, oy, im.width * base * z, im.height * base * z); };
+  const setZ = nz => { const cx = V / 2, cy = V / 2, k = nz / z; ox = cx - (cx - ox) * k; oy = cy - (cy - oy) * k; z = nz; draw(); };
+  zs.oninput = () => setZ(zs.value / 100);
+  let drag = null; cv.style.touchAction = "none";
+  cv.onpointerdown = e => { drag = [e.clientX, e.clientY, ox, oy]; cv.setPointerCapture(e.pointerId); };
+  cv.onpointermove = e => { if (!drag) return; ox = drag[2] + e.clientX - drag[0]; oy = drag[3] + e.clientY - drag[1]; draw(); };
+  cv.onpointerup = cv.onpointercancel = () => { drag = null; };
+  cv.onwheel = e => { e.preventDefault(); const nz = Math.min(4, Math.max(1, z * (e.deltaY < 0 ? 1.08 : .93))); zs.value = nz * 100; setZ(nz); };
+  o.querySelector("#crpx").onclick = () => o.remove();
+  o.querySelector("#crpok").onclick = () => {
+    const c = document.createElement("canvas"); c.width = c.height = 320; const x = c.getContext("2d"), k = 320 / V;
+    x.drawImage(im, ox * k, oy * k, im.width * base * z * k, im.height * base * z * k);
+    let q = .85, d = c.toDataURL("image/jpeg", q); while (d.length > 150000 && q > .3) { q -= .1; d = c.toDataURL("image/jpeg", q); }
+    o.remove(); done(d);
+  };
+  draw();
+}
 document.addEventListener("change", e => {
   const f = e.target; if (!f || f.id !== "wsfile" || !f.files || !f.files[0]) return;
   const url = URL.createObjectURL(f.files[0]), im = new Image();
-  im.onload = () => {
-    const c = document.createElement("canvas"); c.width = c.height = 320; const g = c.getContext("2d"), s = Math.min(im.width, im.height);
-    g.drawImage(im, (im.width - s) / 2, (im.height - s) / 2, s, s, 0, 0, 320, 320);
-    let q = .85, d = c.toDataURL("image/jpeg", q); while (d.length > 150000 && q > .3) { q -= .1; d = c.toDataURL("image/jpeg", q); }
-    URL.revokeObjectURL(url); wsImg = d; render();
-  };
-  im.onerror = () => toast("Не удалось открыть картинку"); im.src = url;
+  im.onload = () => { wsCrop(im, d => { URL.revokeObjectURL(url); wsImg = d; render(); }); };
+  im.onerror = () => toast("Не удалось открыть картинку"); im.src = url; f.value = "";
 });
 
 // ---------- Обмен: новый интерфейс
