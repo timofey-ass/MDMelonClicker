@@ -103,16 +103,37 @@ A.prof = async function (e) {
   const rows = [["Накоплено", fmt(r.total)], ["Тапов", fmt(r.taps)], ["Котов собрано", r.cats + " / " + ITEMS.length], ["Голограмм", r.holo], ["Достижений", r.ach], ["Кейсов открыто", r.opened], ["Перерождений", r.prest]];
   const bl = String(r.badges || "").split("").filter(c => BADGES[c]).map(c => `<div style="display:flex;align-items:center;gap:8px;font-size:13px;margin-top:4px">${bdg(c, 18)}<span>${BADGES[c][0]}</span></div>`).join("");
   let adm = "";
-  if (isAdm) adm = `<div class="sec" style="margin:14px 0 6px">Админ</div><div style="display:flex;gap:6px;flex-wrap:wrap">${uid !== me.id ? btn(r.banned ? "Разблокировать" : "Заблокировать", "pban", `data-i="${uid}" data-on="${r.banned ? 0 : 1}"`, "o") + btn("Выдать", "pgive", `data-i="${uid}"`, "o") : ""}${btn("Сбросить прогресс", "preset", `data-i="${uid}"`, "o")}</div><div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">${Object.keys(BADGES).map(c => `<button class="chip ${String(r.badges).includes(c) ? "p" : ""}" style="border:0;font-family:inherit" data-a="pbadge" data-i="${uid}" data-c="${c}" data-cur="${r.badges}">${BADGES[c][0].split(" ")[0]}</button>`).join("")}</div>`;
+  if (isAdm) adm = `<div class="sec" style="margin:14px 0 6px">Админ</div><div style="display:flex;gap:6px;flex-wrap:wrap">${uid !== me.id ? (r.ban === 2 ? "" : btn(r.banned ? "Размутить в чате" : "Мут в чате", "pban", `data-i="${uid}" data-on="${r.banned ? 0 : 1}"`, "o")) + btn(r.ban === 2 ? "✅ Снять бан" : "🚫 Забанить полностью", "pfban", `data-i="${uid}" data-on="${r.ban === 2 ? 0 : 1}"`, "o") + btn("Выдать", "pgive", `data-i="${uid}"`, "o") : ""}${btn("Сбросить прогресс", "preset", `data-i="${uid}"`, "o")}</div><div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">${Object.keys(BADGES).map(c => `<button class="chip ${String(r.badges).includes(c) ? "p" : ""}" style="border:0;font-family:inherit" data-a="pbadge" data-i="${uid}" data-c="${c}" data-cur="${r.badges}">${BADGES[c][0].split(" ")[0]}</button>`).join("")}</div>`;
   const eq = r.eq >= 0 ? catEl(r.eq, 64, {}) : catEl("coin", 64, {});
   const own = uid === me.id, bn = own && Number.isInteger(S.bn) ? S.bn : (r.bn || 0);
   const bnr = `<div style="height:64px;border-radius:14px;margin:-4px 0 12px;background:${BNR[bn % BNR.length]}"></div>` + (own ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin:-4px 0 12px">${BNR.map((g, k) => `<div data-a="setbn" data-k="${k}" style="width:34px;height:24px;border-radius:8px;background:${g};cursor:pointer;${k === bn ? "outline:2px solid var(--pri);outline-offset:2px" : ""}"></div>`).join("")}</div>` : "");
   const tr = (r.offers || []).length ? `<div class="sec" style="margin:14px 0 6px">Активные обмены</div>${r.offers.map(o => `<div style="display:flex;align-items:center;gap:8px;padding:3px 0">${catEl(o.give, 36, {})}<span style="color:var(--onv)">${ic("arrow", 18)}</span>${catEl(o.want, 36, {})}<span class="t2 grow" style="font-size:12px;margin:0"><span class="rar${ITEMS[o.give][2]}">${ITEMS[o.give][1]}</span> за <span class="rar${ITEMS[o.want][2]}">${ITEMS[o.want][1]}</span></span></div>`).join("")}` : "";
-  modal(bnr + `<div style="display:flex;gap:14px;align-items:center"><div style="border-radius:50%;overflow:hidden;width:64px;height:64px;flex:none">${eq}</div><div class="grow"><div class="t1" style="font-size:18px">${nm(r.name, r.badges)}</div><div class="t2">ID ${r.id}${isAdm ? " · " + (r.un ? `<a href="https://t.me/${r.un}" target="_blank" style="color:var(--pri)">@${esc(r.un)}</a>` : "без юзернейма") : ""} · <span style="color:${r.online ? "var(--good)" : "var(--out)"}">${r.online ? "в игре" : "не в сети"}</span>${r.banned ? ' · <span style="color:#ff5252">заблокирован</span>' : ""}</div></div></div>${bl}${tr}<div class="card col" style="margin:12px 0 0;gap:0">${rows.map(x => `<div style="display:flex;padding:3px 0"><span class="t2 grow" style="font-size:14px;margin:0">${x[0]}</span><span style="font-size:14px;font-weight:700">${x[1]}</span></div>`).join("")}</div>${adm}<div style="margin-top:14px;text-align:right">${btn("Закрыть", "mclose", "", "t")}</div>`);
+  modal(bnr + `<div style="display:flex;gap:14px;align-items:center"><div style="border-radius:50%;overflow:hidden;width:64px;height:64px;flex:none">${eq}</div><div class="grow"><div class="t1" style="font-size:18px">${nm(r.name, r.badges)}</div><div class="t2">ID ${r.id}${isAdm ? " · " + (r.un ? `<a href="https://t.me/${r.un}" target="_blank" style="color:var(--pri)">@${esc(r.un)}</a>` : "без юзернейма") : ""} · <span style="color:${r.online ? "var(--good)" : "var(--out)"}">${r.online ? "в игре" : "не в сети"}</span>${r.ban === 2 ? ' · <span style="color:#ff5252">забанен</span>' : r.banned ? ' · <span style="color:#ff5252">мут в чате</span>' : ""}</div></div></div>${bl}${tr}<div class="card col" style="margin:12px 0 0;gap:0">${rows.map(x => `<div style="display:flex;padding:3px 0"><span class="t2 grow" style="font-size:14px;margin:0">${x[0]}</span><span style="font-size:14px;font-weight:700">${x[1]}</span></div>`).join("")}</div>${adm}<div style="margin-top:14px;text-align:right">${btn("Закрыть", "mclose", "", "t")}</div>`);
 };
 const BNR = ["linear-gradient(135deg,#ff9a3c,#ff3d6e)", "linear-gradient(135deg,#43e97b,#38f9d7)", "linear-gradient(135deg,#4facfe,#7b5cff)", "linear-gradient(135deg,#f6d365,#fda085)", "linear-gradient(135deg,#a18cd1,#fbc2eb)", "linear-gradient(135deg,#232526,#5a5f66)", "linear-gradient(135deg,#00c6ff,#0072ff)", "linear-gradient(135deg,#f953c6,#b91d73)"];
 A.setbn = function (e) { S.bn = +e.dataset.k; mark(); save(true); A.prof({dataset: {i: me.id}}); };
 A.pban = async function (e) { const r = await api("adm_ban", {uid: +e.dataset.i, on: +e.dataset.on}); toast(r.error || (+e.dataset.on ? "Заблокирован" : "Разблокирован")); closeModal(); chatSig = ""; chatLoad(); };
+let fbArm = 0;
+A.pfban = async function (e) {
+  const on = +e.dataset.on, uid = +e.dataset.i;
+  if (on && fbArm !== uid) { fbArm = uid; e.textContent = "Точно? Нажми ещё раз"; setTimeout(() => { fbArm = 0; }, 4000); return; }
+  fbArm = 0; const r = await api("adm_fban", {uid, on}); if (r.error) return toast(r.error);
+  toast(on ? "Игрок забанен, прогресс удалится через 7 дней" : "Бан снят"); closeModal(); chatSig = ""; lbData = null; banList = null; if (tab === 4 || tab === 5) render();
+};
+A.fbid = function () {
+  const v = Number(String(KEEP.admid || "").trim()); if (!v) return toast("Введи ID игрока в поле выше");
+  A.pfban({dataset: {i: v, on: 1}, textContent: ""}); if (fbArm === v) { toast("Нажми «Забанить по ID» ещё раз"); }
+};
+A.fbun = async function (e) { const r = await api("adm_fban", {uid: +e.dataset.i, on: 0}); if (r.error) return toast(r.error); toast("Бан снят"); banList = null; render(); };
+let banList = null;
+async function loadBans() { const r = await api("adm_banlist", {}); banList = r && r.rows ? r : { rows: [], days: 7 }; if (tab === 5 && moreSub === 3) render(); }
+function banCard() {
+  if (!banList) { setTimeout(loadBans, 30); return `<div class="card col"><div class="t1" style="color:#ff5252">Баны</div><div class="t2">Загрузка…</div></div>`; }
+  const nowS = Math.floor(Date.now() / 1000), D = banList.days || 7;
+  const row = x => { const st = x.st === "ban" ? (nowS - x.at > D * 86400 ? "прогресс удалён" : "удалится через " + Math.max(0, Math.ceil((x.at + D * 86400 - nowS) / 86400)) + " дн.") : x.st === "purged" ? "прогресс удалён" : "разбанен"; const dt = new Date(x.at * 1000); const ds = dt.toLocaleDateString("ru-RU", {day: "2-digit", month: "2-digit"}) + " " + dt.toLocaleTimeString("ru-RU", {hour: "2-digit", minute: "2-digit"});
+    return `<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-top:1px solid rgba(255,255,255,.07)"><div class="grow" data-a="prof" data-i="${x.id}" style="cursor:pointer;min-width:0"><div class="t1" style="font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(x.name || "Без имени")}${x.un ? ' <span style="color:var(--onv);font-weight:400">@' + esc(x.un) + "</span>" : ""}</div><div class="t2" style="font-size:11px;margin:0;color:${x.st === "unban" ? "var(--good)" : "#ff8a80"}">ID ${x.id} · ${ds} · ${st}</div></div>${x.st === "ban" || x.st === "purged" ? btn("Разбан", "fbun", `data-i="${x.id}"`, "o") : ""}</div>`; };
+  return `<div class="card col"><div class="t1" style="color:#ff5252">🚫 Баны</div><div class="t2" style="font-size:12px;margin:0">Полный бан: не пускает в игру и бота, убирает из лидеров. Прогресс стирается через ${D} дн., до этого бан можно снять. Введи ID в поле «Выдать» выше или нажми «🚫 Забанить полностью» в профиле игрока.</div>${btn("Забанить по ID", "fbid", 'style="width:100%;justify-content:center;margin:8px 0 4px"', "o")}<div class="t2" style="font-size:12px;margin:6px 0 0;font-weight:700">Последние баны</div>${banList.rows.length ? banList.rows.map(row).join("") : '<div class="t2" style="font-size:12px">Пока никого</div>'}</div>`;
+}
 A.pbadge = async function (e) {
   const c = e.dataset.c, cur = e.dataset.cur || ""; const nb = cur.includes(c) ? cur.split(c).join("") : cur + c;
   const r = await api("adm_badges", {uid: +e.dataset.i, badges: nb}); toast(r.error || "Значки обновлены"); closeModal(); chatSig = ""; lbData = null; if (tab === 4) render();
@@ -196,6 +217,7 @@ const admCard = () => {
   h += `<div class="card col"><div class="t1" style="color:var(--pri)">Банк (тест)</div><div class="t2" style="font-size:12px;margin:0">Пропускает час твоего долга: коллекторы придут сразу.</div>${btn("⏩ Пропустить час долга", "admskip", 'style="width:100%;justify-content:center"', "o")}</div>`;
   h += `<div class="card col"><div class="t1" style="color:var(--pri)">Сообщение во все чаты бота</div><div class="t2" style="font-size:12px;margin:0">Придёт каждому игроку в личку от бота, с кнопкой «Играть». Уходит порциями, пока игроки заходят в игру.</div><textarea data-keep="tgc" rows="3" maxlength="1000" placeholder="Текст сообщения"></textarea><div id="tgst" class="t2" style="font-size:12px;margin:0">${tgStat ? tgStat : ""}</div>${btn("Отправить в чаты", "admtg", 'style="width:100%;justify-content:center"', "o")}</div>`;
   if (!tgStat) setTimeout(tgRefresh, 50);
+  h += banCard();
   h += `<div class="card col"><div class="t1" style="color:var(--pri)">Технический перерыв</div><div class="t2" style="font-size:12px;margin:0">Закрывает игру у всех игроков сразу, без перезагрузки страницы. Ты (админ) играть можешь. Когда выключишь, игра откроется сама.</div>${maintA ? `<div class="t2" style="color:var(--err,#ff5252);font-weight:700;margin:0">Сейчас игра закрыта: ${esc(maintA)}</div>` : ""}<textarea data-keep="mt" rows="2" placeholder="Что написать игрокам (необязательно)"></textarea>${btn(maintA ? "✅ Открыть игру" : "🛠 Закрыть на перерыв", "admmaint", 'style="width:100%;justify-content:center"', maintA ? "" : "o")}</div>`;
   h += `<div class="card col"><div class="t1" style="color:var(--pri)">Сообщение всем в игре</div><textarea data-keep="bc" rows="2" placeholder="Текст сообщения"></textarea>${btn("Показать всем", "admbc")}</div>`;
   h += `<div class="card col"><div class="t1" style="color:var(--pri)">Промокоды</div><input data-keep="pcode" placeholder="Код, например NEWYEAR" style="text-transform:uppercase"><div class="buyrow4">${[["Монеты", "pts"], ["Самоцветы", "gems"], ["Кот", "cat"]].map(x => `<button class="chip ${admKind === x[1] ? "p" : ""}" style="border:0;font-family:inherit;justify-content:center" data-a="admkind" data-v="${x[1]}">${x[0]}</button>`).join("")}</div><input data-keep="pa" inputmode="decimal" placeholder="${admKind === "cat" ? "Номер кота 0–62" : "Сколько"}">${admKind === "cat" ? `<input data-keep="pb" inputmode="numeric" placeholder="Сколько котов (1)">` : ""}<input data-keep="pmx" inputmode="numeric" placeholder="Сколько человек смогут ввести (0 = без лимита)">${btn("Создать промокод", "admpromo")}`;
@@ -1320,3 +1342,77 @@ function dcEndFx(r) {
   if (r.winner === 1) { ccBanner("ПОБЕДА!", "#69f0ae", "+" + fmt(prof), 1800); ccFlash("#69f0ae"); fxCoins(60); fxConfetti(70); jingle(2); hap("ok"); }
   else { ccBanner("ПОРАЖЕНИЕ", "#ff6e6e", "−" + fmt(r.stake), 1500); ccShake(); try { tone(220, 260, .07, "sawtooth"); setTimeout(() => tone(150, 340, .07, "sawtooth"), 170); hap("heavy"); } catch (e) {} }
 }
+// ---------- 6.5.0: ещё больше эффектов в покере и костях
+const _rF = render;
+render = function () {
+  _rF(); const b = document.body.classList;
+  b.toggle("dctbl", tab === 6 && cz.sub === 7); b.toggle("pktbl", tab === 6 && (cz.sub === 2 || cz.sub === 4));
+  if (tab !== 6) { const e = document.getElementById("ccst"); if (e) e.remove(); }
+};
+function ccStreak(n) {
+  let e = document.getElementById("ccst");
+  if (!n || n < 2) { if (e) e.remove(); return; }
+  if (!e) { e = document.createElement("div"); e.id = "ccst"; e.className = "ccst"; document.body.appendChild(e); }
+  e.textContent = "🔥 серия ×" + n; e.classList.remove("pop"); void e.offsetWidth; e.classList.add("pop");
+}
+function ccDim(ms) { const d = document.createElement("div"); d.className = "ccd"; d.style.animationDuration = ms + "ms"; document.body.appendChild(d); setTimeout(() => d.remove(), ms + 50); }
+function ccCount(val) {
+  const s = [...document.querySelectorAll(".ccb span")].pop(); if (!s || !(val > 0)) return;
+  const m = s.textContent.match(/^([+−])(\S+)([^]*)$/); if (!m) return; const t0 = performance.now(), D = 900;
+  const st = () => { const k = Math.min(1, (performance.now() - t0) / D), e = 1 - Math.pow(1 - k, 3); s.textContent = m[1] + fmt(val * e) + m[3]; if (k < 1 && s.isConnected) requestAnimationFrame(st); };
+  st();
+}
+const _pkFin = pkFinish;
+pkFinish = function (r, prof) {
+  _pkFin(r, prof); ccStreak(cz.pkStreak);
+  if (r.mult >= 2) ccCount(prof);
+  document.querySelectorAll(".pkpay div").forEach(d => { const s = d.querySelector("span"); if (s && s.textContent === r.name) d.classList.add("hit"); });
+};
+const _pkRv = pkReveal;
+pkReveal = async function (idxs) {
+  if (idxs.length <= 2) { ccDim(1200); for (let k = 0; k < 2; k++) { try { tone(95, 120, .1, "sine"); hap("tick"); } catch (e) {} await sleep(250); try { tone(80, 120, .09, "sine"); } catch (e) {} await sleep(320); } }
+  return _pkRv(idxs);
+};
+const _dEnd = dcEndFx;
+dcEndFx = function (r) {
+  _dEnd(r); cz.dcStreak = r.winner === 1 ? (cz.dcStreak || 0) + 1 : 0; ccStreak(cz.dcStreak);
+  if (r.winner === 1) { ccCount((r.pay || 0) - r.stake); setTimeout(() => fxCoins(40), 500); }
+};
+const BOT_BID = ["Ставлю арбуз на это 🍉", "Хм… ну ладно", "Дрожишь?", "Это точно правда!", "Корочка треснет, если я вру", "Попробуй не поверить", "Я чую блеф…"];
+const BOT_WIN = ["Арбуз сладок! 😎", "Легко и сочно", "Ещё партийку?"];
+const BOT_LOSE = ["Ну ты и хитрый…", "Я просто дал тебе выиграть 🍉", "Реванш!"];
+const botPick = a => a[rint(0, a.length - 1)];
+function botSay(txt) { cz.dBot = {txt, at: Date.now()}; setTimeout(() => { if (cz.sub === 7) render(); }, 3700); }
+const _dA = dcApply;
+dcApply = async function (r) {
+  r._at = Date.now(); const prev = cz.dc;
+  if (r.solo && r.status === "play" && prev && prev.hist && r.hist && r.hist.length > prev.hist.length && r.hist[r.hist.length - 1][0] !== r.seat) botSay(botPick(BOT_BID));
+  if (r.solo && r.status === "done" && !cz.dfin) botSay(r.winner === 1 ? botPick(BOT_LOSE) : botPick(BOT_WIN));
+  if (prev && prev.status === "play" && r.status === "play" && prev.turn !== r.turn && r.turn === r.seat && !r.solo) { ccBanner("ТВОЙ ХОД", "#ffd54f", "", 900); try { tone(740, 90, .06, "triangle"); hap("tick"); } catch (e) {} }
+  return _dA(r);
+};
+const C5 = [1, 5, 10, 10, 5, 1];
+const _tC8 = tCasino;
+tCasino = function () {
+  let h = _tC8(); if (cz.sub !== 7 || !cz.dc) return h; const t = cz.dc;
+  if (t.status === "play" && t.dice) {
+    const mine = f => t.dice.filter(x => x === f).length;
+    const pr = (q, f) => { const need = q - mine(f); if (need <= 0) return 1; let s = 0; for (let k = need; k <= 5; k++) s += C5[k] * Math.pow(1 / 6, k) * Math.pow(5 / 6, 5 - k); return s; };
+    const col = p => `hsl(${Math.round(p * 120)},80%,55%)`;
+    const g = (lab, p) => `<div class="dcg"><span>${lab}</span><div class="dcgb"><i style="width:${Math.round(p * 100)}%;background:${col(p)}"></i></div><b>${Math.round(p * 100)}%</b></div>`;
+    let gs = "";
+    if (t.bid) gs += g("Заявка верна", pr(t.bid[0], t.bid[1]));
+    if (t.turn === t.seat && cz.dq && cz.df) gs += g("Твоя заявка", pr(cz.dq, cz.df));
+    const left = Math.max(0, (t.left || 0) - (Date.now() - (t._at || Date.now())) / 1000);
+    gs += `<div class="dctm${left < 10 ? " urg" : ""}"><i style="width:${Math.min(100, left / 45 * 100)}%"></i></div>`;
+    const k = h.lastIndexOf('<div class="dcrow'); if (k > 0) h = h.slice(0, k) + gs + h.slice(k);
+  }
+  if (t.solo && cz.dBot && Date.now() - cz.dBot.at < 3600) h = h.replace(/(<div class="p2n">[^]*?<\/div>)/, `$1<div class="p2bub o" data-n="${cz.dBot.at}">${esc(cz.dBot.txt)}</div>`);
+  return h;
+};
+setInterval(() => {
+  if (tab !== 6 || cz.sub !== 7 || !cz.dc || cz.dc.status !== "play" || document.hidden) return;
+  const t = cz.dc, left = Math.max(0, t.left - (Date.now() - (t._at || Date.now())) / 1000), bar = document.querySelector(".dctm i");
+  if (bar) { bar.style.width = Math.min(100, left / 45 * 100) + "%"; bar.parentNode.classList.toggle("urg", left < 10); }
+  if (t.turn === t.seat && left < 8) { const s = Math.ceil(left); if (cz._tk !== s) { cz._tk = s; try { tone(s < 4 ? 900 : 600, 80, .06, "square"); hap("tick"); } catch (e) {} } }
+}, 400);

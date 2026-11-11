@@ -335,6 +335,12 @@ function setMaint(t) {
   if (!o) { o = document.createElement("div"); o.id = "maintov"; o.className = "maintov"; document.body.appendChild(o); }
   o.innerHTML = `<div class="maintc"><div style="font-size:64px">🛠</div><div class="t1" style="font-size:22px">Технический перерыв</div><div class="t2" style="font-size:15px;margin-top:8px">${esc(t)}</div><div class="t2" style="font-size:12px;margin-top:18px">Игра откроется сама, обновлять страницу не нужно.</div></div>`;
 }
+function setBan(j) {
+  if (document.getElementById("banov")) return;
+  const o = document.createElement("div"); o.id = "banov"; o.className = "maintov banov"; document.body.appendChild(o);
+  const left = Math.max(0, Math.ceil(((j.purge || 0) - Math.floor(Date.now() / 1000)) / 86400));
+  o.innerHTML = `<div class="maintc"><div style="font-size:72px;filter:drop-shadow(0 0 18px #ff1744)">🚫</div><div class="t1" style="font-size:24px;color:#ff5252">Ты заблокирован</div><div class="t2" style="font-size:15px;margin-top:10px">Администратор закрыл тебе доступ к игре и чату.</div><div class="t2" style="font-size:13px;margin-top:14px">${left > 0 ? "Если это ошибка, напиши администратору: прогресс будет храниться ещё " + left + " дн." : "Прогресс удалён."}</div></div>`;
+}
 const wsGet = () => { try { return localStorage.getItem("mdws") || ""; } catch (e) { return ""; } };
 async function webLoginScreen(lt) {
   const tr = document.querySelector("#load .tr"); if (tr) tr.style.display = "none";
@@ -352,7 +358,7 @@ async function webLoginScreen(lt) {
   };
 }
 async function api(path, body) {
-  try { const r = await fetch("/api/" + path, {method: "POST", headers: {"content-type": "application/json", "x-init": tg ? tg.initData : "", "x-web": wsGet()}, body: JSON.stringify(body || {}), keepalive: path === "save"}); const j = await r.json(); if (j && j.maint !== undefined) setMaint(j.maint); return j; }
+  try { const r = await fetch("/api/" + path, {method: "POST", headers: {"content-type": "application/json", "x-init": tg ? tg.initData : "", "x-web": wsGet()}, body: JSON.stringify(body || {}), keepalive: path === "save"}); const j = await r.json(); if (j && j.fullban) setBan(j); else if (j && j.maint !== undefined) setMaint(j.maint); return j; }
   catch (e) { return {error: "Нет связи с сервером"}; }
 }
 async function save(force) {
