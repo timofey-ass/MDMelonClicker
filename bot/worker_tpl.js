@@ -29,7 +29,7 @@ const uname = u => ((u.first_name || "") + " " + (u.last_name || "")).trim().sli
 async function init(db) {
   if (ready) return;
   await db.batch([
-    db.prepare("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, name TEXT, state TEXT, rev INTEGER DEFAULT 0, total REAL DEFAULT 0, imp INTEGER DEFAULT 0, upd INTEGER DEFAULT 0)"),
+    db.prepare("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, name TEXT, state TEXT, rev INTEGER DEFAULT 0, cur REAL DEFAULT 0, total REAL DEFAULT 0, imp INTEGER DEFAULT 0, upd INTEGER DEFAULT 0)"),
     db.prepare("CREATE TABLE IF NOT EXISTS offers (id INTEGER PRIMARY KEY AUTOINCREMENT, seller INTEGER, sname TEXT, give INTEGER, want INTEGER, ts INTEGER, status TEXT DEFAULT 'open', buyer INTEGER)"),
     db.prepare("CREATE INDEX IF NOT EXISTS idx_total ON users(total)"),
     db.prepare("CREATE INDEX IF NOT EXISTS idx_offers ON offers(status)"),
@@ -50,7 +50,8 @@ async function init(db) {
     db.prepare("CREATE TABLE IF NOT EXISTS kv (k TEXT PRIMARY KEY, v TEXT)"),
     db.prepare("CREATE TABLE IF NOT EXISTS chat (id INTEGER PRIMARY KEY AUTOINCREMENT, uid INTEGER, name TEXT, text TEXT, ts INTEGER)"),
   ]);
-  for (const c of ["badges TEXT DEFAULT ''", "banned INTEGER DEFAULT 0", "seen INTEGER DEFAULT 0", "un TEXT DEFAULT ''"]) { try { await db.prepare("ALTER TABLE users ADD COLUMN " + c).run(); } catch (e) {} }
+  for (const c of ["cur REAL DEFAULT 0", "badges TEXT DEFAULT ''", "banned INTEGER DEFAULT 0", "seen INTEGER DEFAULT 0", "un TEXT DEFAULT ''"]) { try { await db.prepare("ALTER TABLE users ADD COLUMN " + c).run(); } catch (e) {} }
+  try { const f = await db.prepare("SELECT v FROM kv WHERE k='curfill'").first(); if (!f) { await db.prepare("UPDATE users SET cur=MAX(0,COALESCE(json_extract(state,'$.pts'),0)) WHERE state IS NOT NULL").run(); await db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES ('curfill','1')").run(); } } catch (e) {}
   try { await db.prepare("CREATE TABLE IF NOT EXISTS websess (tok TEXT PRIMARY KEY, uid INTEGER DEFAULT 0, name TEXT DEFAULT '', un TEXT DEFAULT '', sess TEXT DEFAULT '', claimed INTEGER DEFAULT 0, ts INTEGER)").run(); } catch (e) {}
   try { await db.prepare("ALTER TABLE ucats ADD COLUMN bc INTEGER DEFAULT 0").run(); } catch (e) {}
   for (const c of ["ask INTEGER DEFAULT 0", "reward INTEGER DEFAULT 0"]) { try { await db.prepare("ALTER TABLE ucats ADD COLUMN " + c).run(); } catch (e) {} }
@@ -73,7 +74,7 @@ async function mutate(db, id, fn, name) {
   for (let i = 0; i < 4; i++) {
     const u = await getUser(db, id); if (!u || !u.state) return {error: "Игрок не найден"};
     const s = JSON.parse(u.state); const r = fn(s); if (r) return {error: r};
-    const res = await db.prepare("UPDATE users SET state=?, rev=rev+1, total=?, upd=? WHERE id=? AND rev=?").bind(JSON.stringify(s), num(s.total), Math.floor(Date.now() / 1000), id, u.rev).run();
+    const res = await db.prepare("UPDATE users SET state=?, rev=rev+1, total=?, cur=?, upd=? WHERE id=? AND rev=?").bind(JSON.stringify(s), num(s.total), Math.max(0, num(s.pts)), Math.floor(Date.now() / 1000), id, u.rev).run();
     if (res.meta.changes === 1) return {state: s, rev: u.rev + 1};
   }
   return {error: "Занято, попробуй ещё раз"};
@@ -89,7 +90,7 @@ async function ensureBc(db, now) {
   }
 }
 async function lbTrack(db, env, now) {
-  const top = (await db.prepare("SELECT id FROM users WHERE total>0 ORDER BY total DESC LIMIT 3").all()).results;
+  const top = (await db.prepare("SELECT id FROM users WHERE cur>0 ORDER BY cur DESC LIMIT 3").all()).results;
   const cur = (await db.prepare("SELECT rank,uid,since FROM lbhold").all()).results;
   for (let r = 1; r <= 3; r++) {
     const t = top[r - 1], c = cur.find(x => x.rank === r);
@@ -145,19 +146,19 @@ async function api(path, req, env) {
     const s = clean(b.state); if (!s) return J({error: "Некорректные данные"}, 400);
     const u = await getUser(db, id);
     if (!u) {
-      await db.prepare("INSERT OR IGNORE INTO users (id,name,state,rev,total,upd) VALUES (?,?,?,?,?,?)").bind(id, name, JSON.stringify(s), 1, num(s.total), now).run();
+      await db.prepare("INSERT OR IGNORE INTO users (id,name,state,rev,total,cur,upd) VALUES (?,?,?,?,?,?,?)").bind(id, name, JSON.stringify(s), 1, num(s.total), Math.max(0, num(s.pts)), now).run();
       await db.prepare("UPDATE users SET un=? WHERE id=?").bind(String(user.username || "").slice(0, 40), id).run();
       const n = await getUser(db, id); return J({rev: n.rev});
     }
-    const res = await db.prepare("UPDATE users SET state=?, rev=rev+1, total=?, name=?, upd=? WHERE id=? AND rev=?").bind(JSON.stringify(s), num(s.total), name, now, id, Number(b.rev)).run();
+    const res = await db.prepare("UPDATE users SET state=?, rev=rev+1, total=?, cur=?, name=?, upd=? WHERE id=? AND rev=?").bind(JSON.stringify(s), num(s.total), Math.max(0, num(s.pts)), name, now, id, Number(b.rev)).run();
     if (res.meta.changes === 1) return J({rev: Number(b.rev) + 1});
     if (!u.state) return J({reset: true, rev: u.rev});
     return J({conflict: true, state: JSON.parse(u.state), rev: u.rev});
   }
   if (path === "top") {
-    const rows = (await db.prepare("SELECT id,name,total,badges FROM users WHERE total>0 ORDER BY total DESC LIMIT 50").all()).results.map(r => ({...r, badges: bd(r.id, r.badges)}));
+    const rows = (await db.prepare("SELECT id,name,cur AS total,badges FROM users WHERE cur>0 ORDER BY cur DESC LIMIT 50").all()).results.map(r => ({...r, badges: bd(r.id, r.badges)}));
     const u = await getUser(db, id); let rank = 0;
-    if (u) rank = (await db.prepare("SELECT COUNT(*)+1 AS r FROM users WHERE total>?").bind(u.total).first()).r;
+    if (u) rank = (await db.prepare("SELECT COUNT(*)+1 AS r FROM users WHERE cur>?").bind(u.cur).first()).r;
     await lbTrack(db, env, now);
     const hold = (await db.prepare("SELECT rank,uid,since FROM lbhold ORDER BY rank").all()).results;
     const done = (await db.prepare("SELECT COUNT(*) AS c FROM lbrew").first()).c;
@@ -202,8 +203,8 @@ async function api(path, req, env) {
     const u = await getUser(db, id);
     if (u && u.imp) return J({error: "Перенос уже выполнялся"});
     s.ts = now;
-    if (!u) { await db.prepare("INSERT INTO users (id,name,state,rev,total,imp,upd) VALUES (?,?,?,?,?,1,?)").bind(id, name, JSON.stringify(s), 1, num(s.total), now).run(); await db.prepare("UPDATE users SET un=? WHERE id=?").bind(String(user.username || "").slice(0, 40), id).run(); }
-    else await db.prepare("UPDATE users SET state=?, rev=rev+1, total=?, imp=1, upd=? WHERE id=?").bind(JSON.stringify(s), num(s.total), now, id).run();
+    if (!u) { await db.prepare("INSERT INTO users (id,name,state,rev,total,cur,imp,upd) VALUES (?,?,?,?,?,?,1,?)").bind(id, name, JSON.stringify(s), 1, num(s.total), Math.max(0, num(s.pts)), now).run(); await db.prepare("UPDATE users SET un=? WHERE id=?").bind(String(user.username || "").slice(0, 40), id).run(); }
+    else await db.prepare("UPDATE users SET state=?, rev=rev+1, total=?, cur=?, imp=1, upd=? WHERE id=?").bind(JSON.stringify(s), num(s.total), Math.max(0, num(s.pts)), now, id).run();
     const n = await getUser(db, id); return J({state: s, rev: n.rev});
   }
   const adm = id === ADMIN;
@@ -433,10 +434,27 @@ async function api(path, req, env) {
   };
   const dcView = (tb, me) => {
     const seat = tb.p1 === me ? 1 : 2, done = tb.status === "done", res = done ? JSON.parse(tb.res) : null;
-    const out = {id: tb.id, status: tb.status, stake: tb.stake, seat, n1: tb.n1, n2: tb.n2, turn: tb.turn, bid: tb.bid ? JSON.parse(tb.bid) : null, bseat: tb.bseat, hist: JSON.parse(tb.hist || "[]").slice(-8), left: tb.status === "play" ? Math.max(0, DC_T - (now - tb.last)) : 0, dice: tb.h1 ? JSON.parse(seat === 1 ? tb.h1 : tb.h2) : null};
+    const out = {solo: tb.p2 === -1, id: tb.id, status: tb.status, stake: tb.stake, seat, n1: tb.n1, n2: tb.n2, turn: tb.turn, bid: tb.bid ? JSON.parse(tb.bid) : null, bseat: tb.bseat, hist: JSON.parse(tb.hist || "[]").slice(-8), left: tb.status === "play" ? Math.max(0, DC_T - (now - tb.last)) : 0, dice: tb.h1 ? JSON.parse(seat === 1 ? tb.h1 : tb.h2) : null};
     if (done) { out.oppDice = JSON.parse(seat === 1 ? tb.h2 : tb.h1); out.winner = res.winner === seat ? 1 : 2; out.reason = res.reason; out.cnt = res.cnt; out.rq = res.q; out.rf = res.f; out.pay = seat === 1 ? res.pay1 : res.pay2; out.claimed = !!tb["c" + seat]; }
     if (tb.status === "cancel") { out.pay = seat === 1 ? tb.stake : 0; out.claimed = !!tb["c" + seat]; }
     return out;
+  };
+  const dcBotMove = async tb => {
+    const bin = (n, p, k) => { let s = 0; for (let i = k; i <= n; i++) { let c = 1; for (let j = 0; j < i; j++) c = c * (n - j) / (j + 1); s += c * Math.pow(p, i) * Math.pow(1 - p, n - i); } return s; };
+    const own = JSON.parse(tb.h2), cur = tb.bid ? JSON.parse(tb.bid) : null, cnt = f => own.filter(x => x === f).length, prob = (q, f) => q - cnt(f) <= 0 ? 1 : bin(5, 1 / 6, q - cnt(f));
+    if (cur && prob(cur[0], cur[1]) < 0.34 + (Math.random() < 0.12 ? 0.15 : 0)) {
+      const all = JSON.parse(tb.h1).concat(own), c = all.filter(x => x === cur[1]).length;
+      await dcFinish(tb, c >= cur[0] ? tb.bseat : 2, "call", {q: cur[0], f: cur[1], cnt: c}); return;
+    }
+    let best = null;
+    for (let q = 1; q <= 10; q++) for (let f = 1; f <= 6; f++) {
+      if (cur && !(q > cur[0] || (q === cur[0] && f > cur[1]))) continue;
+      let sc = prob(q, f) + Math.random() * 0.16 - (cur ? (q - cur[0]) * 0.07 : q * 0.05);
+      if (!best || sc > best.sc) best = {q, f, sc};
+    }
+    if (!best) { const all = JSON.parse(tb.h1).concat(own), c = all.filter(x => x === cur[1]).length; await dcFinish(tb, c >= cur[0] ? tb.bseat : 2, "call", {q: cur[0], f: cur[1], cnt: c}); return; }
+    const hist = JSON.parse(tb.hist || "[]"); hist.push([2, best.q, best.f]);
+    await db.prepare("UPDATE dc SET bid=?, bseat=2, turn=1, hist=?, v=v+1, last=? WHERE id=? AND status='play'").bind(JSON.stringify([best.q, best.f]), JSON.stringify(hist), now, tb.id).run();
   };
   const dcMine = async (tid) => await db.prepare("SELECT * FROM dc WHERE id=? AND (p1=? OR p2=?)").bind(tid, id, id).first();
   const dcActive = async () => await db.prepare("SELECT id FROM dc WHERE (p1=? OR p2=?) AND status IN ('wait','play') ORDER BY id DESC LIMIT 1").bind(id, id).first();
@@ -447,6 +465,14 @@ async function api(path, req, env) {
     const act = await dcActive();
     const claims = (await db.prepare("SELECT id FROM dc WHERE ((p1=? AND c1=0) OR (p2=? AND c2=0)) AND status IN ('done','cancel') ORDER BY id DESC LIMIT 5").bind(id, id).all()).results.map(x => x.id);
     return J({rows, mine: act ? act.id : 0, claims});
+  }
+  if (path === "dc_solo") {
+    const stake = Math.floor(Number(b.stake)); if (!(stake >= 100) || !isFinite(stake)) return J({error: "Неверная ставка"});
+    if (await dcActive()) return J({error: "У тебя уже есть активный столик"});
+    const roll = () => JSON.stringify(Array.from({length: 5}, () => crnd(6) + 1));
+    const r = await db.prepare("INSERT INTO dc (p1,n1,p2,n2,stake,ts,status,h1,h2,turn,last) VALUES (?,?,?,?,?,?,'play',?,?,?,?)").bind(id, name, -1, "Арбуз-бот 🍉", stake, now, roll(), roll(), crnd(2) + 1, now).run();
+    let tb = await db.prepare("SELECT * FROM dc WHERE id=?").bind(r.meta.last_row_id).first(); if (tb.turn === 2) await dcBotMove(tb);
+    return J({ok: true, id: r.meta.last_row_id, stake});
   }
   if (path === "dc_create") {
     const stake = Math.floor(Number(b.stake)); if (!(stake >= 100) || !isFinite(stake)) return J({error: "Неверная ставка"});
@@ -483,6 +509,7 @@ async function api(path, req, env) {
       const hist = JSON.parse(tb.hist || "[]"); hist.push([seat, q, f]);
       const r = await db.prepare("UPDATE dc SET bid=?, bseat=?, turn=?, hist=?, v=v+1, last=? WHERE id=? AND status='play' AND v=? AND turn=?").bind(JSON.stringify([q, f]), seat, 3 - seat, JSON.stringify(hist), now, tb.id, tb.v, seat).run();
       if (r.meta.changes !== 1) return J({error: "Не успел, попробуй ещё раз"});
+      if (tb.p2 === -1) { const t2 = await db.prepare("SELECT * FROM dc WHERE id=?").bind(tb.id).first(); await dcBotMove(t2); }
     } else {
       if (!cur) return J({error: "Сначала нужна заявка"});
       const all = JSON.parse(tb.h1).concat(JSON.parse(tb.h2)), cnt = all.filter(x => x === cur[1]).length;
@@ -688,7 +715,7 @@ async function api(path, req, env) {
     }
     if (path === "adm_reset") {
       const t = Number(b.uid), u = await getUser(db, t); if (!u) return J({error: "Игрок не найден"});
-      await db.prepare("UPDATE users SET state=NULL, total=0, rev=rev+1, upd=? WHERE id=?").bind(now, t).run();
+      await db.prepare("UPDATE users SET state=NULL, total=0, cur=0, rev=rev+1, upd=? WHERE id=?").bind(now, t).run();
       await db.prepare("UPDATE offers SET status='cancelled' WHERE seller=? AND status='open'").bind(t).run();
       await db.prepare("INSERT INTO grants (uid,kind,a,b,ts) VALUES (?,?,?,?,?)").bind(t, "reset", 0, 1, now).run();
       return J({ok: true, name: u.name});
@@ -700,7 +727,7 @@ async function api(path, req, env) {
       return J({ok: true, count: c, gems: g});
     }
     if (path === "adm_resetall") {
-      await db.prepare("UPDATE users SET state=NULL, total=0, rev=rev+1, upd=?").bind(now).run();
+      await db.prepare("UPDATE users SET state=NULL, total=0, cur=0, rev=rev+1, upd=?").bind(now).run();
       await db.prepare("UPDATE offers SET status='cancelled' WHERE status='open'").run();
       await db.prepare("DELETE FROM grants").run();
       await db.prepare("INSERT INTO grants (uid,kind,a,b,ts) SELECT id,'reset',0,2,? FROM users").bind(now).run();
@@ -751,7 +778,7 @@ async function announce(env, origin) {
     const pos = Number((await db.prepare("SELECT v FROM kv WHERE k='annpos'").first()).v) || 0;
     const rows = (await db.prepare("SELECT id FROM users WHERE id>? AND banned=0 ORDER BY id LIMIT 40").bind(pos).all()).results;
     if (!rows.length) { await db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES ('annver',?)").bind(ANN[0]).run(); return; }
-    const text = "🍉 Обновление v" + ANN[0] + "\n\n" + ANN[1].map(x => "• " + x).join("\n");
+    const text = "🍉 " + (ANN[2] || "Обновление") + " v" + ANN[0] + "\n\n" + ANN[1].map(x => "• " + x).join("\n");
     const markup = {inline_keyboard: [[{text: "Играть", web_app: {url: origin}}]]};
     for (let i = 0; i < rows.length; i += 10) {
       await Promise.all(rows.slice(i, i + 10).map(r => tgcall(env, "sendMessage", {chat_id: r.id, text, reply_markup: markup}).catch(() => {})));
@@ -832,7 +859,7 @@ export default {
         }
         if (m.text.startsWith("/top") && env.DB) {
           await init(env.DB);
-          const rows = (await env.DB.prepare("SELECT name,total FROM users WHERE total>0 ORDER BY total DESC LIMIT 10").all()).results;
+          const rows = (await env.DB.prepare("SELECT name,cur AS total FROM users WHERE cur>0 ORDER BY cur DESC LIMIT 10").all()).results;
           const f = n => { n = Number(n); if (n < 1000) return String(Math.floor(n)); const S = ["", "K", "M", "B", "T", "Qa", "Qi", "Sx"], i = Math.min(Math.floor(Math.log10(n) / 3), 7); return (n / Math.pow(1000, i)).toFixed(2) + S[i]; };
           await tgcall(env, "sendMessage", {chat_id: m.chat.id, text: "🏅 Топ игроков\n\n" + (rows.map((r, i) => (i + 1) + ". " + r.name + " — " + f(r.total)).join("\n") || "Пока пусто")});
         } else {

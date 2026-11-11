@@ -176,7 +176,7 @@ function tAch() {
 function tTop() {
   let h = `<div class="seg"><button class="${sub === 0 ? "on" : ""}" data-a="sub" data-i="0">Лидеры</button><button class="${sub === 1 ? "on" : ""}" data-a="sub" data-i="1">Обмен котами</button></div>`;
   if (sub === 0) {
-    h += `<div class="card"><div class="grow"><div class="t1" style="display:flex;align-items:center;gap:8px">${ic("medal", 18)}Таблица лидеров</div><div class="t2">Очки: накоплено за всё время</div></div>${btn("Обновить", "reloadtop")}</div>`;
+    h += `<div class="card"><div class="grow"><div class="t1" style="display:flex;align-items:center;gap:8px">${ic("medal", 18)}Таблица лидеров</div><div class="t2">Монеты на данный момент, траты в казино тоже считаются</div></div>${btn("Обновить", "reloadtop")}</div>`;
     if (!lbData) return h + `<div class="t2" style="text-align:center;margin:30px">Загружаю…</div>`;
     h += `<div class="card" style="background:var(--sch)"><div class="t1 grow" style="color:var(--onprc)">Ты: ${esc(me.name)}${lbData.rank ? " · место " + lbData.rank : ""}</div></div>`;
     lbData.rows.forEach((r, i) => { h += `<div class="card ${r.id === me.id ? "p" : ""}"><div class="circ" style="width:38px;height:38px;font-size:15px;font-weight:700"><span style="color:${["#ffd54f", "#cfd8dc", "#d7966a"][i] || "inherit"}">${i + 1}</span></div><div class="grow"><div class="t1">${esc(r.name || "Игрок")}</div></div><div class="t1">${fmt(r.total)}</div></div>`; });

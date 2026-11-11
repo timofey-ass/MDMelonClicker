@@ -394,6 +394,24 @@ body.bmdark::before{display:none}
 @keyframes lbtx{to{background-position:-200% 0}}
 .lbsp{position:absolute;width:8px;height:8px;pointer-events:none;background:#fff;clip-path:polygon(50% 0,62% 38%,100% 50%,62% 62%,50% 100%,38% 62%,0 50%,38% 38%);opacity:0;animation:lbtw 2.4s ease-in-out infinite}
 @keyframes lbtw{0%,100%{opacity:0;transform:scale(.3) rotate(0)}50%{opacity:1;transform:scale(1.2) rotate(90deg)}}
+.gmc{background:var(--sc);border-radius:22px;padding:14px;margin:8px 0;display:flex;flex-direction:column;gap:12px}
+.gmh{display:flex;align-items:center;gap:14px}.gmb{display:flex;gap:10px}
+.gmb button{flex:1;height:46px;border-radius:23px;border:0;background:var(--prc);color:var(--onprc);font-size:15px;font-weight:700;font-family:inherit;transition:transform .12s}.gmb button:active{transform:scale(.95)}
+.ccb{position:fixed;left:0;right:0;top:32%;text-align:center;z-index:80;pointer-events:none;animation:ccbin 1.6s cubic-bezier(.2,1.4,.4,1) forwards}
+.ccb b{display:block;font-size:38px;font-weight:900;letter-spacing:1px;color:var(--cc);text-shadow:0 0 18px var(--cc),0 4px 0 rgba(0,0,0,.55);padding:0 10px;line-height:1.1}
+.ccb span{display:block;margin-top:8px;font-size:22px;font-weight:800;color:#fff;text-shadow:0 2px 8px #000}
+@keyframes ccbin{0%{opacity:0;transform:scale(.3) rotate(-6deg)}14%{opacity:1;transform:scale(1.15) rotate(2deg)}24%{transform:scale(1) rotate(0)}80%{opacity:1}100%{opacity:0;transform:translateY(-34px) scale(1.05)}}
+.ccf{position:fixed;inset:0;z-index:79;pointer-events:none;background:var(--cc);animation:ccfl .5s ease-out forwards}
+@keyframes ccfl{from{opacity:.5}to{opacity:0}}
+.pks.hot .pk3{animation:pkhot .9s ease-in-out infinite;box-shadow:0 0 14px 3px rgba(255,213,79,.8)}
+@keyframes pkhot{50%{transform:translateY(-8px) scale(1.06);box-shadow:0 0 26px 7px rgba(255,236,130,1)}}
+.pks.lost .pk3{animation:pklost .6s forwards}
+@keyframes pklost{0%{transform:none}20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}100%{transform:none;filter:grayscale(.75) brightness(.65)}}
+.dcrow.dcrv .dcd{animation:dcflip .5s both}.dcrow.dcrv .dcd:nth-child(2){animation-delay:.17s}.dcrow.dcrv .dcd:nth-child(3){animation-delay:.34s}.dcrow.dcrv .dcd:nth-child(4){animation-delay:.51s}.dcrow.dcrv .dcd:nth-child(5){animation-delay:.68s}
+@keyframes dcflip{from{transform:rotateY(90deg) scale(.6);opacity:0}to{transform:none;opacity:1}}
+.dcd.hit{box-shadow:0 0 14px 3px #ffd54f}
+.dcbid.new{animation:dcbn .7s}
+@keyframes dcbn{0%{transform:scale(.85);box-shadow:0 0 0 0 rgba(255,213,79,.8)}60%{transform:scale(1.06);box-shadow:0 0 22px 6px rgba(255,213,79,.5)}100%{transform:none;box-shadow:none}}
 </style></head><body>
 <div id="load"><div class="lw"><div class="lglow"></div><div class="lm" id="lm">🍉</div><div class="lsh"></div></div><div class="lti">MDMelonClicker</div><div id="lt">Подключаюсь…</div><div class="tr"><i id="lbar"></i></div><div id="ltip"></div></div>
 <div id="app"><div id="top"><h1 id="ttl">MDMelonClicker</h1><span id="gemc"></span></div><div id="view"></div><div id="nav"></div></div>
