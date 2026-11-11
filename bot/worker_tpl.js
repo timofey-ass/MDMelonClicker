@@ -5,6 +5,7 @@ const N_ITEMS = 103;
 const BC_CATS = [["Киллер в плаще", 3], ["Кот-дон", 3], ["Вор-домушник", 2], ["Торговец с рынка", 3], ["Контрабандный ящик", 2], ["Кот-алхимик", 3], ["Кот-чемодан", 2], ["Призрак рынка", 4], ["Золотой слиток", 4], ["Золотой арбуз-лидер", 9]];
 const LB_HOLD = 72 * 3600, BC_LEADER = 10;
 const ADMIN = 1796286471;
+const BAN_DAYS = 7;
 let ready = false;
 
 const J = (o, s) => new Response(JSON.stringify(o), {status: s || 200, headers: {"content-type": "application/json", "cache-control": "no-store"}});
@@ -48,9 +49,10 @@ async function init(db) {
     db.prepare("CREATE TABLE IF NOT EXISTS dc (id INTEGER PRIMARY KEY AUTOINCREMENT, p1 INTEGER, n1 TEXT, p2 INTEGER, n2 TEXT, stake REAL, status TEXT DEFAULT 'wait', h1 TEXT, h2 TEXT, turn INTEGER DEFAULT 1, bid TEXT, bseat INTEGER DEFAULT 0, hist TEXT DEFAULT '[]', v INTEGER DEFAULT 0, last INTEGER DEFAULT 0, res TEXT, c1 INTEGER DEFAULT 0, c2 INTEGER DEFAULT 0, ts INTEGER)"),
     db.prepare("CREATE TABLE IF NOT EXISTS ideas (id INTEGER PRIMARY KEY AUTOINCREMENT, uid INTEGER, uname TEXT, text TEXT, status TEXT DEFAULT 'new', ts INTEGER)"),
     db.prepare("CREATE TABLE IF NOT EXISTS kv (k TEXT PRIMARY KEY, v TEXT)"),
+    db.prepare("CREATE TABLE IF NOT EXISTS bans (id INTEGER PRIMARY KEY, name TEXT, un TEXT, at INTEGER, st TEXT DEFAULT 'ban', endt INTEGER DEFAULT 0, why TEXT DEFAULT '')"),
     db.prepare("CREATE TABLE IF NOT EXISTS chat (id INTEGER PRIMARY KEY AUTOINCREMENT, uid INTEGER, name TEXT, text TEXT, ts INTEGER)"),
   ]);
-  for (const c of ["cur REAL DEFAULT 0", "badges TEXT DEFAULT ''", "banned INTEGER DEFAULT 0", "seen INTEGER DEFAULT 0", "un TEXT DEFAULT ''"]) { try { await db.prepare("ALTER TABLE users ADD COLUMN " + c).run(); } catch (e) {} }
+  for (const c of ["cur REAL DEFAULT 0", "badges TEXT DEFAULT ''", "banned INTEGER DEFAULT 0", "seen INTEGER DEFAULT 0", "un TEXT DEFAULT ''", "banat INTEGER DEFAULT 0"]) { try { await db.prepare("ALTER TABLE users ADD COLUMN " + c).run(); } catch (e) {} }
   try { const f = await db.prepare("SELECT v FROM kv WHERE k='curfill'").first(); if (!f) { await db.prepare("UPDATE users SET cur=MAX(0,COALESCE(json_extract(state,'$.pts'),0)) WHERE state IS NOT NULL").run(); await db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES ('curfill','1')").run(); } } catch (e) {}
   try { await db.prepare("CREATE TABLE IF NOT EXISTS websess (tok TEXT PRIMARY KEY, uid INTEGER DEFAULT 0, name TEXT DEFAULT '', un TEXT DEFAULT '', sess TEXT DEFAULT '', claimed INTEGER DEFAULT 0, ts INTEGER)").run(); } catch (e) {}
   try { await db.prepare("ALTER TABLE ucats ADD COLUMN bc INTEGER DEFAULT 0").run(); } catch (e) {}
@@ -68,6 +70,18 @@ function clean(s) {
   for (const k of ["run", "total"]) s[k] = Math.max(0, num(s[k]));
   s.pts = Math.max(-1e15, num(s.pts));
   return s;
+}
+async function banPurge(db, now) {
+  const rows = (await db.prepare("SELECT id FROM users WHERE banned=2 AND banat>0 AND banat<? AND state IS NOT NULL LIMIT 20").bind(now - BAN_DAYS * 86400).all()).results;
+  for (const r of rows) {
+    await db.batch([
+      db.prepare("UPDATE users SET state=NULL, cur=0, total=0, badges='', rev=rev+1 WHERE id=?").bind(r.id),
+      db.prepare("DELETE FROM offers WHERE seller=?").bind(r.id),
+      db.prepare("DELETE FROM chat WHERE uid=?").bind(r.id),
+      db.prepare("DELETE FROM lbhold WHERE uid=?").bind(r.id),
+      db.prepare("UPDATE bans SET st='purged', endt=? WHERE id=?").bind(now, r.id),
+    ]);
+  }
 }
 async function getUser(db, id) { return db.prepare("SELECT * FROM users WHERE id=?").bind(id).first(); }
 async function mutate(db, id, fn, name) {
@@ -90,7 +104,7 @@ async function ensureBc(db, now) {
   }
 }
 async function lbTrack(db, env, now) {
-  const top = (await db.prepare("SELECT id FROM users WHERE cur>0 ORDER BY cur DESC LIMIT 3").all()).results;
+  const top = (await db.prepare("SELECT id FROM users WHERE cur>0 AND banned<2 ORDER BY cur DESC LIMIT 3").all()).results;
   const cur = (await db.prepare("SELECT rank,uid,since FROM lbhold").all()).results;
   for (let r = 1; r <= 3; r++) {
     const t = top[r - 1], c = cur.find(x => x.rank === r);
@@ -133,6 +147,7 @@ async function api(path, req, env) {
   const id = user.id, name = uname(user); let b = {}; try { b = await req.json(); } catch (e) {}
   const now = Math.floor(Date.now() / 1000);
   let maintT = null; try { const mt = await db.prepare("SELECT v FROM kv WHERE k='maint'").first(); if (mt && mt.v) { const m = JSON.parse(mt.v); if (m && m.on) maintT = m.text || "Технический перерыв"; } } catch (e) {}
+  if (id !== ADMIN) { try { const bu = await db.prepare("SELECT banned,banat FROM users WHERE id=?").bind(id).first(); if (bu && bu.banned === 2) return J({fullban: 1, banat: bu.banat || 0, purge: (bu.banat || 0) + BAN_DAYS * 86400, error: "Ты заблокирован"}); } catch (e) {} }
   if (maintT && id !== ADMIN && path !== "poll" && path !== "auth") return J({maint: maintT, error: "Технический перерыв"});
 
   if (path === "auth") {
@@ -156,9 +171,9 @@ async function api(path, req, env) {
     return J({conflict: true, state: JSON.parse(u.state), rev: u.rev});
   }
   if (path === "top") {
-    const rows = (await db.prepare("SELECT id,name,cur AS total,badges FROM users WHERE cur>0 ORDER BY cur DESC LIMIT 50").all()).results.map(r => ({...r, badges: bd(r.id, r.badges)}));
+    const rows = (await db.prepare("SELECT id,name,cur AS total,badges FROM users WHERE cur>0 AND banned<2 ORDER BY cur DESC LIMIT 50").all()).results.map(r => ({...r, badges: bd(r.id, r.badges)}));
     const u = await getUser(db, id); let rank = 0;
-    if (u) rank = (await db.prepare("SELECT COUNT(*)+1 AS r FROM users WHERE cur>?").bind(u.cur).first()).r;
+    if (u) rank = (await db.prepare("SELECT COUNT(*)+1 AS r FROM users WHERE cur>? AND banned<2").bind(u.cur).first()).r;
     await lbTrack(db, env, now);
     const hold = (await db.prepare("SELECT rank,uid,since FROM lbhold ORDER BY rank").all()).results;
     const done = (await db.prepare("SELECT COUNT(*) AS c FROM lbrew").first()).c;
@@ -634,6 +649,7 @@ async function api(path, req, env) {
     if (maintT && id !== ADMIN) return J({maint: maintT});
     await db.prepare("UPDATE users SET seen=? WHERE id=?").bind(now, id).run();
     try { const lt = await db.prepare("SELECT v FROM kv WHERE k='lbt'").first(); if (!lt || now - Number(lt.v) >= 60) { await db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES ('lbt',?)").bind(String(now)).run(); await lbTrack(db, env, now); } } catch (e) {}
+    try { const bt = await db.prepare("SELECT v FROM kv WHERE k='banpg'").first(); if (!bt || now - Number(bt.v) >= 600) { await db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES ('banpg',?)").bind(String(now)).run(); await banPurge(db, now); } } catch (e) {}
     const g = (await db.prepare("SELECT id,kind,a,b FROM grants WHERE uid=? ORDER BY id LIMIT 50").bind(id).all()).results;
     for (const x of g) await db.prepare("DELETE FROM grants WHERE id=?").bind(x.id).run();
     const bc = await db.prepare("SELECT id,text FROM bcast WHERE id>? AND ts>? ORDER BY id DESC LIMIT 1").bind(Number(b.bc) || 0, now - 120).first();
@@ -662,7 +678,7 @@ async function api(path, req, env) {
     const uid = Number(b.uid); const u = await getUser(db, uid); if (!u) return J({error: "Игрок не найден"});
     const s = u.state ? JSON.parse(u.state) : {};
     const cats = Object.keys(s.inv || {}).length;
-    return J({id: u.id, name: u.name, un: id === ADMIN ? (u.un || "") : undefined, badges: bd(u.id, u.badges), banned: !!u.banned, online: (u.seen || 0) > now - 40, total: u.total, taps: s.taps || 0, cats, holo: (s.holo || []).length, prest: s.prest || 0, ach: (s.ach || []).length, eq: s.eq === undefined ? -1 : s.eq, opened: s.opened || 0, bn: Number.isInteger(s.bn) ? s.bn : 0, offers: (await db.prepare("SELECT id,give,want FROM offers WHERE seller=? AND status='open' ORDER BY id DESC LIMIT 5").bind(u.id).all()).results});
+    return J({id: u.id, name: u.name, un: id === ADMIN ? (u.un || "") : undefined, badges: bd(u.id, u.badges), banned: !!u.banned, ban: u.banned | 0, banat: u.banat || 0, online: (u.seen || 0) > now - 40, total: u.total, taps: s.taps || 0, cats, holo: (s.holo || []).length, prest: s.prest || 0, ach: (s.ach || []).length, eq: s.eq === undefined ? -1 : s.eq, opened: s.opened || 0, bn: Number.isInteger(s.bn) ? s.bn : 0, offers: (await db.prepare("SELECT id,give,want FROM offers WHERE seller=? AND status='open' ORDER BY id DESC LIMIT 5").bind(u.id).all()).results});
   }
   if (path === "promo_use") {
     const code = String(b.code || "").trim().toUpperCase().slice(0, 32); if (!code) return J({error: "Введи промокод"});
@@ -739,6 +755,30 @@ async function api(path, req, env) {
     if (path === "adm_maint") { const on = !!b.on, text = String(b.text || "").trim().slice(0, 200) || "Скоро вернёмся, играть можно будет чуть позже."; await db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES ('maint',?)").bind(JSON.stringify({on, text})).run(); return J({ok: true, on, text}); }
     if (path === "adm_del") { await db.prepare("DELETE FROM chat WHERE id=?").bind(Number(b.id)).run(); return J({ok: true}); }
     if (path === "adm_ban") { await db.prepare("UPDATE users SET banned=? WHERE id=?").bind(b.on ? 1 : 0, Number(b.uid)).run(); if (b.on) await db.prepare("DELETE FROM chat WHERE uid=?").bind(Number(b.uid)).run(); return J({ok: true}); }
+    if (path === "adm_fban") {
+      const uid = Number(b.uid); if (!uid || uid === ADMIN) return J({error: "Нельзя"});
+      const u = await getUser(db, uid); if (!u) return J({error: "Игрок не найден"});
+      if (b.on) {
+        await db.batch([
+          db.prepare("UPDATE users SET banned=2, banat=? WHERE id=?").bind(now, uid),
+          db.prepare("DELETE FROM chat WHERE uid=?").bind(uid),
+          db.prepare("DELETE FROM offers WHERE seller=? AND status='open'").bind(uid),
+          db.prepare("INSERT OR REPLACE INTO bans (id,name,un,at,st,endt,why) VALUES (?,?,?,?,'ban',0,?)").bind(uid, u.name || "", u.un || "", now, String(b.why || "").slice(0, 80)),
+        ]);
+        tg0(uid, "🚫 Ты заблокирован администратором. Доступ к игре закрыт.");
+      } else {
+        await db.batch([
+          db.prepare("UPDATE users SET banned=0, banat=0 WHERE id=?").bind(uid),
+          db.prepare("UPDATE bans SET st='unban', endt=? WHERE id=?").bind(now, uid),
+        ]);
+        tg0(uid, "✅ Блокировка снята. Можешь снова играть.");
+      }
+      return J({ok: true});
+    }
+    if (path === "adm_banlist") {
+      const rows = (await db.prepare("SELECT b.id,b.name,b.un,b.at,b.st,b.endt,u.cur FROM bans b LEFT JOIN users u ON u.id=b.id ORDER BY b.at DESC LIMIT 15").all()).results;
+      return J({rows, days: BAN_DAYS});
+    }
     if (path === "adm_badges") { const v = String(b.badges || "").replace(/[^ctsgl]/g, "").slice(0, 6); await db.prepare("UPDATE users SET badges=? WHERE id=?").bind(v, Number(b.uid)).run(); return J({ok: true, badges: bd(Number(b.uid), v)}); }
     if (path === "adm_promo_new") {
       const code = String(b.code || "").trim().toUpperCase().replace(/[^A-Z0-9_А-Я-]/g, "").slice(0, 32), kind = String(b.kind);
@@ -845,6 +885,7 @@ export default {
         if (req.headers.get("x-telegram-bot-api-secret-token") !== await secret(env)) return new Response("no", {status: 403});
         const u = await req.json(), m = u.message; if (!m || !m.text) return new Response("ok");
         const base = url.origin;
+        try { if (env.DB && m.from && m.from.id !== ADMIN) { const bb = await env.DB.prepare("SELECT banned FROM users WHERE id=?").bind(m.from.id).first(); if (bb && bb.banned === 2) { await tgcall(env, "sendMessage", {chat_id: m.chat.id, text: "🚫 Ты заблокирован администратором."}); return new Response("ok"); } } } catch (e) {}
         const lg = m.text.match(/^\/start login_([0-9a-f]{32})$/);
         if (lg && env.DB) {
           await init(env.DB);
@@ -859,7 +900,7 @@ export default {
         }
         if (m.text.startsWith("/top") && env.DB) {
           await init(env.DB);
-          const rows = (await env.DB.prepare("SELECT name,cur AS total FROM users WHERE cur>0 ORDER BY cur DESC LIMIT 10").all()).results;
+          const rows = (await env.DB.prepare("SELECT name,cur AS total FROM users WHERE cur>0 AND banned<2 ORDER BY cur DESC LIMIT 10").all()).results;
           const f = n => { n = Number(n); if (n < 1000) return String(Math.floor(n)); const S = ["", "K", "M", "B", "T", "Qa", "Qi", "Sx"], i = Math.min(Math.floor(Math.log10(n) / 3), 7); return (n / Math.pow(1000, i)).toFixed(2) + S[i]; };
           await tgcall(env, "sendMessage", {chat_id: m.chat.id, text: "🏅 Топ игроков\n\n" + (rows.map((r, i) => (i + 1) + ". " + r.name + " — " + f(r.total)).join("\n") || "Пока пусто")});
         } else {
