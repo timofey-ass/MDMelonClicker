@@ -11,9 +11,14 @@ open('worker.js','w').write(w)
 print(len(html),len(w))
 
 sm=TPL.replace('const HTML = __HTML__;','''const HTML_URL = "https://raw.githubusercontent.com/timofey-ass/MDMelonClicker/main/bot/src/index.html";
-async function getHtml() {
+async function getHtml(env) {
+  // основной путь: страница лежит в Workers Static Assets (public/game.html); запасной: GitHub raw
+  if (env && env.ASSETS) { const r = await env.ASSETS.fetch("https://assets.local/game.html"); if (r.ok) return r.text(); }
   const r = await fetch(HTML_URL, {cf: {cacheTtl: 30, cacheEverything: true}});
   if (!r.ok) throw new Error("html " + r.status);
   return r.text();
-}''').replace('return new Response(HTML, {','return new Response(await getHtml(), {').replace('new Response(HTML.replace(','new Response((await getHtml()).replace(')
+}''').replace('return new Response(HTML, {','return new Response(await getHtml(env), {').replace('new Response(HTML.replace(','new Response((await getHtml(env)).replace(')
 open('worker_small.js','w').write(sm)
+import os
+os.makedirs('../public',exist_ok=True)
+open('../public/game.html','w').write(html)

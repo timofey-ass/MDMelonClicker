@@ -1,5 +1,7 @@
 const HTML_URL = "https://raw.githubusercontent.com/timofey-ass/MDMelonClicker/main/bot/src/index.html";
-async function getHtml() {
+async function getHtml(env) {
+  // основной путь: страница лежит в Workers Static Assets (public/game.html); запасной: GitHub raw
+  if (env && env.ASSETS) { const r = await env.ASSETS.fetch("https://assets.local/game.html"); if (r.ok) return r.text(); }
   const r = await fetch(HTML_URL, {cf: {cacheTtl: 30, cacheEverything: true}});
   if (!r.ok) throw new Error("html " + r.status);
   return r.text();
@@ -894,10 +896,10 @@ export default {
     if (ctx && ctx.waitUntil && req.method === "POST" && new URL(req.url).pathname === "/api/poll") ctx.waitUntil(announce(env, new URL(req.url).origin).then(() => tgcastStep(env, new URL(req.url).origin)));
     const url = new URL(req.url), p = url.pathname;
     try {
-      if (p === "/" || p === "/index.html") return new Response(await getHtml(), {headers: {"content-type": "text/html;charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff", "referrer-policy": "no-referrer"}});
-      if (p === "/demo") return new Response((await getHtml()).replace("<head>", "<head>" + DEMO), {headers: {"content-type": "text/html;charset=utf-8", "cache-control": "no-store"}});
+      if (p === "/" || p === "/index.html") return new Response(await getHtml(env), {headers: {"content-type": "text/html;charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff", "referrer-policy": "no-referrer"}});
+      if (p === "/demo") return new Response((await getHtml(env)).replace("<head>", "<head>" + DEMO), {headers: {"content-type": "text/html;charset=utf-8", "cache-control": "no-store"}});
       if (p === "/atlas.jpg") {
-        const r = await fetch(ATLAS, {cf: {cacheTtl: 86400, cacheEverything: true}});
+        const r = env.ASSETS ? await env.ASSETS.fetch("https://assets.local/mdcats2.jpg") : await fetch(ATLAS, {cf: {cacheTtl: 86400, cacheEverything: true}});
         return new Response(r.body, {status: r.status, headers: {"content-type": "image/jpeg", "cache-control": "public,max-age=86400"}});
       }
       const um = p.match(/^\/ucat\/(\d+)\.jpg$/);

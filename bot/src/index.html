@@ -445,9 +445,9 @@ const tg = window.Telegram && Telegram.WebApp;
 if (tg) { try { tg.ready(); tg.expand(); tg.setHeaderColor("#17110d"); tg.setBackgroundColor("#17110d"); tg.disableVerticalSwipes && tg.disableVerticalSwipes(); } catch (e) {} }
 const $ = s => document.querySelector(s);
 const {BUILDS, UPGR, ACH, RARS, ITEMS, CASES, SETS, PERKS, CAT_COST, SELL, UPCH, THEMES} = D;
-const TECH_IMG = i => `https://raw.githubusercontent.com/timofey-ass/MDMelonClicker/main/tech/${i}.jpg`;
-const ADM_IMG = "https://raw.githubusercontent.com/timofey-ass/MDMelonClicker/main/admin/0.jpg";
-const JOSKE_IMG = "https://raw.githubusercontent.com/timofey-ass/MDMelonClicker/main/joske.jpg";
+const TECH_IMG = i => `/tech/${i}.jpg`;
+const ADM_IMG = "/admin/0.jpg";
+const JOSKE_IMG = "/joske.jpg";
 const GEM_CASE = 3, FREE_EVERY = 4 * 3600;
 const EMO = {"👆": "tap", "💥": "crit", "🔥": "fire", "🐱": "cat", "🐾": "paw", "🥛": "milk", "🐟": "fish", "🏭": "factory", "🌀": "portal", "🚀": "rocket", "📦": "cube", "🎁": "box", "👑": "crown", "⚡": "bolt", "💎": "gem", "🧾": "swap", "⭐": "star", "🎟": "ticket"};
 const ic = (k, s, c) => `<svg class="ic" viewBox="0 0 24 24" width="${s || 20}" height="${s || 20}" fill="none" stroke="currentColor" stroke-width="2.04" stroke-linecap="round" stroke-linejoin="round"${c ? ` style="color:${c}"` : ""}>${IC[EMO[k] || k]}</svg>`;

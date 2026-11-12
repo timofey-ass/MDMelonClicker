@@ -892,7 +892,7 @@ export default {
       if (p === "/" || p === "/index.html") return new Response(HTML, {headers: {"content-type": "text/html;charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff", "referrer-policy": "no-referrer"}});
       if (p === "/demo") return new Response(HTML.replace("<head>", "<head>" + DEMO), {headers: {"content-type": "text/html;charset=utf-8", "cache-control": "no-store"}});
       if (p === "/atlas.jpg") {
-        const r = await fetch(ATLAS, {cf: {cacheTtl: 86400, cacheEverything: true}});
+        const r = env.ASSETS ? await env.ASSETS.fetch("https://assets.local/mdcats2.jpg") : await fetch(ATLAS, {cf: {cacheTtl: 86400, cacheEverything: true}});
         return new Response(r.body, {status: r.status, headers: {"content-type": "image/jpeg", "cache-control": "public,max-age=86400"}});
       }
       const um = p.match(/^\/ucat\/(\d+)\.jpg$/);
