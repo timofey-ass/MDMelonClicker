@@ -916,7 +916,7 @@ export default {
         const base = url.origin;
         const a = await tgcall(env, "setWebhook", {url: base + "/bot", secret_token: await secret(env), allowed_updates: ["message"]});
         const b = await tgcall(env, "setChatMenuButton", {menu_button: {type: "web_app", text: "Играть", web_app: {url: base}}});
-        const c = await tgcall(env, "setMyCommands", {commands: [{command: "start", description: "Открыть игру"}, {command: "top", description: "Таблица лидеров"}]});
+        const c = await tgcall(env, "setMyCommands", {commands: [{command: "start", description: "Открыть игру"}, {command: "top", description: "Таблица лидеров"}, {command: "link", description: "Адрес игры и скачивание"}]});
         return new Response(JSON.stringify({webhook: a, menu: b, commands: c}, null, 1), {headers: {"content-type": "application/json"}});
       }
       if (p === "/bot" && req.method === "POST") {
@@ -934,6 +934,10 @@ export default {
             await env.DB.prepare("UPDATE websess SET uid=?, name=?, un=?, sess=? WHERE tok=?").bind(f.id, nm, String(f.username || "").slice(0, 40), hex(crypto.getRandomValues(new Uint8Array(16))), lg[1]).run();
             await tgcall(env, "sendMessage", {chat_id: m.chat.id, text: "✅ Вход выполнен! Вернись в игру, она откроется сама."});
           }
+          return new Response("ok");
+        }
+        if (/^\/link(@\w+)?$/.test(m.text)) {
+          await tgcall(env, "sendMessage", {chat_id: m.chat.id, text: "🍉 Игра: " + base + "\n📲 Скачать приложение: " + base + "/download.html", disable_web_page_preview: true});
           return new Response("ok");
         }
         if (m.text.startsWith("/top") && env.DB) {

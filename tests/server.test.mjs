@@ -194,3 +194,14 @@ test("ADMIN_ID из окружения заменяет встроенный ID 
   assert.equal((await call(ADMIN, "adm_banlist", {}))._status, 403);
   assert.notEqual((await call(U(555), "adm_banlist", {}))._status, 403);
 });
+
+test("бот: /link отвечает адресом игры и страницей скачивания; чужой секрет вебхука отклоняется", async () => {
+  const { env, worker, ctx, tgCalls } = await makeEnv();
+  const { createHash } = await import("node:crypto");
+  const sec = createHash("sha256").update("md:" + BOT_TOKEN).digest("hex").slice(0, 32);
+  const send = (text, secret) => worker.fetch(new Request("https://game.test/bot", { method: "POST", headers: { "x-telegram-bot-api-secret-token": secret }, body: JSON.stringify({ message: { text, chat: { id: 7 }, from: { id: 7 } } }) }), env, ctx);
+  assert.equal((await send("/link", "wrong")).status, 403);
+  assert.equal((await send("/link", sec)).status, 200);
+  const m = tgCalls.find(c => c.url.includes("sendMessage"));
+  assert.match(m.body.text, /https:\/\/game\.test\b/); assert.match(m.body.text, /\/download\.html/);
+});
