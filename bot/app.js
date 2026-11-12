@@ -761,3 +761,4 @@ function buildNav2() {
 
 /*PART3*/
 boot();
+try { if ("serviceWorker" in navigator && !(window.Telegram && Telegram.WebApp && Telegram.WebApp.initData)) navigator.serviceWorker.register("/sw.js").catch(() => {}); } catch (e) {}

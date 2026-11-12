@@ -2,6 +2,7 @@
 <html lang="ru"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>MDMelonClicker</title>
+<link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#17110d"><link rel="icon" href="/icon-192.png"><link rel="apple-touch-icon" href="/icon-192.png">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
 :root{--surf:#17110d;--sc:#231a14;--sch:#2e241c;--pri:#ffb77c;--onpri:#4a2800;--prc:#6a3a12;--onprc:#ffdcc2;--on:#ede0d8;--onv:#d7c3b8;--out:#9f8d83;--gold:#ffd54f;--good:#9bd67f}
@@ -2641,5 +2642,6 @@ setInterval(() => {
 }, 400);
 
 boot();
+try { if ("serviceWorker" in navigator && !(window.Telegram && Telegram.WebApp && Telegram.WebApp.initData)) navigator.serviceWorker.register("/sw.js").catch(() => {}); } catch (e) {}
 
 </script></body></html>
