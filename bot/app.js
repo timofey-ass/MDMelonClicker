@@ -372,7 +372,8 @@ async function save(force) {
     if ((sv.tk || 0) !== (S.tk || 0)) { S.pts = Math.min(S.pts, sv.pts); S.total = Math.min(S.total, sv.total); S.run = Math.min(S.run, sv.run); S.gems = Math.min(S.gems, sv.gems); S.tk = sv.tk; toast("Администратор забрал: " + (sv.tkm || "")); }
     S.inv = m; S.holo = Array.from(new Set(S.holo.concat(sv.holo || []))).filter(i => (i + "") in m); rev = r.rev; snap = {inv: Object.assign({}, sv.inv)}; dirty = true; toast("Данные обновлены после обмена"); return save(true);
   }
-  if (r.error) return; rev = r.rev; if (S) { dirty = false; snap = cloneInv(); }
+  if (r.error) return; rev = r.rev; if (r.clamp && r.state && S) for (const k of ["pts", "run", "total", "gems", "gt"]) if (r.state[k] !== undefined) S[k] = r.state[k];
+  if (S) { dirty = false; snap = cloneInv(); }
 }
 async function loadTop() { const r = await api("top", {}); if (r.rows) { lbData = r; lbData.at = Date.now(); if (tab === 4 && sub === 0) render(); } else toast(r.error || "Не удалось загрузить"); }
 async function loadOffers() { const r = await api("offers", {}); if (r.offers) { offData = r.offers; if (tab === 4 && sub === 1) render(); } else toast(r.error || "Не удалось загрузить"); }
