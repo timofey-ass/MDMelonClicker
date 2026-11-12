@@ -904,6 +904,10 @@ export default {
         return new Response(arr, {headers: {"content-type": "image/jpeg", "cache-control": "public,max-age=86400"}});
       }
       if (p.startsWith("/api/") && req.method === "POST") return await api(p.slice(5), req, env);
+      if (p === "/.well-known/assetlinks.json") {
+        // привязка Android-приложения к сайту (открывается без адресной строки)
+        return new Response(JSON.stringify([{relation: ["delegate_permission/common.handle_all_urls"], target: {namespace: "android_app", package_name: "app.mdmelonclicker", sha256_cert_fingerprints: ["B5:94:7B:65:A0:33:B8:90:37:85:19:08:E4:B0:A7:76:10:9C:16:F8:46:11:1A:FA:FF:FB:FD:B3:5C:3A:89:C7"]}}]), {headers: {"content-type": "application/json", "cache-control": "public,max-age=3600"}});
+      }
       if (p === "/setup") {
         if (!env.BOT_TOKEN) return new Response("Нет секрета BOT_TOKEN", {status: 500});
         const base = url.origin;

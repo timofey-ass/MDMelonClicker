@@ -60,3 +60,14 @@ test("manifest для установки: иконки на месте, стра
   assert.match(readFileSync(join(root, "public", "game.html"), "utf8"), /rel="manifest" href="\/manifest\.webmanifest"/);
   for (const f of ["sw.js", "download.html"]) assert.ok(existsSync(join(root, "public", f)), f);
 });
+
+test("assetlinks.json привязывает приложение app.mdmelonclicker, APK лежит в public/", async () => {
+  const w = await load();
+  const r = await w.fetch(new Request("https://t.test/.well-known/assetlinks.json"), { DB: makeDB(), BOT_TOKEN }, ctx);
+  const j = await r.json();
+  assert.equal(r.headers.get("content-type"), "application/json");
+  assert.equal(j[0].target.package_name, "app.mdmelonclicker");
+  assert.match(j[0].target.sha256_cert_fingerprints[0], /^([0-9A-F]{2}:){31}[0-9A-F]{2}$/);
+  const apk = readFileSync(join(root, "public", "MDMelonClicker.apk"));
+  assert.equal(apk.slice(0, 2).toString(), "PK");
+});
