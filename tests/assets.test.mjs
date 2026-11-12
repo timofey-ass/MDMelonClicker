@@ -39,3 +39,15 @@ test("public/ содержит страницу и все картинки, на
   for (const f of ["game.html", "mdcats2.jpg", "joske.jpg", "admin/0.jpg"]) assert.ok(existsSync(join(root, "public", f)), f);
   const tech = [...html.matchAll(/\/tech\/\$\{i\}\.jpg/g)].length; assert.ok(tech >= 1 && existsSync(join(root, "public", "tech", "0.jpg")));
 });
+
+test("каждая картинка, которую клиент собирает по имени, есть в public/", () => {
+  const src = ["app.js", "part3.js"].map(f => readFileSync(join(root, "bot", f), "utf8")).join("\n");
+  const need = new Set(["mascot.png", "bank_logo.png", "collector.png", "black_market.png", "joske.jpg", "mdcats2.jpg", "admin/0.jpg"]);
+  for (const m of src.matchAll(/"((?:bc|new2?|tech)\/)"? *\+/g)) need.add(m[1] + "0.jpg");
+  for (const d of ["bc", "new", "new2", "tech"]) { assert.ok(existsSync(join(root, "public", d, "0.jpg")), d + "/0.jpg"); }
+  for (const f of need) assert.ok(existsSync(join(root, "public", f)), "нет public/" + f);
+  // число файлов в каталогах совпадает с оригиналами в корне репозитория
+  const { readdirSync } = await_import_fs();
+  for (const d of ["bc", "new", "new2", "tech", "admin"]) assert.equal(readdirSync(join(root, "public", d)).length, readdirSync(join(root, d)).length, d);
+});
+function await_import_fs() { return { readdirSync: (p) => process.getBuiltinModule("node:fs").readdirSync(p) }; }
