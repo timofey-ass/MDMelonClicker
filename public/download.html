@@ -7,13 +7,14 @@
 :root{color-scheme:dark}
 body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#17110d;color:#ede0d8;font:16px/1.5 system-ui,sans-serif;padding:24px;box-sizing:border-box}
 .c{max-width:380px;width:100%;background:#231a14;border-radius:28px;padding:28px 22px;text-align:center}
-img{width:120px;height:120px;border-radius:28px}
+.m{width:150px;height:160px;margin:0 auto;background:url(/mascot.png) no-repeat;background-size:600px 160px;background-position-x:-300px;animation:b 4s steps(1,end) infinite}
+@keyframes b{0%{background-position-x:-300px}90%{background-position-x:0}94%{background-position-x:-300px}}
 h1{margin:14px 0 4px;font-size:24px}
 p{color:#d7c3b8;margin:6px 0}
 a.b{display:block;margin:20px 0 10px;padding:14px;border-radius:24px;background:#ffb77c;color:#4a2800;font-weight:700;text-decoration:none}
 ol{text-align:left;color:#d7c3b8;padding-left:20px;font-size:14px}
 </style></head><body><div class="c">
-<img src="/icon-512.png" alt="">
+<div class="m" role="img" aria-label="Арбуз-кот"></div>
 <h1>MDMelonClicker</h1>
 <p>Кликер с арбуз-котом для Android</p>
 <a class="b" href="/MDMelonClicker.apk" download>Скачать APK</a>

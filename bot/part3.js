@@ -1283,12 +1283,15 @@ function drwFill() {
   drwEl.querySelector(".drp").innerHTML = `<div class="drh"><div class="dra">${av}</div><button class="drt" data-a="ltheme" aria-label="Тема">${ic(lt ? "moon" : "sun", 26)}</button></div>
     <div class="drn">${nm(me.name, myBadges)}</div><div class="dru">${u.username ? "@" + esc(u.username) : "ID " + me.id}</div>
     <div class="drl">${it("podium", "Лидеры", "lead")}${it("swap", "Обмен", "trade")}${it("cat", "Чат", "chat")}${it("cube", "Мастерская", "ws")}<div class="drd"></div>${it("tune", "Настройки", "set")}${it("check", "Информация", "info")}${isAdm ? it("crown", "Админка", "adm") : ""}</div>
+    ${isApp() ? "" : `<button class="adc" data-a="adweb"><div class="adm"></div><div><b>Скачай приложение</b><span>Играй без Telegram, на весь экран</span></div></button>`}
     <div class="drv">MDMelonClicker v${CHANGES[0][0]}</div>`;
 }
 function drwOpen(on) {
   if (!drwEl) { drwEl = document.createElement("div"); drwEl.className = "drw"; drwEl.innerHTML = `<div class="drs" data-a="drw"></div><div class="drp"></div>`; document.body.appendChild(drwEl); let sx = 0; drwEl.addEventListener("touchstart", e => { sx = e.touches[0].clientX; }, {passive: true}); drwEl.addEventListener("touchend", e => { if (e.changedTouches[0].clientX - sx > 60) drwOpen(false); }, {passive: true}); }
   if (on) drwFill(); void drwEl.offsetWidth; drwEl.classList.toggle("o", on); document.body.classList.toggle("drwo", on); hap("light");
 }
+const isApp = () => { try { return matchMedia("(display-mode: standalone)").matches || !!navigator.standalone || (document.referrer || "").startsWith("android-app://"); } catch (e) { return false; } };
+A.adweb = function () { const u = location.origin + "/download.html"; drwOpen(false); try { if (tg && tg.openLink) tg.openLink(u); else window.open(u, "_blank") || (location.href = u); } catch (e) { location.href = u; } };
 A.drw = function () { drwOpen(!(drwEl && drwEl.classList.contains("o"))); };
 A.drwgo = function (e) { drwOpen(false); A.mnu(e); };
 function navBackSync() {
