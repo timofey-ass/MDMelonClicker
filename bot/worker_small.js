@@ -9,7 +9,7 @@ const BOT_USER = "mdmelonbot";
 const N_ITEMS = 103;
 const BC_CATS = [["Киллер в плаще", 3], ["Кот-дон", 3], ["Вор-домушник", 2], ["Торговец с рынка", 3], ["Контрабандный ящик", 2], ["Кот-алхимик", 3], ["Кот-чемодан", 2], ["Призрак рынка", 4], ["Золотой слиток", 4], ["Золотой арбуз-лидер", 9]];
 const LB_HOLD = 72 * 3600, BC_LEADER = 10;
-const ADMIN = 1796286471;
+let ADMIN = 1796286471; // по умолчанию; в Cloudflare задай переменную ADMIN_ID, она важнее
 const BAN_DAYS = 7;
 let ready = false;
 
@@ -68,14 +68,39 @@ async function init(db) {
 }
 function tidy(s) { if (Array.isArray(s.holo)) s.holo = s.holo.filter(i => (i + "") in s.inv); if (s.eq !== undefined && +s.eq >= 0 && !((s.eq + "") in s.inv)) s.eq = -1; }
 const num = x => (typeof x === "number" && isFinite(x)) ? x : 0;
-function clean(s) {
+// ---- серверная проверка состояния, присланного клиентом (клиент авторитетный, поэтому ограничиваем рост)
+const ABS_MAX = 1e21, GEM_MAX = 1e7, IMPORT_MAX = 1e15, IMPORT_GEMS = 1e4;
+const fin = (x, mx) => { x = Number(x); return Number.isFinite(x) ? Math.min(mx, Math.max(0, x)) : 0; };
+function clean(s, prev, dt, al) {
   if (!s || typeof s !== "object" || Array.isArray(s)) return null;
   if (JSON.stringify(s).length > 40000) return null;
   if (!Array.isArray(s.b) || !s.inv || typeof s.inv !== "object") return null;
-  for (const k of ["run", "total"]) s[k] = Math.max(0, num(s[k]));
-  s.pts = Math.max(-1e15, num(s.pts));
+  s.b = s.b.slice(0, 32).map(v => Math.floor(fin(v, 1e6)));
+  for (const k of ["taps", "stars", "fevers", "prest", "opened", "xp", "gt"]) if (s[k] !== undefined) s[k] = Math.floor(fin(s[k], 1e15));
+  for (const k of ["run", "total"]) s[k] = fin(s[k], ABS_MAX);
+  s.gems = Math.floor(fin(s.gems, GEM_MAX));
+  const pts = Number(s.pts); s.pts = Number.isFinite(pts) ? Math.min(ABS_MAX, Math.max(-1e15, pts)) : 0;
+  let clamped = false;
+  const cap = (k, v) => { if (s[k] > v) { s[k] = Math.max(0, v); clamped = true; } };
+  if (!prev) { cap("pts", IMPORT_MAX); cap("run", IMPORT_MAX); cap("total", IMPORT_MAX); cap("gems", IMPORT_GEMS); cap("gt", IMPORT_GEMS); }
+  else {
+    dt = Math.max(1, Math.min(dt, 86400 * 3)); al = al || {};
+    const pp = Math.max(0, num(prev.pts)), pt = Math.max(0, num(prev.total)), pr = Math.max(0, num(prev.run));
+    // прибавка: фиксированная база + доля от накопленного (растёт со временем) + выигрыш казино (до ×251 от баланса, зависит от времени) + выдачи
+    const mult = Math.min(251, 2 + dt * 2);
+    const gain = 2e6 + pt * (0.02 + dt / 600) + pp * mult + num(al.pts);
+    cap("total", pt + gain); cap("run", pr + gain); cap("pts", pp + gain);
+    const pg = Math.max(0, num(prev.gems)), pgt = Math.max(0, num(prev.gt));
+    const gemGain = 500 + 3 * Math.pow(Math.max(pr, s.run) / 1e6, 0.45) + num(al.gems);
+    cap("gems", pg + gemGain); if (s.gt !== undefined) cap("gt", pgt + gemGain);
+    if (s.run > s.total) s.total = s.run;
+  }
+  s._clamped = clamped;
   return s;
 }
+const allowGet = async (db, uid) => { try { const r = await db.prepare("SELECT v FROM kv WHERE k=?").bind("al" + uid).first(); return r ? JSON.parse(r.v) : {}; } catch (e) { return {}; } };
+const allowAdd = async (db, uid, pts, gems) => { const a = await allowGet(db, uid); a.pts = num(a.pts) + num(pts); a.gems = num(a.gems) + num(gems); await db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES (?,?)").bind("al" + uid, JSON.stringify(a)).run(); };
+const allowClear = (db, uid) => db.prepare("DELETE FROM kv WHERE k=?").bind("al" + uid).run();
 async function banPurge(db, now) {
   const rows = (await db.prepare("SELECT id FROM users WHERE banned=2 AND banat>0 AND banat<? AND state IS NOT NULL LIMIT 20").bind(now - BAN_DAYS * 86400).all()).results;
   for (const r of rows) {
@@ -163,15 +188,17 @@ async function api(path, req, env) {
     return J({id, name, state: u.state ? JSON.parse(u.state) : null, rev: u.rev, admin: id === ADMIN, badges: bd(id, u.badges), banned: !!u.banned, maint: id === ADMIN ? null : maintT});
   }
   if (path === "save") {
-    const s = clean(b.state); if (!s) return J({error: "Некорректные данные"}, 400);
     const u = await getUser(db, id);
+    let prev = null; if (u && u.state) { try { prev = JSON.parse(u.state); } catch (e) {} }
+    const s = clean(b.state, prev, u ? now - (u.upd || now) : 0, prev ? await allowGet(db, id) : null); if (!s) return J({error: "Некорректные данные"}, 400);
+    const clamped = !!s._clamped; delete s._clamped;
     if (!u) {
       await db.prepare("INSERT OR IGNORE INTO users (id,name,state,rev,total,cur,upd) VALUES (?,?,?,?,?,?,?)").bind(id, name, JSON.stringify(s), 1, num(s.total), Math.max(0, num(s.pts)), now).run();
       await db.prepare("UPDATE users SET un=? WHERE id=?").bind(String(user.username || "").slice(0, 40), id).run();
       const n = await getUser(db, id); return J({rev: n.rev});
     }
     const res = await db.prepare("UPDATE users SET state=?, rev=rev+1, total=?, cur=?, name=?, upd=? WHERE id=? AND rev=?").bind(JSON.stringify(s), num(s.total), Math.max(0, num(s.pts)), name, now, id, Number(b.rev)).run();
-    if (res.meta.changes === 1) return J({rev: Number(b.rev) + 1});
+    if (res.meta.changes === 1) { if (prev) await allowClear(db, id); return J(clamped ? {rev: Number(b.rev) + 1, clamp: true, state: s} : {rev: Number(b.rev) + 1}); }
     if (!u.state) return J({reset: true, rev: u.rev});
     return J({conflict: true, state: JSON.parse(u.state), rev: u.rev});
   }
@@ -219,7 +246,7 @@ async function api(path, req, env) {
     return J(r);
   }
   if (path === "import") {
-    const s = clean(b.state); if (!s) return J({error: "Некорректный код"});
+    const s = clean(b.state, null); if (!s) return J({error: "Некорректный код"}); delete s._clamped;
     const u = await getUser(db, id);
     if (u && u.imp) return J({error: "Перенос уже выполнялся"});
     s.ts = now;
@@ -276,6 +303,7 @@ async function api(path, req, env) {
       try { if (num(JSON.parse(urow.state0 || "{}").pts) < 0) return J({error: "Ты в минусе: сначала отработай долг"}); } catch (e) {}
       const a = Math.floor(Number(b.amount)); if (!isFinite(a) || a < 1000) return J({error: "Минимум 1 000"}); if (a > lim) return J({error: "Лимит долга: " + lim});
       const r = await db.prepare("INSERT INTO loans (uid,amount,due,status,ts) VALUES (?,?,?,'open',?)").bind(id, a, now + LOAN_H, now).run();
+      await allowAdd(db, id, a, 0);
       return J({ok: true, loan: view({id: r.meta.last_row_id, amount: a, due: now + LOAN_H, status: "open"})});
     }
     if (path === "loan_repay") {
@@ -692,6 +720,7 @@ async function api(path, req, env) {
     if (p.mx > 0 && p.used >= p.mx) return J({error: "Промокод закончился"});
     try { await db.prepare("INSERT INTO promo_uses (code,uid) VALUES (?,?)").bind(code, id).run(); } catch (e) { return J({error: "Ты уже использовал этот промокод"}); }
     await db.prepare("UPDATE promos SET used=used+1 WHERE code=?").bind(code).run();
+    if (p.kind === "pts") await allowAdd(db, id, num(p.a), 0); else if (p.kind === "gems") await allowAdd(db, id, 0, num(p.a));
     return J({kind: p.kind, a: p.a, b: p.b});
   }
   if (path.startsWith("adm_")) {
@@ -715,6 +744,7 @@ async function api(path, req, env) {
         return J({ok: true, name: u.name, was: {pts: was.pts, gems: was.gems}, now: {pts: num(r.state.pts), gems: num(r.state.gems)}, srv: 3});
       }
       await db.prepare("INSERT INTO grants (uid,kind,a,b,ts) VALUES (?,?,?,?,?)").bind(t, kind, num(Number(b.a)), Math.floor(num(Number(b.b))) || 1, now).run();
+      if (kind === "pts") await allowAdd(db, t, num(Number(b.a)), 0); else if (kind === "gems") await allowAdd(db, t, 0, num(Number(b.a)));
       return J({ok: true, name: u.name});
     }
     if (path === "adm_tgcast") {
@@ -860,10 +890,11 @@ async function tgcastStep(env, origin) {
 }
 export default {
   async fetch(req, env, ctx) {
+    if (env.ADMIN_ID && Number(env.ADMIN_ID) > 0) ADMIN = Number(env.ADMIN_ID);
     if (ctx && ctx.waitUntil && req.method === "POST" && new URL(req.url).pathname === "/api/poll") ctx.waitUntil(announce(env, new URL(req.url).origin).then(() => tgcastStep(env, new URL(req.url).origin)));
     const url = new URL(req.url), p = url.pathname;
     try {
-      if (p === "/" || p === "/index.html") return new Response(await getHtml(), {headers: {"content-type": "text/html;charset=utf-8", "cache-control": "no-store"}});
+      if (p === "/" || p === "/index.html") return new Response(await getHtml(), {headers: {"content-type": "text/html;charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff", "referrer-policy": "no-referrer"}});
       if (p === "/demo") return new Response((await getHtml()).replace("<head>", "<head>" + DEMO), {headers: {"content-type": "text/html;charset=utf-8", "cache-control": "no-store"}});
       if (p === "/atlas.jpg") {
         const r = await fetch(ATLAS, {cf: {cacheTtl: 86400, cacheEverything: true}});

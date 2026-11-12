@@ -1,0 +1,9 @@
+{
+  "name": "mdmelonclicker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "cd bot && python3 build.py && rm -f index.html",
+    "test": "cd bot && python3 build.py && rm -f index.html && cd .. && node --test tests/server.test.mjs"
+  }
+}
