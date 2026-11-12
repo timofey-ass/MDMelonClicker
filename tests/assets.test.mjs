@@ -51,3 +51,12 @@ test("каждая картинка, которую клиент собирае�
   for (const d of ["bc", "new", "new2", "tech", "admin"]) assert.equal(readdirSync(join(root, "public", d)).length, readdirSync(join(root, d)).length, d);
 });
 function await_import_fs() { return { readdirSync: (p) => process.getBuiltinModule("node:fs").readdirSync(p) }; }
+
+test("manifest для установки: иконки на месте, страница ссылается на manifest, есть sw.js и страница скачивания", () => {
+  const m = JSON.parse(readFileSync(join(root, "public", "manifest.webmanifest"), "utf8"));
+  assert.equal(m.start_url, "/"); assert.equal(m.display, "standalone");
+  for (const i of m.icons) assert.ok(existsSync(join(root, "public", i.src.slice(1))), i.src);
+  assert.ok(m.icons.some(i => i.purpose === "maskable") && m.icons.some(i => i.sizes === "512x512" && i.purpose === "any"));
+  assert.match(readFileSync(join(root, "public", "game.html"), "utf8"), /rel="manifest" href="\/manifest\.webmanifest"/);
+  for (const f of ["sw.js", "download.html"]) assert.ok(existsSync(join(root, "public", f)), f);
+});
