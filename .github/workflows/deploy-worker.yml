@@ -2,7 +2,7 @@ name: Deploy worker
 on:
   push:
     branches: [main]
-    paths: ["bot/worker_small.js", "wrangler.jsonc"]
+    paths: ["bot/worker_small.js", "wrangler.jsonc", "public/**"]
   workflow_dispatch:
 jobs:
   deploy:

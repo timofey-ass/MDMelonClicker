@@ -3,6 +3,7 @@
   "main": "bot/worker_small.js",
   "compatibility_date": "2025-01-01",
   "workers_dev": true,
+  "assets": { "directory": "./public", "binding": "ASSETS", "html_handling": "none", "not_found_handling": "none" },
   "d1_databases": [
     { "binding": "DB", "database_name": "mdclicker", "database_id": "ecc4bf69-dd38-4117-a06a-1c8b47d6eb0a" }
   ]
