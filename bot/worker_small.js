@@ -88,9 +88,8 @@ function clean(s, prev, dt, al) {
   else {
     dt = Math.max(1, Math.min(dt, 86400 * 3)); al = al || {};
     const pp = Math.max(0, num(prev.pts)), pt = Math.max(0, num(prev.total)), pr = Math.max(0, num(prev.run));
-    // прибавка: фиксированная база + доля от накопленного (растёт со временем) + выигрыш казино (до ×251 от баланса, зависит от времени) + выдачи
-    const mult = Math.min(251, 2 + dt * 2);
-    const gain = 2e6 + pt * (0.02 + dt / 600) + pp * mult + num(al.pts);
+    // прибавка: фиксированная база + доля от накопленного (растёт со временем) + выдачи (выигрыши казино, займы, промо записываются сервером в allowance)
+    const gain = 2e6 + pt * (0.02 + dt / 600) + num(al.pts);
     cap("total", pt + gain); cap("run", pr + gain); cap("pts", pp + gain);
     const pg = Math.max(0, num(prev.gems)), pgt = Math.max(0, num(prev.gt));
     const gemGain = 500 + 3 * Math.pow(Math.max(pr, s.run) / 1e6, 0.45) + num(al.gems);
@@ -103,6 +102,15 @@ function clean(s, prev, dt, al) {
 const allowGet = async (db, uid) => { try { const r = await db.prepare("SELECT v FROM kv WHERE k=?").bind("al" + uid).first(); return r ? JSON.parse(r.v) : {}; } catch (e) { return {}; } };
 const allowAdd = async (db, uid, pts, gems) => { const a = await allowGet(db, uid); a.pts = num(a.pts) + num(pts); a.gems = num(a.gems) + num(gems); await db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES (?,?)").bind("al" + uid, JSON.stringify(a)).run(); };
 const allowClear = (db, uid) => db.prepare("DELETE FROM kv WHERE k=?").bind("al" + uid).run();
+// после сохранения списываем из допуска то, что реально потрачено на рост; остаток живёт до часа
+const allowUse = async (db, uid, grew, now) => {
+  const a = await allowGet(db, uid); const used = Math.max(0, grew);
+  const pts = Math.max(0, num(a.pts) - used);
+  if ((pts < 1 && num(a.gems) < 1) || (a.t && now - a.t > 3600)) return allowClear(db, uid);
+  a.pts = pts; a.gems = 0; if (!a.t) a.t = now;
+  await db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES (?,?)").bind("al" + uid, JSON.stringify(a)).run();
+};
+const casinoPay = (db, uid, amount) => amount > 0 ? allowAdd(db, uid, amount, 0) : null;
 async function banPurge(db, now) {
   const rows = (await db.prepare("SELECT id FROM users WHERE banned=2 AND banat>0 AND banat<? AND state IS NOT NULL LIMIT 20").bind(now - BAN_DAYS * 86400).all()).results;
   for (const r of rows) {
@@ -156,6 +164,14 @@ async function lbTrack(db, env, now) {
     }
   }
 }
+const RL = new Map(), RL_HEAVY = /^(cz_|dc_|p2_|(offer|accept|cancel)$|chat_send|promo_use|bm_buy|loan_|uc_submit|idea_submit|import|fr_|gift|clan_)/;
+function rateHit(id, path, now) {
+  if (id === ADMIN) return false;
+  if (RL.size > 5000) RL.clear();
+  const heavy = RL_HEAVY.test(path), k = id + (heavy ? "h" : "n"), lim = heavy ? 40 : 240, w = RL.get(k);
+  if (!w || now - w.t >= 60) { RL.set(k, {t: now, n: 1}); return false; }
+  return ++w.n > lim;
+}
 async function api(path, req, env) {
   const db = env.DB; if (!db) return J({error: "Не подключена база DB"}, 500);
   await init(db);
@@ -178,6 +194,7 @@ async function api(path, req, env) {
   if (!user) return J({error: "Открой игру из бота", login: 1}, 401);
   const id = user.id, name = uname(user); let b = {}; try { b = await req.json(); } catch (e) {}
   const now = Math.floor(Date.now() / 1000);
+  if (rateHit(id, path, now)) return J({error: "Слишком часто, подожди секунду", rate: 1}, 429);
   let maintT = null; try { const mt = await db.prepare("SELECT v FROM kv WHERE k='maint'").first(); if (mt && mt.v) { const m = JSON.parse(mt.v); if (m && m.on) maintT = m.text || "Технический перерыв"; } } catch (e) {}
   if (id !== ADMIN) { try { const bu = await db.prepare("SELECT banned,banat FROM users WHERE id=?").bind(id).first(); if (bu && bu.banned === 2) return J({fullban: 1, banat: bu.banat || 0, purge: (bu.banat || 0) + BAN_DAYS * 86400, error: "Ты заблокирован"}); } catch (e) {} }
   if (maintT && id !== ADMIN && path !== "poll" && path !== "auth") return J({maint: maintT, error: "Технический перерыв"});
@@ -200,7 +217,7 @@ async function api(path, req, env) {
       const n = await getUser(db, id); return J({rev: n.rev});
     }
     const res = await db.prepare("UPDATE users SET state=?, rev=rev+1, total=?, cur=?, name=?, upd=? WHERE id=? AND rev=?").bind(JSON.stringify(s), num(s.total), Math.max(0, num(s.pts)), name, now, id, Number(b.rev)).run();
-    if (res.meta.changes === 1) { if (prev) await allowClear(db, id); return J(clamped ? {rev: Number(b.rev) + 1, clamp: true, state: s} : {rev: Number(b.rev) + 1}); }
+    if (res.meta.changes === 1) { if (prev) await allowUse(db, id, num(s.pts) - num(prev.pts), now); return J(clamped ? {rev: Number(b.rev) + 1, clamp: true, state: s} : {rev: Number(b.rev) + 1}); }
     if (!u.state) return J({reset: true, rev: u.rev});
     return J({conflict: true, state: JSON.parse(u.state), rev: u.rev});
   }
@@ -338,6 +355,7 @@ async function api(path, req, env) {
     if (col === "j") { const j = await jpGet(); payout = bet + j.pool; jackpot = true; await db.prepare("UPDATE kv SET v=? WHERE k='jp'").bind(String(JP_SEED)).run(); await db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES ('jplast',?)").bind(JSON.stringify({n: name, a: j.pool, t: now})).run(); }
     else if (col === pick) payout = bet * (pick === "g" ? 24 : 2);
     const j2 = await jpGet();
+    await casinoPay(db, id, payout);
     return J({sector, payout, jackpot, jp: j2.pool, last: j2.last});
   }
   const pkKey = "pk" + id;
@@ -357,6 +375,7 @@ async function api(path, req, env) {
     const hold = Array.isArray(b.hold) ? b.hold.map(Boolean) : [], hand = h.hand.slice(); let k = 0;
     for (let i = 0; i < 5; i++) if (!hold[i]) hand[i] = h.rest[k++];
     const ev = pkEval(hand);
+    await casinoPay(db, id, h.bet * ev.m);
     return J({hand, name: ev.n, mult: ev.m, payout: h.bet * ev.m, bet: h.bet});
   }
   // ---------- покер на двоих
@@ -468,6 +487,7 @@ async function api(path, req, env) {
     const seat = tb.p1 === id ? 1 : 2; if (tb.status === "cancel" && seat !== 1) return J({amount: 0});
     const r = await db.prepare("UPDATE pk2 SET c" + seat + "=1 WHERE id=? AND c" + seat + "=0").bind(tb.id).run(); if (r.meta.changes !== 1) return J({amount: 0});
     let amount = tb.stake; if (tb.status === "done") { const res = JSON.parse(tb.res); amount = seat === 1 ? res.pay1 : res.pay2; }
+    await casinoPay(db, id, amount);
     return J({amount});
   }
   // ---- Кости-блеф (дуэль) ----
@@ -584,6 +604,7 @@ async function api(path, req, env) {
     const seat = tb.p1 === id ? 1 : 2; if (tb.status === "cancel" && seat !== 1) return J({amount: 0});
     const r = await db.prepare("UPDATE dc SET c" + seat + "=1 WHERE id=? AND c" + seat + "=0").bind(tb.id).run(); if (r.meta.changes !== 1) return J({amount: 0});
     let amount = tb.stake; if (tb.status === "done") { const res = JSON.parse(tb.res); amount = seat === 1 ? res.pay1 : res.pay2; }
+    await casinoPay(db, id, amount);
     return J({amount});
   }
   if (path === "ucats") {
