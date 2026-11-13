@@ -134,6 +134,11 @@ async function mutate(db, id, fn, name) {
   }
   return {error: "Занято, попробуй ещё раз"};
 }
+async function addPh(db, rows, key) {
+  const ids = [...new Set(rows.map(r => r[key]).filter(x => Number.isInteger(x)))].slice(0, 100); if (!ids.length) return rows;
+  try { const m = {}; (await db.prepare("SELECT k,v FROM kv WHERE k IN (" + ids.map(() => "?").join(",") + ")").bind(...ids.map(i => "ph" + i)).all()).results.forEach(r => m[r.k.slice(2)] = r.v); rows.forEach(r => { if (m[r[key]]) r.ph = m[r[key]]; }); } catch (e) {}
+  return rows;
+}
 const bLet = s => String(s || "").split("~")[0], bSuf = s => { const x = String(s || "").split("~"); return x[1] ? "~" + x[1] : ""; };
 const bAdd = (s, c) => (bLet(s) + c).slice(0, 6) + bSuf(s);
 const NS_ST = {G1: 20, G2: 20, G3: 30, G4: 40, G5: 60, G7: 120, G8: 150, G9: 200, GA: 99000000}, NS_FT = {F1: 15, F2: 15, F3: 25, F4: 40, F5: 30, F6: 35};
@@ -235,7 +240,7 @@ async function api(path, req, env) {
     return J({conflict: true, state: JSON.parse(u.state), rev: u.rev});
   }
   if (path === "top") {
-    const rows = (await db.prepare("SELECT id,name,cur AS total,badges FROM users WHERE cur>0 AND banned<2 ORDER BY cur DESC LIMIT 50").all()).results.map(r => ({...r, badges: bd(r.id, r.badges)}));
+    const rows = (await db.prepare("SELECT id,name,cur AS total,badges FROM users WHERE cur>0 AND banned<2 ORDER BY cur DESC LIMIT 50").all()).results.map(r => ({...r, badges: bd(r.id, r.badges)})); await addPh(db, rows, "id");
     const u = await getUser(db, id); let rank = 0;
     if (u) rank = (await db.prepare("SELECT COUNT(*)+1 AS r FROM users WHERE cur>? AND banned<2").bind(u.cur).first()).r;
     await lbTrack(db, env, now);
@@ -739,6 +744,7 @@ async function api(path, req, env) {
     }
     if (path === "fr_list") {
       const fr = (await db.prepare("SELECT u.id,u.name,u.cur,u.seen,u.badges FROM friends f JOIN users u ON u.id=CASE WHEN f.a=? THEN f.b ELSE f.a END WHERE f.st=1 AND (f.a=? OR f.b=?) LIMIT 100").bind(id, id, id).all()).results.map(r => ({id: r.id, name: r.name, cur: r.cur, online: (r.seen || 0) > now - 40, seen: r.seen || 0, badges: bd(r.id, r.badges)}));
+      await addPh(db, fr, "id");
       const inc = (await db.prepare("SELECT u.id,u.name FROM friends f JOIN users u ON u.id=f.a WHERE f.st=0 AND f.b=? LIMIT 50").bind(id).all()).results;
       const out = (await db.prepare("SELECT b FROM friends WHERE st=0 AND a=? LIMIT 50").bind(id).all()).results.map(r => r.b);
       return J({friends: fr, inc, out});
@@ -825,6 +831,7 @@ async function api(path, req, env) {
       const c = await db.prepare("SELECT c.id,c.name,c.owner,c.icon,c.mode,c.descr,c.bank," + score + " AS score FROM clans c WHERE c.id=?").bind(cid).first(); if (!c) return J({clan: null});
       c.level = clLevel(c.bank); c.next = CL_LV[c.level] || 0;
       const mem = (await db.prepare("SELECT u.id,u.name,u.total,u.seen,u.badges,m.role,m.don FROM clan_m m JOIN users u ON u.id=m.uid WHERE m.cid=? ORDER BY m.role DESC, u.total DESC LIMIT 40").bind(cid).all()).results.map(r => ({id: r.id, name: r.name, total: r.total, role: r.id === c.owner ? 2 : r.role, don: r.don || 0, online: (r.seen || 0) > now - 40, badges: bd(r.id, r.badges)}));
+      await addPh(db, mem, "id");
       const reqs = my && my.cid === cid && role >= 1 ? (await db.prepare("SELECT r.uid AS id,u.name,u.total FROM clan_req r JOIN users u ON u.id=r.uid WHERE r.cid=? LIMIT 30").bind(cid).all()).results : [];
       const myreq = my ? 0 : ((await db.prepare("SELECT cid FROM clan_req WHERE uid=?").bind(id).first()) || {}).cid || 0;
       return J({clan: c, members: mem, reqs, mine: my ? my.cid : 0, myrole: my && my.cid === cid ? (c.owner === id ? 2 : role) : -1, myreq, max: CL_MAX});
@@ -920,7 +927,7 @@ async function api(path, req, env) {
   if (path === "chat") {
     const since = Number(b.since) || 0;
     let rows = (await db.prepare("SELECT c.id,c.uid,c.name,c.text,c.ts,u.badges FROM chat c LEFT JOIN users u ON u.id=c.uid WHERE c.id>? ORDER BY c.id DESC LIMIT 60").bind(since).all()).results;
-    rows = rows.reverse().map(r => ({...r, badges: bd(r.uid, r.badges)}));
+    rows = rows.reverse().map(r => ({...r, badges: bd(r.uid, r.badges)})); await addPh(db, rows, "uid");
     return J({rows});
   }
   if (path === "chat_send") {
