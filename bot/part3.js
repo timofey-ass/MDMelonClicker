@@ -22,15 +22,19 @@ const BADGES = {
   l: ["Продержался 3 дня на 1 месте в лидерах", "#ffd54f", `<path d="M8 4h8v5a4 4 0 01-8 0zM6 5H4v2a3 3 0 003 3M18 5h2v2a3 3 0 01-3 3M12 13v4M8 20h8M10 17h4v3h-4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`],
 };
 const bdg = (s, sz) => String(s || "").split("").filter(c => BADGES[c]).map(c => `<svg class="bdg" title="${BADGES[c][0]}" viewBox="0 0 24 24" width="${sz || 15}" height="${sz || 15}" style="color:${BADGES[c][1]}">${BADGES[c][2]}</svg>`).join("");
-const nm = (name, b) => `<span class="nm">${esc(name || "Игрок")}${bdg(b)}</span>`;
+const NS_G = {G1: ["Закат", "linear-gradient(90deg,#ff7e5f,#feb47b)", 20], G2: ["Океан", "linear-gradient(90deg,#2193b0,#6dd5ed)", 20], G3: ["Мята", "linear-gradient(90deg,#11998e,#38ef7d)", 30], G4: ["Арбуз", "linear-gradient(90deg,#ff4b5c,#7bd957)", 40], G5: ["Неон", "linear-gradient(90deg,#f953c6,#46c6ff)", 60], G6: ["Золото", "linear-gradient(90deg,#f7971e,#ffd200,#f7971e)", 80], G7: ["Радуга", "linear-gradient(90deg,#ff5252,#ffd740,#69f0ae,#40c4ff,#b388ff,#ff5252)", 120, 1], G8: ["Лава", "linear-gradient(90deg,#ff1e00,#ff9100,#ffea00,#ff9100,#ff1e00)", 150, 1], G9: ["Космос", "linear-gradient(90deg,#7b2ff7,#2f80ed,#56ccf2,#bb6bd9,#7b2ff7)", 200, 1]};
+const NS_F = {F1: ["Моно", "ui-monospace,Menlo,Consolas,monospace", 15, "font-weight:700"], F2: ["Курсив", "Georgia,serif", 15, "font-style:italic;font-weight:700"], F3: ["Жирный", "Impact,'Arial Black',sans-serif", 25, "letter-spacing:.04em"], F4: ["Рукописный", "'Comic Sans MS','Segoe Print',cursive", 40, "font-weight:700"], F5: ["Строгий", "'Times New Roman',serif", 30, "font-weight:900;letter-spacing:.03em"], F6: ["Широкий", "Verdana,sans-serif", 35, "font-weight:800;letter-spacing:.12em"]};
+const nsCss = b => { const m = /~(G\d)?(F\d)?/.exec(b || ""); if (!m) return ""; const g = NS_G[m[1]], f = NS_F[m[2]]; return (g ? `background:${g[1]};-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;font-weight:800;${g[3] ? "background-size:300% 100%;animation:nsa 4s linear infinite;" : ""}` : "") + (f ? `font-family:${f[1]};${f[3]}` : ""); };
+const nm = (name, b) => `<span class="nm"><span style="${nsCss(b)}">${esc(name || "Игрок")}</span>${bdg(b)}</span>`;
+(function () { const st = document.createElement("style"); st.textContent = `@keyframes nsa{to{background-position:300% 0}}@keyframes cmIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}@keyframes cmSheet{from{transform:translateY(60px);opacity:.4}to{transform:none;opacity:1}}@keyframes updin{from{opacity:0}to{opacity:1}}@keyframes cmPop{from{opacity:0;transform:scale(.88)}to{opacity:1;transform:none}}@keyframes cmSlide{from{opacity:0;transform:translateX(26px)}to{opacity:1;transform:none}}.cmv>.card,.cmv>.sec,.cmv>.ocard{animation:cmIn .38s ease both}.cmv>:nth-child(2){animation-delay:.04s}.cmv>:nth-child(3){animation-delay:.08s}.cmv>:nth-child(4){animation-delay:.12s}.cmv>:nth-child(5){animation-delay:.16s}.cmv>:nth-child(6){animation-delay:.2s}.cmv>:nth-child(n+7){animation-delay:.24s}.cmv .seg{animation:none}.cmv .seg button{transition:background .25s,color .25s,transform .15s}.cmv .seg button:active{transform:scale(.94)}.pfc{text-align:center}.pfc .nm{justify-content:center}.pfc .btns{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}.pfav{width:96px;height:96px;border-radius:50%;margin:-48px auto 8px;border:4px solid var(--sur,#1b1b1b);background:#222;overflow:hidden;position:relative;box-shadow:0 4px 16px #0006;animation:cmPop .5s .1s cubic-bezier(.2,1.3,.4,1) both}.pfav img{width:100%;height:100%;object-fit:cover;display:block}.pfeq{position:absolute;right:-2px;bottom:-2px}`; document.head.appendChild(st); })();
 const av = (name, id, sz) => { const h = (id * 47) % 360; return `<div class="av" data-a="prof" data-i="${id}" style="width:${sz}px;height:${sz}px;background:${hsv(h, .45, .45)};color:${hsv(h, .15, 1)};font-size:${Math.round(sz * .45)}px">${esc((name || "?").trim().charAt(0).toUpperCase())}</div>`; };
 
 // ---------- модалка
 function modal(html) {
-  closeModal(); const o = document.createElement("div"); o.className = "mdl"; o.innerHTML = `<div class="mdc">${html}</div>`; o.addEventListener("click", e => { if (e.target === o) closeModal(); }); document.body.appendChild(o); return o;
+  closeModal(); const o = document.createElement("div"); o.className = "mdl"; o.style.animation = "updin .22s ease both"; o.innerHTML = `<div class="mdc" style="animation:cmSheet .34s cubic-bezier(.2,1,.3,1) both">${html}</div>`; o.addEventListener("click", e => { if (e.target === o) closeModal(); }); document.body.appendChild(o); return o;
 }
 function closeModal() { document.querySelectorAll(".mdl").forEach(m => m.remove()); }
-A.mclose = function () { closeModal(); };
+A.mclose = function () { document.querySelectorAll(".mdl").forEach(m => { m.style.transition = "opacity .2s"; m.style.opacity = 0; const c = m.firstChild; if (c) { c.style.transition = "transform .22s"; c.style.transform = "translateY(40px)"; } setTimeout(() => m.remove(), 210); }); };
 
 // ---------- опрос сервера: выдачи, объявления, онлайн
 function applyReward(kind, a, b) {
@@ -108,19 +112,63 @@ A.prof = async function (e) {
   const bl = String(r.badges || "").split("").filter(c => BADGES[c]).map(c => `<div style="display:flex;align-items:center;gap:8px;font-size:13px;margin-top:4px">${bdg(c, 18)}<span>${BADGES[c][0]}</span></div>`).join("");
   let adm = "";
   if (isAdm) adm = `<div class="sec" style="margin:14px 0 6px">Админ</div><div style="display:flex;gap:6px;flex-wrap:wrap">${uid !== me.id ? (r.ban === 2 ? "" : btn(r.banned ? "Размутить в чате" : "Мут в чате", "pban", `data-i="${uid}" data-on="${r.banned ? 0 : 1}"`, "o")) + btn(r.ban === 2 ? "✅ Снять бан" : "🚫 Забанить полностью", "pfban", `data-i="${uid}" data-on="${r.ban === 2 ? 0 : 1}"`, "o") + btn("Выдать", "pgive", `data-i="${uid}"`, "o") : ""}${btn("Сбросить прогресс", "preset", `data-i="${uid}"`, "o")}</div><div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">${Object.keys(BADGES).map(c => `<button class="chip ${String(r.badges).includes(c) ? "p" : ""}" style="border:0;font-family:inherit" data-a="pbadge" data-i="${uid}" data-c="${c}" data-cur="${r.badges}">${BADGES[c][0].split(" ")[0]}</button>`).join("")}</div>`;
-  const eq = r.eq >= 0 ? catEl(r.eq, 64, {}) : catEl("coin", 64, {});
-  const own = uid === me.id, bn = own && Number.isInteger(S.bn) ? S.bn : (r.bn || 0);
-  const bnr = `<div style="height:64px;border-radius:14px;margin:-4px 0 12px;background:${BNR[bn % BNR.length]}"></div>` + (own ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin:-4px 0 12px">${BNR.map((g, k) => `<div data-a="setbn" data-k="${k}" style="width:34px;height:24px;border-radius:8px;background:${g};cursor:pointer;${k === bn ? "outline:2px solid var(--pri);outline-offset:2px" : ""}"></div>`).join("")}</div>` : "");
-  const tr = (r.offers || []).length ? `<div class="sec" style="margin:14px 0 6px">Активные обмены</div>${r.offers.map(o => `<div style="display:flex;align-items:center;gap:8px;padding:3px 0">${catEl(o.give, 36, {})}<span style="color:var(--onv)">${ic("arrow", 18)}</span>${catEl(o.want, 36, {})}<span class="t2 grow" style="font-size:12px;margin:0"><span class="rar${ITEMS[o.give][2]}">${ITEMS[o.give][1]}</span> за <span class="rar${ITEMS[o.want][2]}">${ITEMS[o.want][1]}</span></span></div>`).join("")}` : "";
-  const frb = uid === me.id ? "" : `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:12px">${r.fr === 0 ? btn("➕ В друзья", "frad", `data-i="${uid}"`, "o") : r.fr === 1 ? btn("🎁 Подарить кота", "frgp", `data-i="${uid}"`, "o") + btn("Удалить из друзей", "frdl", `data-i="${uid}"`, "o") : r.fr === 2 ? `<span class="t2" style="margin:0">Заявка отправлена</span>` : btn("Принять заявку", "frok", `data-i="${uid}"`, "o")}</div>`;
+  const own = uid === me.id, bn = own && Number.isInteger(S.bn) ? S.bn : (r.bn || 0), now0 = Date.now() / 1000;
+  const eq = r.eq >= 0 ? catEl(r.eq, 96, {}) : catEl("coin", 96, {});
+  const tgp = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.photo_url) || "";
+  const photo = own ? (tgp || r.photo) : r.photo;
+  const bg = r.bnimg ? `url(${r.bnimg}) center/cover` : BNR[bn % BNR.length];
+  const bnr = `<div style="height:120px;margin:-20px -18px 0;background:${bg};border-radius:28px 28px 0 0"></div>`;
+  const avh = `<div class="pfav">${eq}${photo ? `<img src="${esc(photo)}" style="position:absolute;inset:0" onerror="this.remove()">` : ""}</div>`;
+  const bnc = own ? `<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;align-items:center;margin:4px 0 10px">${BNR.map((g, k) => `<div data-a="setbn" data-k="${k}" style="width:30px;height:22px;border-radius:8px;background:${g};cursor:pointer;${!r.bnimg && k === bn ? "outline:2px solid var(--pri);outline-offset:2px" : ""}"></div>`).join("")}<button class="chip" style="border:0;font-family:inherit" data-a="bnup">📷 Своё фото</button>${r.bnimg ? `<button class="chip" style="border:0;font-family:inherit" data-a="bndel">✕</button>` : ""}</div>` : "";
+  const bch = String(r.badges || "").split("~")[0].split("").filter(c => BADGES[c]).map(c => `<span class="chip" style="display:inline-flex;gap:5px;align-items:center;font-size:12px">${bdg(c, 16)}${BADGES[c][0]}</span>`).join("");
+  const tr = (r.offers || []).length ? `<div class="sec" style="margin:16px 0 6px;text-align:center">Активные обмены</div>${r.offers.map(o => `<div style="display:flex;align-items:center;justify-content:center;gap:8px;padding:3px 0">${catEl(o.give, 36, {})}<span style="color:var(--onv)">${ic("arrow", 18)}</span>${catEl(o.want, 36, {})}<span class="t2" style="font-size:12px;margin:0"><span class="rar${ITEMS[o.give][2]}">${ITEMS[o.give][1]}</span> за <span class="rar${ITEMS[o.want][2]}">${ITEMS[o.want][1]}</span></span></div>`).join("")}` : "";
+  const frb = own ? `<div class="btns" style="margin-top:14px">${btn("✏️ Профиль", "pfed", "", "o")}${btn("🎨 Стиль ника", "nsop", "", "o")}</div>` : `<div class="btns" style="margin-top:14px">${r.fr === 0 ? btn("➕ В друзья", "frad", `data-i="${uid}"`, "o") : r.fr === 1 ? btn("🎁 Кот", "frgp", `data-i="${uid}"`, "o") + btn("🪙 Монеты", "frcp", `data-i="${uid}"`, "o") + btn("Удалить из друзей", "frdl", `data-i="${uid}"`, "o") : r.fr === 2 ? `<span class="t2" style="margin:0">Заявка отправлена</span>` : btn("Принять заявку", "frok", `data-i="${uid}"`, "o")}</div>`;
   const ik = Object.keys(r.inv || {}).filter(k => ITEMS[k]).sort((a, b) => ITEMS[b][2] - ITEMS[a][2] || a - b);
-  const invh = ik.length ? `<details style="margin-top:12px"><summary class="sec" style="cursor:pointer;margin:0">Инвентарь · ${ik.length}</summary><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;max-height:220px;overflow-y:auto">${ik.map(k => `<div style="position:relative;width:46px;height:46px" title="${esc(ITEMS[k][1])}">${catEl(+k, 46, {})}${r.inv[k] > 1 ? `<span style="position:absolute;right:-2px;bottom:-2px;background:var(--prc);color:var(--onprc);font-size:10px;font-weight:700;border-radius:8px;padding:0 5px">${r.inv[k]}</span>` : ""}</div>`).join("")}</div></details>` : "";
-  const pf = r.pf || {}, fav = (pf.fav || []).filter(k => ITEMS[k]);
-  const ex = (pf.bio ? `<div class="t2" style="margin:12px 0 0;font-style:italic;color:var(--on)">«${esc(pf.bio)}»</div>` : "") + (uid !== me.id && r.seen ? `<div class="t2" style="margin:6px 0 0;font-size:12px;color:${r.seen > Date.now() / 1000 - 40 ? "var(--good)" : "var(--out)"}">${r.seen > Date.now() / 1000 - 40 ? "в игре сейчас" : "был(а) " + agoS(r.seen)}</div>` : "") + (fav.length ? `<div class="sec" style="margin:14px 0 6px">Витрина</div><div style="display:flex;gap:10px">${fav.map(k => catEl(+k, 64, {})).join("")}</div>` : "") + ((r.achs || []).length ? `<div class="sec" style="margin:14px 0 6px">Достижения</div><div style="display:flex;flex-wrap:wrap;gap:5px">${r.achs.map(id => { const a = ACH.find(x => x[0] === id); return a ? `<span style="font-size:11px;background:var(--sch);border-radius:10px;padding:3px 8px" title="${esc(a[2])}">🏆 ${esc(a[1])}</span>` : ""; }).join("")}</div>` : "") + (uid === me.id ? `<div style="margin-top:12px">${btn("✏️ Изменить профиль", "pfed", "", "o")}</div>` : "");
-  modal(bnr + `<div style="display:flex;gap:14px;align-items:center"><div style="border-radius:50%;overflow:hidden;width:64px;height:64px;flex:none">${eq}</div><div class="grow"><div class="t1" style="font-size:18px">${nm(r.name, r.badges)}</div><div class="t2">ID ${r.id}${isAdm ? " · " + (r.un ? `<a href="https://t.me/${r.un}" target="_blank" style="color:var(--pri)">@${esc(r.un)}</a>` : "без юзернейма") : ""} · <span style="color:${r.online ? "var(--good)" : "var(--out)"}">${r.online ? "в игре" : "не в сети"}</span>${r.ban === 2 ? ' · <span style="color:#ff5252">забанен</span>' : r.banned ? ' · <span style="color:#ff5252">мут в чате</span>' : ""}</div></div></div>${bl}${ex}${tr}${frb}${invh}<div class="card col" style="margin:12px 0 0;gap:0">${rows.map(x => `<div style="display:flex;padding:3px 0"><span class="t2 grow" style="font-size:14px;margin:0">${x[0]}</span><span style="font-size:14px;font-weight:700">${x[1]}</span></div>`).join("")}</div>${adm}<div style="margin-top:14px;text-align:right">${btn("Закрыть", "mclose", "", "t")}</div>`);
+  const invh = ik.length ? `<details style="margin-top:14px"><summary class="sec" style="cursor:pointer;margin:0;text-align:center;list-style:none">Инвентарь · ${ik.length} ▾</summary><div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:8px;max-height:220px;overflow-y:auto">${ik.map(k => `<div style="position:relative;width:46px;height:46px" title="${esc(ITEMS[k][1])}">${catEl(+k, 46, {})}${r.inv[k] > 1 ? `<span style="position:absolute;right:-2px;bottom:-2px;background:var(--prc);color:var(--onprc);font-size:10px;font-weight:700;border-radius:8px;padding:0 5px">${r.inv[k]}</span>` : ""}</div>`).join("")}</div></details>` : "";
+  const pf = r.pf || {}, fav = (pf.fav || []).filter(k => ITEMS[k]), on = r.online;
+  const stt = `<div class="t2" style="margin:2px 0 0;font-size:12px;color:${on ? "var(--good)" : "var(--out)"}">${on ? "● в игре сейчас" : (r.seen ? "был(а) " + agoS(r.seen) : "не в сети")}${r.ban === 2 ? ' · <span style="color:#ff5252">забанен</span>' : r.banned ? ' · <span style="color:#ff5252">мут в чате</span>' : ""}</div>`;
+  const ex = (pf.bio ? `<div class="t2" style="margin:10px 8px 0;font-style:italic;color:var(--on)">«${esc(pf.bio)}»</div>` : "") + (fav.length ? `<div class="sec" style="margin:16px 0 8px;text-align:center">Витрина</div><div style="display:flex;gap:12px;justify-content:center">${fav.map(k => catEl(+k, 68, {})).join("")}</div>` : "") + ((r.achs || []).length ? `<div class="sec" style="margin:16px 0 8px;text-align:center">Достижения · ${r.achs.length}</div><div style="display:flex;flex-wrap:wrap;gap:5px;justify-content:center">${r.achs.map(id => { const a = ACH.find(x => x[0] === id); return a ? `<span style="font-size:11px;background:var(--sch);border-radius:10px;padding:3px 8px" title="${esc(a[2])}">🏆 ${esc(a[1])}</span>` : ""; }).join("")}</div>` : "");
+  const grid = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px">${rows.map(x => `<div style="background:var(--sch);border-radius:16px;padding:10px 6px;text-align:center"><div style="font-size:16px;font-weight:800">${x[1]}</div><div class="t2" style="font-size:11px;margin:2px 0 0">${x[0]}</div></div>`).join("")}</div>`;
+  const adm2 = isAdm && r.bnimg ? `<div style="margin-top:8px">${btn("Убрать баннер игрока", "admbn", `data-i="${uid}"`, "o")}</div>` : "";
+  modal(bnr + `<div class="pfc">${avh}<div class="t1" style="font-size:22px">${nm(r.name, r.badges)}</div><div class="t2" style="margin:2px 0 0">ID ${r.id}${isAdm ? " · " + (r.un ? `<a href="https://t.me/${r.un}" target="_blank" style="color:var(--pri)">@${esc(r.un)}</a>` : "без юзернейма") : ""}${r.clan ? " · " + esc(r.clan) : ""}</div>${stt}${bnc}<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:8px">${bch}</div>${ex}${tr}${frb}${invh}${grid}${adm2}${adm}<div style="margin-top:16px;text-align:center">${btn("Закрыть", "mclose", "", "t")}</div></div>`);
 };
 const BNR = ["linear-gradient(135deg,#ff9a3c,#ff3d6e)", "linear-gradient(135deg,#43e97b,#38f9d7)", "linear-gradient(135deg,#4facfe,#7b5cff)", "linear-gradient(135deg,#f6d365,#fda085)", "linear-gradient(135deg,#a18cd1,#fbc2eb)", "linear-gradient(135deg,#232526,#5a5f66)", "linear-gradient(135deg,#00c6ff,#0072ff)", "linear-gradient(135deg,#f953c6,#b91d73)"];
-A.setbn = function (e) { S.bn = +e.dataset.k; mark(); save(true); A.prof({dataset: {i: me.id}}); };
+A.setbn = async function (e) { S.bn = +e.dataset.k; mark(); save(true); await api("bn_set", {img: ""}); A.prof({dataset: {i: me.id}}); };
+A.bnup = function () {
+  const f = document.createElement("input"); f.type = "file"; f.accept = "image/*";
+  f.onchange = () => {
+    const file = f.files && f.files[0]; if (!file) return; const img = new Image(), url = URL.createObjectURL(file);
+    img.onload = async () => {
+      const W = 640, H = 240, c = document.createElement("canvas"); c.width = W; c.height = H; const x = c.getContext("2d"), k = Math.max(W / img.width, H / img.height), w = img.width * k, h = img.height * k;
+      x.drawImage(img, (W - w) / 2, (H - h) / 2, w, h); URL.revokeObjectURL(url);
+      let q = .78, d = c.toDataURL("image/jpeg", q); while (d.length > 85000 && q > .3) { q -= .1; d = c.toDataURL("image/jpeg", q); }
+      const r = await api("bn_set", {img: d}); if (r.error) return toast(r.error); toast("Баннер обновлён"); A.prof({dataset: {i: me.id}});
+    };
+    img.onerror = () => toast("Не удалось открыть картинку"); img.src = url;
+  };
+  f.click();
+};
+A.bndel = async function () { await api("bn_set", {img: ""}); toast("Фото убрано"); A.prof({dataset: {i: me.id}}); };
+A.admbn = async function (e) { await api("adm_bn_del", {uid: +e.dataset.i}); toast("Баннер убран"); A.prof({dataset: {i: +e.dataset.i}}); };
+let nsSt = null;
+A.nsop = async function () {
+  const r = await api("ns_list", {}); if (r.error) return toast(r.error); nsSt = r; nsShow();
+};
+function nsShow() {
+  const r = nsSt, ow = r.owned, act = r.active || "", ag = (/G\d/.exec(act) || [""])[0], af = (/F\d/.exec(act) || [""])[0];
+  const card = (id, nmx, price, sty, sel) => `<div data-a="nsx" data-i="${id}" style="padding:10px 6px;border-radius:14px;background:var(--sch);text-align:center;cursor:pointer;border:2px solid ${sel ? "var(--pri)" : "transparent"};transition:transform .15s" ><div style="font-size:17px;${sty}">${esc(me.name || "Ник")}</div><div class="t2" style="margin:3px 0 0;font-size:11px">${nmx} · ${ow.includes(id) ? (sel ? "выбран" : "куплен") : price + " 💎"}</div></div>`;
+  modal(`<div class="pfc"><div class="t1" style="font-size:20px">Стиль ника</div><div class="t2">У тебя ${S.gems} 💎. Выбери цвет и шрифт, они видны всем игрокам.</div><div class="sec" style="text-align:center;margin:12px 0 6px">Цвет</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${card("G0", "Обычный", 0, "", !ag).replace(/ · [^<]*</, " · по умолчанию<").replace('data-i="G0"', 'data-i="G0"')}${Object.keys(NS_G).map(id => card(id, NS_G[id][0], NS_G[id][2], nsCss("~" + id), ag === id)).join("")}</div><div class="sec" style="text-align:center;margin:14px 0 6px">Шрифт</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${card("F0", "Обычный", 0, "", !af).replace(/ · [^<]*</, " · по умолчанию<")}${Object.keys(NS_F).map(id => card(id, NS_F[id][0], NS_F[id][2], nsCss("~" + id), af === id)).join("")}</div><div style="margin-top:16px">${btn("Готово", "mclose", "", "t")}</div></div>`);
+}
+A.nsx = async function (e) {
+  const id = e.dataset.i, r = nsSt, ow = r.owned, act = r.active || "";
+  let g = (/G\d/.exec(act) || [""])[0], f = (/F\d/.exec(act) || [""])[0];
+  const price = id[1] === "0" ? 0 : (id[0] === "G" ? NS_G[id][2] : NS_F[id][2]);
+  if (price && !ow.includes(id)) { if (!confirm("Купить за " + price + " кристаллов?")) return; await save(true); const b = await api("ns_buy", {id}); if (b.error) return toast(b.error); adopt(b); r.owned = b.owned; toast("Куплено"); }
+  if (id[0] === "G") g = id[1] === "0" ? "" : id; else f = id[1] === "0" ? "" : id;
+  const x = await api("ns_set", {g, f}); if (x.error) return toast(x.error);
+  myBadges = x.badges; r.active = (g || f) ? g + f : ""; nsShow(); render();
+};
+A.admbn_ = null;
 A.pban = async function (e) { const r = await api("adm_ban", {uid: +e.dataset.i, on: +e.dataset.on}); toast(r.error || (+e.dataset.on ? "Заблокирован" : "Разблокирован")); closeModal(); chatSig = ""; chatLoad(); };
 let fbArm = 0;
 A.pfban = async function (e) {
@@ -1531,7 +1579,7 @@ A.pfsel = function (e) { const k = +e.dataset.c, i = pfSel.indexOf(k); if (i >= 
 A.pfsv = async function () { const r = await api("pf_set", {bio: KEEP.pfb || "", fav: pfSel}); if (r.error) return toast(r.error); myPf = {bio: r.bio, fav: r.fav}; closeModal(); toast("Профиль сохранён"); };
 
 /* ===== друзья и кланы ===== */
-const soc = {fr: null, cl: null, clan: null, found: null, cs: 0, chat: [], at: 0, ei: null, req: 0};
+const soc = {fr: null, cl: null, clan: null, found: null, cs: 0, at: 0, ei: null};
 const CL_ICONS = [..."🛡⚔🔥🍉🐱👑🌟🚀💎🦁🐉🌈"], CL_LV = [1e6, 1e7, 1e8, 1e9, 1e10, 1e11, 1e12, 1e13, 1e14, 1e15];
 let clNewIcon = "🛡";
 async function socLoad() {
@@ -1568,12 +1616,8 @@ function tClans() {
 function tMyClan(d) {
   const c = d.clan, role = d.myrole, mgr = role >= 1, lv = c.level || 0, bonus = lv, nx = c.next, pct = nx ? Math.min(100, (c.bank - (CL_LV[lv - 1] || 0)) / (nx - (CL_LV[lv - 1] || 0)) * 100) : 100;
   let h = `<div class="card col"><div style="display:flex;gap:12px;align-items:center"><div style="font-size:40px">${esc(c.icon || "🛡")}</div><div class="grow"><div class="t1" style="font-size:19px;color:var(--pri)">${esc(c.name)}</div><div class="t2" style="margin:0">Уровень ${lv} · бонус +${bonus}% к доходу всем участникам</div></div></div>${c.descr ? `<div class="t2" style="margin:0">${esc(c.descr)}</div>` : ""}<div class="t2" style="margin:0">Очки (накопления участников): <b>${fmt(c.score)}</b></div><div class="t2" style="margin:0">Казна: <b>${fmt(c.bank)}</b>${nx ? " / " + fmt(nx) + " до ур. " + (lv + 1) : " · максимальный уровень"}</div><div style="height:8px;border-radius:6px;background:var(--sch);overflow:hidden"><i style="display:block;height:100%;width:${pct}%;background:linear-gradient(90deg,#ffb300,#ff7043)"></i></div><div style="display:flex;gap:8px"><input data-keep="cldn" inputmode="numeric" placeholder="Сколько внести в казну" style="flex:1">${btn("Внести", "cldon")}</div></div>`;
-  const tabs = [["Участники", 0], ["Чат", 1]]; if (mgr) tabs.push(["Заявки" + (d.reqs.length ? " " + d.reqs.length : ""), 2]); if (role >= 2) tabs.push(["Клан", 3]);
+  const tabs = [["Участники", 0]]; if (mgr) tabs.push(["Заявки" + (d.reqs.length ? " " + d.reqs.length : ""), 2]); if (role >= 2) tabs.push(["Клан", 3]);
   h += `<div class="seg">${tabs.map(t => `<button class="${soc.cs === t[1] ? "on" : ""}" data-a="clcs" data-i="${t[1]}">${t[0]}</button>`).join("")}</div>`;
-  if (soc.cs === 1) {
-    h += `<div id="clchat" class="chatlist" style="max-height:340px;overflow-y:auto">${soc.chat.length ? soc.chat.map(m => `<div class="card" style="padding:8px 12px;margin:3px 0"><div class="grow"><div class="t2" style="margin:0;font-size:11px"><b>${esc(m.name)}</b> · ${new Date(m.ts * 1000).toLocaleTimeString([], {hour: "2-digit", minute: "2-digit"})}</div><div style="font-size:14px;word-break:break-word">${esc(m.text)}</div></div></div>`).join("") : `<div class="t2" style="text-align:center;margin:20px">Сообщений пока нет</div>`}</div><div style="display:flex;gap:8px;margin-top:8px"><input data-keep="clm" maxlength="200" placeholder="Сообщение клану" style="flex:1">${btn("→", "clsay")}</div>`;
-    return h;
-  }
   if (soc.cs === 2 && mgr) return h + (d.reqs.length ? d.reqs.map(x => `<div class="card">${av(x.name, x.id, 40)}<div class="grow"><div class="t1">${esc(x.name)}</div><div class="t2">${fmt(x.total)}</div></div>${rowBtn("✓", "clrq", x.id, 'data-y="1"')}${rowBtn("✕", "clrq", x.id, 'data-y="0"')}</div>`).join("") : `<div class="t2" style="text-align:center;margin:20px">Заявок нет</div>`);
   if (soc.cs === 3 && role >= 2) {
     if (soc.ei === null) { soc.ei = {icon: c.icon || "🛡", mode: c.mode}; KEEP.cld = c.descr || ""; }
@@ -1616,14 +1660,15 @@ A.clkick = function (e) { socStop(); if (!confirm("Исключить игрок
 A.clrole = function (e) { socStop(); return socDo("clan_role", {uid: +e.dataset.i, role: +e.dataset.r}, "Готово"); };
 A.cltr = function (e) { socStop(); if (!confirm("Передать клан этому игроку?")) return; return socDo("clan_transfer", {uid: +e.dataset.i}, "Клан передан"); };
 A.clrq = function (e) { return socDo(e.dataset.y === "1" ? "clan_req_ok" : "clan_req_no", {uid: +e.dataset.i}, e.dataset.y === "1" ? "Принят" : "Отклонена"); };
-A.clcs = function (e) { soc.cs = +e.dataset.i; if (soc.cs === 3) soc.ei = null; if (soc.cs === 1) clChatLoad(true); render(); };
+A.clcs = function (e) { soc.cs = +e.dataset.i; if (soc.cs === 3) soc.ei = null; render(); };
 A.cldon = async function () { const a = Math.floor(Number(KEEP.cldn)); if (!(a >= 1000)) return toast("Минимум 1 000"); await save(true); const r = await api("clan_donate", {amount: a}); if (r.error) return toast(r.error); adopt(r); KEEP.cldn = ""; toast("Спасибо, казна пополнена"); await socLoad(); };
 A.clsave = function () { return socDo("clan_edit", {descr: KEEP.cld || "", mode: soc.ei.mode ? 1 : 0, icon: soc.ei.icon}, "Сохранено"); };
-A.clsay = async function () { const t = (KEEP.clm || "").trim(); if (!t) return; const r = await api("clan_say", {text: t}); if (r.error) return toast(r.error); KEEP.clm = ""; clChatLoad(true); };
-let clSig = "";
-async function clChatLoad(force) {
-  const r = await api("clan_chat", {}); if (!r.rows) return; const sig = r.rows.length + ":" + (r.rows.length ? r.rows[r.rows.length - 1].id : 0);
-  if (sig === clSig && !force) return; clSig = sig; soc.chat = r.rows;
-  if (tab === 4 && sub === 4 && soc.cs === 1) { render(); const l = $("#clchat"); if (l) l.scrollTop = l.scrollHeight; }
+
+{ let _ck = "";
+  const _r0 = render;
+  render = function () {
+    _r0();
+    const k = tab + ":" + sub + ":" + (typeof soc !== "undefined" ? soc.cs : 0);
+    if (k !== _ck) { _ck = k; if (tab === 4) { const v = $("#view"); if (v) { v.classList.remove("cmv"); void v.offsetWidth; v.classList.add("cmv"); setTimeout(() => v.classList.remove("cmv"), 800); } } }
+  };
 }
-setInterval(() => { if (!document.hidden && tab === 4 && sub === 4 && soc.cs === 1 && soc.clan && soc.clan.clan) clChatLoad(); }, 4000);

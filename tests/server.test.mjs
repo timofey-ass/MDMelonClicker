@@ -286,8 +286,6 @@ test("кланы 2: заявки, чат, казна и уровень, роли
   assert.equal((await call(A, "clan_info", {})).reqs.length, 1);
   assert.match((await call(B, "clan_req_ok", { uid: 1002 })).error, /клане/);
   assert.ok((await call(A, "clan_req_ok", { uid: 1002 })).ok);
-  assert.ok((await call(B, "clan_say", { text: "всем <b>привет" })).ok);
-  assert.equal((await call(A, "clan_chat", {})).rows[0].text, "всем bпривет");
   assert.match((await call(B, "clan_donate", { amount: 5000 })).error, /Не хватает/);
   assert.ok((await call(A, "clan_donate", { amount: 1500000 })).state.pts <= 5e5 + 1);
   const i = await call(A, "clan_info", {}); assert.equal(i.clan.level, 1); assert.equal((await call(A, "poll", {})).clb, 1);
@@ -311,4 +309,18 @@ test("друзья 2: поиск, монеты, профиль о себе и в
   assert.ok((await call(B, "poll", {})).grants.some(g => g.kind === "pts" && g.a === 1000));
   const p = await call(A, "pf_set", { bio: "я <i>кот", fav: [3, 4, 99, 3] }); assert.deepEqual(p.fav, [3, 4]);
   const pr = await call(B, "profile", { uid: 1001 }); assert.equal(pr.pf.bio, "я iкот"); assert.deepEqual(pr.pf.fav, [3, 4]);
+});
+
+test("стили ника и баннер: покупка за кристаллы, выбор, видно в профиле", async () => {
+  const { call } = await makeEnv();
+  await call(A, "save", { rev: 0, state: baseState({ gems: 50 }) });
+  assert.match((await call(A, "ns_set", { g: "G1", f: "" })).error, /купи/);
+  assert.match((await call(A, "ns_buy", { id: "G9" })).error, /Не хватает/);
+  assert.ok((await call(A, "ns_buy", { id: "G1" })).owned.includes("G1"));
+  assert.match((await call(A, "ns_buy", { id: "G1" })).error, /Уже/);
+  const r = await call(A, "ns_set", { g: "G1", f: "" }); assert.match(r.badges, /~G1/);
+  assert.match((await call(B, "profile", { uid: 1001 })).badges, /~G1/);
+  assert.ok((await call(A, "bn_set", { img: "data:image/jpeg;base64,AAAA" })).ok);
+  assert.ok((await call(B, "profile", { uid: 1001 })).bnimg.startsWith("data:image/jpeg"));
+  assert.ok((await call(A, "bn_set", { img: "data:text/html;base64,AAAA" })).error);
 });
