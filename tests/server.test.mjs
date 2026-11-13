@@ -228,3 +228,48 @@ test("лимит запросов: частые тяжёлые запросы п
   assert.ok(hit >= 15, "429 получено " + hit);
   const ok = await call(ADMIN, "auth"); assert.notEqual(ok._status, 429);
 });
+
+test("события: золотой час/админ-событие приходят в poll, подарок выдаётся один раз", async () => {
+  const { call } = await makeEnv();
+  await call(A, "save", { rev: 0, state: baseState() });
+  assert.equal((await call(A, "adm_evt", { name: "X", mult: 2, mins: 5, cat: 3 }))._status, 403 || 200);
+  await call(ADMIN, "save", { rev: 0, state: baseState() });
+  const ev = await call(ADMIN, "adm_evt", { name: "Тест", mult: 3, mins: 10, cat: 5 });
+  assert.ok(ev.ok);
+  const p = await call(A, "poll", {}); assert.equal(p.evt.name, "Тест"); assert.equal(p.evt.mult, 3);
+  assert.ok((await call(A, "evt_claim", {})).ok);
+  assert.match((await call(A, "evt_claim", {})).error, /Уже/);
+  assert.ok((await call(A, "poll", {})).grants.some(g => g.kind === "cat" && g.a === 5));
+  await call(ADMIN, "adm_evt_stop", {});
+});
+
+test("друзья: заявка, принятие, подарок кота только другу, лимит", async () => {
+  const { call, sq } = await makeEnv();
+  await call(A, "save", { rev: 0, state: baseState({ inv: { 3: 2 } }) });
+  await call(B, "save", { rev: 0, state: baseState() });
+  assert.match((await call(A, "fr_gift", { uid: 1002, cat: 3 })).error, /друзьям/);
+  assert.ok((await call(A, "fr_add", { uid: 1002 })).ok);
+  assert.equal((await call(B, "fr_list", {})).inc.length, 1);
+  assert.ok((await call(B, "fr_ok", { uid: 1001 })).ok);
+  assert.equal((await call(A, "fr_list", {})).friends.length, 1);
+  const g = await call(A, "fr_gift", { uid: 1002, cat: 3 }); assert.ok(!g.error, g.error);
+  assert.equal(JSON.parse(sq.prepare("SELECT state FROM users WHERE id=1001").get().state).inv[3], 1);
+  assert.ok((await call(B, "poll", {})).grants.some(x => x.kind === "cat" && x.a === 3));
+  assert.match((await call(A, "fr_gift", { uid: 1002, cat: 9 })).error, /нет этого/);
+  const pr = await call(B, "profile", { uid: 1001 }); assert.equal(pr.fr, 1); assert.ok(pr.inv);
+});
+
+test("кланы: создание требует 1 млн, вступление, выход передаёт главу", async () => {
+  const { call } = await makeEnv();
+  await call(A, "save", { rev: 0, state: baseState({ total: 5000 }) });
+  assert.match((await call(A, "clan_create", { name: "Арбузы" })).error, /1 000 000/);
+  await call(A, "save", { rev: 1, state: baseState({ total: 1.5e6, run: 1.5e6, pts: 1.5e6 }) });
+  assert.ok((await call(A, "clan_create", { name: "Арбузы" })).ok);
+  await call(B, "save", { rev: 0, state: baseState() });
+  assert.match((await call(B, "clan_create", { name: "Арбузы" })).error || "x", /1 000 000|занято/);
+  const l = await call(B, "clan_list", {}); assert.equal(l.rows.length, 1);
+  assert.ok((await call(B, "clan_join", { id: l.rows[0].id })).ok);
+  assert.equal((await call(A, "clan_info", {})).members.length, 2);
+  await call(A, "clan_leave", {});
+  assert.equal((await call(B, "clan_info", {})).clan.owner, 1002);
+});
