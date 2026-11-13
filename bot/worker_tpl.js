@@ -136,7 +136,7 @@ async function mutate(db, id, fn, name) {
 }
 const bLet = s => String(s || "").split("~")[0], bSuf = s => { const x = String(s || "").split("~"); return x[1] ? "~" + x[1] : ""; };
 const bAdd = (s, c) => (bLet(s) + c).slice(0, 6) + bSuf(s);
-const NS_ST = {G1: 20, G2: 20, G3: 30, G4: 40, G5: 60, G6: 80, G7: 120, G8: 150, G9: 200}, NS_FT = {F1: 15, F2: 15, F3: 25, F4: 40, F5: 30, F6: 35};
+const NS_ST = {G1: 20, G2: 20, G3: 30, G4: 40, G5: 60, G7: 120, G8: 150, G9: 200, GA: 99000000}, NS_FT = {F1: 15, F2: 15, F3: 25, F4: 40, F5: 30, F6: 35};
 const bd = (id, s) => { let r = String(s || ""); if (id === ADMIN && !r.includes("c")) r = "c" + r; return r; };
 const inv = (s, k) => s.inv[k] || 0;
 const add = (s, k, d) => { const v = inv(s, k) + d; if (v > 0) s.inv[k] = v; else delete s.inv[k]; };
@@ -781,12 +781,12 @@ async function api(path, req, env) {
     return J({error: "?"});
   }
   if (path === "ns_list") {
-    const ow = await db.prepare("SELECT v FROM kv WHERE k=?").bind("nso" + id).first(), u0 = await getUser(db, id), sf = bSuf(u0 && u0.badges);
-    return J({owned: ow ? JSON.parse(ow.v) : [], active: sf.slice(1), prices: {...NS_ST, ...NS_FT}});
+    const ow = await db.prepare("SELECT v FROM kv WHERE k=?").bind("nso" + id).first(), u0 = await getUser(db, id), sf = bSuf(u0 && u0.badges), ol = ow ? JSON.parse(ow.v) : []; if (id === ADMIN && !ol.includes("GA")) ol.push("GA");
+    return J({owned: ol, active: sf.slice(1), prices: {...NS_ST, ...NS_FT}});
   }
   if (path === "ns_buy") {
     const k = String(b.id || ""), price = NS_ST[k] || NS_FT[k]; if (!price) return J({error: "Нет такого стиля"});
-    const ow = await db.prepare("SELECT v FROM kv WHERE k=?").bind("nso" + id).first(), list = ow ? JSON.parse(ow.v) : [];
+    const ow = await db.prepare("SELECT v FROM kv WHERE k=?").bind("nso" + id).first(), list = ow ? JSON.parse(ow.v) : []; if (id === ADMIN && !list.includes("GA")) list.push("GA");
     if (list.includes(k)) return J({error: "Уже куплено"});
     const r = await mutate(db, id, s => { if (num(s.gems) < price) return "Не хватает кристаллов"; s.gems -= price; });
     if (r.error) return J(r);
@@ -794,7 +794,7 @@ async function api(path, req, env) {
     return J({...r, owned: list});
   }
   if (path === "ns_set") {
-    const ow = await db.prepare("SELECT v FROM kv WHERE k=?").bind("nso" + id).first(), list = ow ? JSON.parse(ow.v) : [];
+    const ow = await db.prepare("SELECT v FROM kv WHERE k=?").bind("nso" + id).first(), list = ow ? JSON.parse(ow.v) : []; if (id === ADMIN) list.push("GA");
     const g = String(b.g || ""), f = String(b.f || ""); if ((g && !list.includes(g)) || (f && !list.includes(f))) return J({error: "Сначала купи этот стиль"});
     const u0 = await getUser(db, id), suf = (g || f) ? "~" + g + f : "", nb = bLet(u0 && u0.badges) + suf;
     await db.prepare("UPDATE users SET badges=? WHERE id=?").bind(nb, id).run(); return J({ok: true, badges: bd(id, nb)});

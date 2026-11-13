@@ -324,3 +324,14 @@ test("стили ника и баннер: покупка за кристалл�
   assert.ok((await call(B, "profile", { uid: 1001 })).bnimg.startsWith("data:image/jpeg"));
   assert.ok((await call(A, "bn_set", { img: "data:text/html;base64,AAAA" })).error);
 });
+
+test("золотой градиент: у админа есть сразу, у остальных стоит 99 млн", async () => {
+  const { call } = await makeEnv();
+  await call(A, "save", { rev: 0, state: baseState({ gems: 1000 }) });
+  assert.match((await call(A, "ns_buy", { id: "GA" })).error, /Не хватает/);
+  assert.match((await call(A, "ns_set", { g: "GA", f: "" })).error, /купи/);
+  assert.equal((await call(A, "ns_buy", { id: "G6" })).error, "Нет такого стиля");
+  await call(ADMIN, "save", { rev: 0, state: baseState() });
+  assert.ok((await call(ADMIN, "ns_list", {})).owned.includes("GA"));
+  assert.match((await call(ADMIN, "ns_set", { g: "GA", f: "" })).badges, /~GA/);
+});
