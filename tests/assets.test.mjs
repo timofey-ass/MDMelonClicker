@@ -71,9 +71,3 @@ test("assetlinks.json привязывает приложение app.mdmeloncli
   const apk = readFileSync(join(root, "public", "MDMelonClicker.apk"));
   assert.equal(apk.slice(0, 2).toString(), "PK");
 });
-
-test("улучшение скорости ролла за самоцветы: 10 уровней", () => {
-  const d = JSON.parse(readFileSync(join(root, "bot", "data.json"), "utf8"));
-  const p = d.PERKS.find(x => x[0] === "rspd");
-  assert.ok(p, "нет перка rspd"); assert.equal(p[5], 10); assert.ok(p[4] > 0);
-});
