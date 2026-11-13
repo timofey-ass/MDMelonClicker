@@ -1438,3 +1438,128 @@ setInterval(() => {
   if (bar) { bar.style.width = Math.min(100, left / 45 * 100) + "%"; bar.parentNode.classList.toggle("urg", left < 10); }
   if (t.turn === t.seat && left < 8) { const s = Math.ceil(left); if (cz._tk !== s) { cz._tk = s; try { tone(s < 4 ? 900 : 600, 80, .06, "square"); hap("tick"); } catch (e) {} } }
 }, 400);
+
+// ---------- РОЛЛ-СИСТЕМА: шансы «1 к N», автокрутка, анимации по редкости, скорость за самоцветы
+const ruN = n => n >= 1e15 ? n.toExponential(1).replace("e+", "e") : Math.round(n).toLocaleString("ru-RU");
+const rspd = () => Math.min(10, perk("rspd"));
+const windF = () => 1 - rspd() / 10;                         // множитель «разгона»: 1 → 0 на 10 уровне
+const animMin = () => (LS("fxc", 1) ? LS("anr", 2) : 99);    // с какой редкости включать анимацию (7 = никогда)
+const autoGap = () => Math.round(1300 * windF()) + 90;
+const arCfg = () => ({ci: LS("arc", 0), stop: LS("ars", 4), max: LS("arn", 0)});
+let autoOn = false, autoLeft = 0, autoTimer = 0, lastRoll = null;
+const rarOf = w => (w[0] === null ? 0 : ITEMS[w[0]][2]);
+const bestIdx = wins => wins.reduce((b, w, i) => (rarOf(w) + (w[1] === "holo" || w[1] === "newholo" ? .5 : 0) > rarOf(wins[b]) + (wins[b][1] === "holo" || wins[b][1] === "newholo" ? .5 : 0) ? i : b), 0);
+
+// точный шанс выпадения конкретного кота: «1 к N»
+function oddsOf(ci, win) {
+  if (ci === 4) { if (win === 72) return 50; if (win === 63) return 20; }
+  const w = CASES[ci === 4 ? 2 : ci][3], ri = ITEMS[win][2], tot = w.reduce((a, b) => a + b, 0);
+  if (!w[ri] || !tot) return null;
+  const cnt = ITEMS.filter(it => it[2] === ri && !it[6] && !it[7]).length || 1;
+  return Math.round(tot / ((ci === 4 ? .93 : 1) * w[ri]) * cnt);
+}
+
+// оплата и сами прокрутки без показа; возвращает массив [кот, вид, монеты?] или null
+function doRolls(ci, mode, n) {
+  const t = now();
+  if (mode === 1) { if (t - S.freecase < freeEvery()) { toast("Бесплатный кейс ещё не готов"); return null; } S.freecase = t; }
+  else if (mode === 2) { if (S.fc[ci] < 1) return null; S.fc[ci]--; n = 1; }
+  else { const c = CASES[ci][2] * n; if (ci === GEM_CASE) { if (S.gems < c) { toast("Не хватает самоцветов"); return null; } S.gems -= c; } else { if (S.pts < c) { toast("Не хватает монет"); return null; } S.pts -= c; } }
+  const wins = [];
+  for (let k = 0; k < n; k++) {
+    if (ci === 5 && Math.random() < .7) { const amt = coinPrize(CASES[5][2]); S.pts += amt; S.run += amt; S.total += amt; S.opened++; addXp(20); wins.push([null, "coins", amt]); continue; }
+    const win = roll(ci), holo = Math.random() < (ci < 2 ? .06 : .12); S.opened++; S.pity = ITEMS[win][2] >= 2 ? 0 : S.pity + 1;
+    const kind = grant(win, holo); S.hist = S.hist.concat([win]).slice(-14); addXp(20 + 15 * ITEMS[win][2]); wins.push([win, kind]);
+  }
+  return wins;
+}
+
+// тихий показ: без оверлея, только строка «последний ролл» и подсказка
+function quickShow(ci, wins, silent) {
+  lastRoll = {ci, wins};
+  if (!silent) {
+    if (wins.length === 1) { const w = wins[0]; toast(w[0] === null ? "+" + fmt(w[2]) + " монет" : ITEMS[w[0]][1] + " · " + KIND[w[1]]); }
+    else { const c = {}; wins.forEach(w => { const r = rarOf(w); c[r] = (c[r] || 0) + 1; }); toast("×" + wins.length + ": " + Object.keys(c).sort((a, b) => b - a).map(r => c[r] + " " + RARS[r][0].toLowerCase()).join(", ")); }
+  }
+  render();
+}
+
+// сцена перед показом редкого: тёмный фон, растущая звезда, «ложный разгон» названий редкостей, шанс, вспышка
+function rollScene(ov, ci, wk, done) {
+  const win = wk[0], ri = ITEMS[win][2], f = windF(), soft = LS("rfl", 0), col = RC[ri];
+  const T = (ri >= 5 ? 3600 : ri === 4 ? 2900 : ri === 3 ? 2000 : 1100) * f, odds = oddsOf(ci, win);
+  const fin = () => { done(); const o = ov.querySelector(".rcard"); if (o && odds) { const d = document.createElement("div"); d.className = "rodd"; d.textContent = "Шанс выпадения: 1 к " + ruN(odds); o.appendChild(d); } };
+  if (T < 70 || !ov) { fin(); return; }
+  if (ri >= 3 && !LS("flw", 0)) { LSset("flw", 1); toast("Редкие сцены с яркими вспышками. Отключить: Ролл → «Меньше вспышек»"); }
+  ov.style.setProperty("--rc", col);
+  const mk = (cls, html) => { const e = document.createElement("div"); e.className = cls; if (html !== undefined) e.innerHTML = html; ov.appendChild(e); return e; };
+  const bg = mk("rsb"), star = mk("rss", ic("sparkle", 260)), cap = ri >= 3 ? mk("rsl", "Ты нашёл…") : null, tz = ri >= 3 ? mk("rst") : null, od = ri >= 3 && odds ? mk("rso") : null;
+  star.firstChild && (star.firstChild.style.filter = `drop-shadow(0 0 22px ${col})`);
+  const t0 = performance.now(); let lastR = -1, lock = false, dead = false; const len = od ? ruN(odds).length : 0;
+  const step = now => {
+    if (OVL !== ov) return;
+    const k = Math.max(0, Math.min(1, (now - t0) / T)), e = k * k * (3 - 2 * k);
+    bg.style.opacity = Math.min(1, k * 5); star.style.opacity = Math.min(1, k * 4);
+    star.style.transform = `translate(-50%,-50%) scale(${.05 + e * (1.1 + ri * .22)}) rotate(${soft ? 0 : k * 160}deg)`;
+    if (cap) cap.style.opacity = k > .12 ? 1 : 0;
+    if (tz) { const r = Math.min(ri, Math.floor(Math.pow(Math.min(1, k / .7), 1.35) * (ri + 1))); if (r !== lastR) { lastR = r; tz.textContent = RARS[r][0].toUpperCase(); tz.style.color = RC[r]; tz.classList.add("p"); setTimeout(() => tz.classList.remove("p"), 110); tickHap(); sfx("up", r * 2); } }
+    if (od) { if (k < .78) od.textContent = "Шанс: 1 к " + Array.from({length: len}, () => rint(0, 9)).join(""); else if (!lock) { lock = true; od.textContent = "Шанс: 1 к " + ruN(odds); od.style.color = col; od.style.fontSize = "18px"; buzz(Math.min(3, ri)); } }
+    if (!soft && ri >= 5 && k > .6) ov.classList.add("rgl");
+    if (k < 1) requestAnimationFrame(safe);
+    else { dead = true; ov.classList.remove("rgl"); fin(); const fl = document.createElement("div"); fl.className = "rsf"; fl.style.background = soft ? col : "#fff"; fl.style.opacity = soft ? .45 : 1; ov.appendChild(fl); requestAnimationFrame(() => requestAnimationFrame(() => { fl.style.opacity = 0; })); setTimeout(() => fl.remove(), 700); sfx("boom"); }
+  };
+  const safe = now => { if (dead) return; try { step(now); } catch (e) { dead = true; ov.classList.remove("rgl"); if (OVL === ov) fin(); } };
+  requestAnimationFrame(safe);
+}
+
+openCase = function (ci, mode, n, opt) {
+  if (busy) return false; n = n || 1; opt = opt || {};
+  const wins = doRolls(ci, mode, n); if (!wins) return false;
+  checkAch(); mark(); save(true); actx();
+  const bi = bestIdx(wins), bw = wins[bi], ri = rarOf(bw), stop = !!opt.auto && ri >= arCfg().stop && bw[0] !== null;
+  if (bw[0] === null || ri < animMin()) { quickShow(ci, wins, !!opt.auto); return {ri, stop, win: bw[0]}; }
+  lastRoll = {ci, wins};
+  const title = noemo(CASES[ci][1]) + (n > 1 ? " ×" + n : ""), ov = mkOv(title); ov.dataset.t = title;
+  const again = () => openCase(ci, mode === 2 && S.fc[ci] > 0 ? 2 : 0, n, opt.auto ? {} : opt);
+  rollScene(ov, ci, bw, () => { reveal(ov, bw, again, false); if (opt.auto && !stop) setTimeout(() => { if (OVL === ov) endOv(); }, 1200 + 600 * windF()); });
+  return {ri, stop, win: bw[0]};
+};
+
+// ---------- автокрутка
+function autoStop(msg) { clearInterval(autoTimer); autoOn = false; if (msg) toast(msg); render(); }
+function autoTick() {
+  if (!autoOn) return;
+  if (tab !== 2) return autoStop("Автокрутка остановлена");
+  if (busy) return;
+  const c = arCfg(), r = openCase(c.ci, 0, 1, {auto: true});
+  if (!r) return autoStop("Автокрутка остановлена: не хватает ресурсов");
+  if (r.stop) return autoStop("Автокрутка остановлена: выпал " + ITEMS[r.win][1]);
+  if (c.max && --autoLeft <= 0) autoStop("Автокрутка завершена");
+}
+A.autotog = function () {
+  if (autoOn) return autoStop("Автокрутка остановлена");
+  if (busy) return; autoOn = true; autoLeft = arCfg().max; clearInterval(autoTimer); autoTimer = setInterval(autoTick, autoGap()); autoTick(); render();
+};
+A.rfl = function () { LSset("rfl", LS("rfl", 0) ? 0 : 1); render(); };
+
+// ---------- панель на вкладке «Ролл»
+const rOpt = (title, names, key, vals, cur) => `<div class="t2" style="font-weight:700;margin-top:8px">${title}</div><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">${names.map((n, i) => { const on = vals[i] === cur; return `<button class="chip ${on ? "p" : ""}" style="border:0;font-family:inherit;display:inline-flex;gap:4px;max-width:none;white-space:nowrap" data-a="opt" data-k="${key}" data-v="${vals[i]}">${on ? ic("check", 13) : ""}${n}</button>`; }).join("")}</div>`;
+function rollPanel() {
+  const c = arCfg(), s = rspd(), RN = RARS.map(r => r[0]);
+  const cn = CASES.map(x => noemo(x[1]).replace(/ кейс$/i, "")), rs = [1, 2, 3, 4, 5, 6];
+  let h = `<div class="card col"><div style="display:flex;align-items:center;gap:8px"><div class="t1 grow" style="display:flex;align-items:center;gap:8px">${ic("bolt", 18)}Автокрутка</div>${btn(autoOn ? "Стоп" : "Старт", "autotog", "", autoOn ? "" : "t")}</div>`;
+  h += `<div class="t2" style="font-size:11px">${autoOn ? "Идёт: " + noemo(CASES[c.ci][1]) + (c.max ? ", осталось " + autoLeft : "") + ". " : "Крутит выбранный кейс по одному, пока хватает ресурсов. "}Скорость ролла ⚡ ${s}/10${s >= 10 ? " · без разгона" : ""}: улучшается в Магазине за самоцветы.</div>`;
+  h += rOpt("Что крутить", cn, "arc", CASES.map((_, i) => i), c.ci);
+  h += rOpt("Остановить, когда выпадет", rs.map(r => RN[r]), "ars", rs, c.stop);
+  h += rOpt("Сколько раз", ["∞", "10", "50", "100", "500"], "arn", [0, 10, 50, 100, 500], c.max);
+  h += rOpt("Показывать анимацию с редкости", ["Всегда"].concat(rs.map(r => RN[r]), ["Никогда"]), "anr", [0, 1, 2, 3, 4, 5, 6, 7], LS("anr", 2));
+  h += `<div class="card click" style="margin:4px 0 0;padding:8px 0;background:none;border:0" data-a="rfl"><div class="t1 grow" style="font-size:14px">Меньше вспышек</div><div class="sw ${LS("rfl", 0) ? "on" : ""}"></div></div>`;
+  if (lastRoll && lastRoll.wins.length) {
+    h += `<div class="t2" style="font-weight:700;margin-top:6px">Последний ролл</div><div class="hs" style="margin-top:6px;gap:8px">` + lastRoll.wins.slice(0, 10).map(w => {
+      if (w[0] === null) return `<div class="cell" style="min-width:64px"><div style="color:var(--gold)">${ic("coin", 40)}</div><span style="color:var(--gold)">+${fmt(w[2])}</span></div>`;
+      const r = ITEMS[w[0]][2], ho = w[1] === "holo" || w[1] === "newholo";
+      return `<div class="cell" style="min-width:64px;box-shadow:inset 0 0 0 2px ${ho ? "#fff" : RC[r]}">${catEl(w[0], 44, {holo: ho})}<span style="color:${RC[r]}">${ho ? "★ " : ""}${ITEMS[w[0]][1]}</span><span style="font-size:9px;color:${w[1] === "dup" ? "var(--out)" : "var(--gold)"}">${KIND[w[1]]}</span></div>`;
+    }).join("") + `</div>`;
+  }
+  return h + `</div>`;
+}
