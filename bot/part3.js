@@ -56,6 +56,7 @@ async function pollNow() {
   try {
     const r = await api("poll", {bc: lastBc});
     if (r && !r.error) {
+      EVT = r.evt || null; evtBar();
       maintA = r.maintA || null;       onlineN = r.online || 0; if (r.uc !== undefined && r.uc !== ucN) { try { await loadUcats(); } catch (e) {} } if (r.badges !== undefined) myBadges = r.badges;
       if (r.rev && r.rev > rev && !saving && !(r.grants && r.grants.length)) { dirty = true; save(true); }
       for (const g of r.grants || []) {
@@ -100,7 +101,7 @@ document.addEventListener("keydown", e => { if (e.key === "Enter" && e.target &&
 // ---------- профиль
 A.prof = async function (e) {
   const uid = +e.dataset.i; const r = await api("profile", {uid}); if (r.error) return toast(r.error);
-  const rows = [["Накоплено", fmt(r.total)], ["Тапов", fmt(r.taps)], ["Котов собрано", r.cats + " / " + ITEMS.length], ["Голограмм", r.holo], ["Достижений", r.ach], ["Кейсов открыто", r.opened], ["Перерождений", r.prest]];
+  const rows = [["Накоплено", fmt(r.total)], ["Тапов", fmt(r.taps)], ["Котов собрано", r.cats + " / " + ITEMS.length], ["Голограмм", r.holo], ["Достижений", r.ach], ["Кейсов открыто", r.opened], ["Перерождений", r.prest], ["Звёзд поймано", fmt(r.stars || 0)], ["Лихорадок", fmt(r.fevers || 0)], ["Самоцветов заработано", fmt(r.gt || 0)]].concat(r.clan ? [["Клан", esc(r.clan)]] : [], (() => { const ks = Object.keys(r.inv || {}).filter(k => ITEMS[k]).sort((a, b) => ITEMS[b][2] - ITEMS[a][2]); return ks.length ? [["Самый редкий кот", `<span class="rar${ITEMS[ks[0]][2]}">${ITEMS[ks[0]][1]}</span>`]] : []; })());
   const bl = String(r.badges || "").split("").filter(c => BADGES[c]).map(c => `<div style="display:flex;align-items:center;gap:8px;font-size:13px;margin-top:4px">${bdg(c, 18)}<span>${BADGES[c][0]}</span></div>`).join("");
   let adm = "";
   if (isAdm) adm = `<div class="sec" style="margin:14px 0 6px">Админ</div><div style="display:flex;gap:6px;flex-wrap:wrap">${uid !== me.id ? (r.ban === 2 ? "" : btn(r.banned ? "Размутить в чате" : "Мут в чате", "pban", `data-i="${uid}" data-on="${r.banned ? 0 : 1}"`, "o")) + btn(r.ban === 2 ? "✅ Снять бан" : "🚫 Забанить полностью", "pfban", `data-i="${uid}" data-on="${r.ban === 2 ? 0 : 1}"`, "o") + btn("Выдать", "pgive", `data-i="${uid}"`, "o") : ""}${btn("Сбросить прогресс", "preset", `data-i="${uid}"`, "o")}</div><div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">${Object.keys(BADGES).map(c => `<button class="chip ${String(r.badges).includes(c) ? "p" : ""}" style="border:0;font-family:inherit" data-a="pbadge" data-i="${uid}" data-c="${c}" data-cur="${r.badges}">${BADGES[c][0].split(" ")[0]}</button>`).join("")}</div>`;
@@ -108,7 +109,10 @@ A.prof = async function (e) {
   const own = uid === me.id, bn = own && Number.isInteger(S.bn) ? S.bn : (r.bn || 0);
   const bnr = `<div style="height:64px;border-radius:14px;margin:-4px 0 12px;background:${BNR[bn % BNR.length]}"></div>` + (own ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin:-4px 0 12px">${BNR.map((g, k) => `<div data-a="setbn" data-k="${k}" style="width:34px;height:24px;border-radius:8px;background:${g};cursor:pointer;${k === bn ? "outline:2px solid var(--pri);outline-offset:2px" : ""}"></div>`).join("")}</div>` : "");
   const tr = (r.offers || []).length ? `<div class="sec" style="margin:14px 0 6px">Активные обмены</div>${r.offers.map(o => `<div style="display:flex;align-items:center;gap:8px;padding:3px 0">${catEl(o.give, 36, {})}<span style="color:var(--onv)">${ic("arrow", 18)}</span>${catEl(o.want, 36, {})}<span class="t2 grow" style="font-size:12px;margin:0"><span class="rar${ITEMS[o.give][2]}">${ITEMS[o.give][1]}</span> за <span class="rar${ITEMS[o.want][2]}">${ITEMS[o.want][1]}</span></span></div>`).join("")}` : "";
-  modal(bnr + `<div style="display:flex;gap:14px;align-items:center"><div style="border-radius:50%;overflow:hidden;width:64px;height:64px;flex:none">${eq}</div><div class="grow"><div class="t1" style="font-size:18px">${nm(r.name, r.badges)}</div><div class="t2">ID ${r.id}${isAdm ? " · " + (r.un ? `<a href="https://t.me/${r.un}" target="_blank" style="color:var(--pri)">@${esc(r.un)}</a>` : "без юзернейма") : ""} · <span style="color:${r.online ? "var(--good)" : "var(--out)"}">${r.online ? "в игре" : "не в сети"}</span>${r.ban === 2 ? ' · <span style="color:#ff5252">забанен</span>' : r.banned ? ' · <span style="color:#ff5252">мут в чате</span>' : ""}</div></div></div>${bl}${tr}<div class="card col" style="margin:12px 0 0;gap:0">${rows.map(x => `<div style="display:flex;padding:3px 0"><span class="t2 grow" style="font-size:14px;margin:0">${x[0]}</span><span style="font-size:14px;font-weight:700">${x[1]}</span></div>`).join("")}</div>${adm}<div style="margin-top:14px;text-align:right">${btn("Закрыть", "mclose", "", "t")}</div>`);
+  const frb = uid === me.id ? "" : `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:12px">${r.fr === 0 ? btn("➕ В друзья", "frad", `data-i="${uid}"`, "o") : r.fr === 1 ? btn("🎁 Подарить кота", "frgp", `data-i="${uid}"`, "o") + btn("Удалить из друзей", "frdl", `data-i="${uid}"`, "o") : r.fr === 2 ? `<span class="t2" style="margin:0">Заявка отправлена</span>` : btn("Принять заявку", "frok", `data-i="${uid}"`, "o")}</div>`;
+  const ik = Object.keys(r.inv || {}).filter(k => ITEMS[k]).sort((a, b) => ITEMS[b][2] - ITEMS[a][2] || a - b);
+  const invh = ik.length ? `<details style="margin-top:12px"><summary class="sec" style="cursor:pointer;margin:0">Инвентарь · ${ik.length}</summary><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;max-height:220px;overflow-y:auto">${ik.map(k => `<div style="position:relative;width:46px;height:46px" title="${esc(ITEMS[k][1])}">${catEl(+k, 46, {})}${r.inv[k] > 1 ? `<span style="position:absolute;right:-2px;bottom:-2px;background:var(--prc);color:var(--onprc);font-size:10px;font-weight:700;border-radius:8px;padding:0 5px">${r.inv[k]}</span>` : ""}</div>`).join("")}</div></details>` : "";
+  modal(bnr + `<div style="display:flex;gap:14px;align-items:center"><div style="border-radius:50%;overflow:hidden;width:64px;height:64px;flex:none">${eq}</div><div class="grow"><div class="t1" style="font-size:18px">${nm(r.name, r.badges)}</div><div class="t2">ID ${r.id}${isAdm ? " · " + (r.un ? `<a href="https://t.me/${r.un}" target="_blank" style="color:var(--pri)">@${esc(r.un)}</a>` : "без юзернейма") : ""} · <span style="color:${r.online ? "var(--good)" : "var(--out)"}">${r.online ? "в игре" : "не в сети"}</span>${r.ban === 2 ? ' · <span style="color:#ff5252">забанен</span>' : r.banned ? ' · <span style="color:#ff5252">мут в чате</span>' : ""}</div></div></div>${bl}${tr}${frb}${invh}<div class="card col" style="margin:12px 0 0;gap:0">${rows.map(x => `<div style="display:flex;padding:3px 0"><span class="t2 grow" style="font-size:14px;margin:0">${x[0]}</span><span style="font-size:14px;font-weight:700">${x[1]}</span></div>`).join("")}</div>${adm}<div style="margin-top:14px;text-align:right">${btn("Закрыть", "mclose", "", "t")}</div>`);
 };
 const BNR = ["linear-gradient(135deg,#ff9a3c,#ff3d6e)", "linear-gradient(135deg,#43e97b,#38f9d7)", "linear-gradient(135deg,#4facfe,#7b5cff)", "linear-gradient(135deg,#f6d365,#fda085)", "linear-gradient(135deg,#a18cd1,#fbc2eb)", "linear-gradient(135deg,#232526,#5a5f66)", "linear-gradient(135deg,#00c6ff,#0072ff)", "linear-gradient(135deg,#f953c6,#b91d73)"];
 A.setbn = function (e) { S.bn = +e.dataset.k; mark(); save(true); A.prof({dataset: {i: me.id}}); };
@@ -219,6 +223,7 @@ const admCard = () => {
   if (!tgStat) setTimeout(tgRefresh, 50);
   h += banCard();
   h += `<div class="card col"><div class="t1" style="color:var(--pri)">Технический перерыв</div><div class="t2" style="font-size:12px;margin:0">Закрывает игру у всех игроков сразу, без перезагрузки страницы. Ты (админ) играть можешь. Когда выключишь, игра откроется сама.</div>${maintA ? `<div class="t2" style="color:var(--err,#ff5252);font-weight:700;margin:0">Сейчас игра закрыта: ${esc(maintA)}</div>` : ""}<textarea data-keep="mt" rows="2" placeholder="Что написать игрокам (необязательно)"></textarea>${btn(maintA ? "✅ Открыть игру" : "🛠 Закрыть на перерыв", "admmaint", 'style="width:100%;justify-content:center"', maintA ? "" : "o")}</div>`;
+  h += `<div class="card col"><div class="t1" style="color:var(--pri)">Событие (множитель дохода)</div><input data-keep="evn" placeholder="Название, напр. Арбузная лихорадка"><input data-keep="evm" inputmode="decimal" placeholder="Множитель, напр. 2"><input data-keep="evt" inputmode="numeric" placeholder="Минут, напр. 60"><input data-keep="evc" inputmode="numeric" placeholder="ID кота-подарка (необязательно)">${btn("Запустить", "admev")}${btn("Остановить", "admevs")}</div>`;
   h += `<div class="card col"><div class="t1" style="color:var(--pri)">Сообщение всем в игре</div><textarea data-keep="bc" rows="2" placeholder="Текст сообщения"></textarea>${btn("Показать всем", "admbc")}</div>`;
   h += `<div class="card col"><div class="t1" style="color:var(--pri)">Промокоды</div><input data-keep="pcode" placeholder="Код, например NEWYEAR" style="text-transform:uppercase"><div class="buyrow4">${[["Монеты", "pts"], ["Самоцветы", "gems"], ["Кот", "cat"]].map(x => `<button class="chip ${admKind === x[1] ? "p" : ""}" style="border:0;font-family:inherit;justify-content:center" data-a="admkind" data-v="${x[1]}">${x[0]}</button>`).join("")}</div><input data-keep="pa" inputmode="decimal" placeholder="${admKind === "cat" ? "Номер кота 0–62" : "Сколько"}">${admKind === "cat" ? `<input data-keep="pb" inputmode="numeric" placeholder="Сколько котов (1)">` : ""}<input data-keep="pmx" inputmode="numeric" placeholder="Сколько человек смогут ввести (0 = без лимита)">${btn("Создать промокод", "admpromo")}`;
   if (promoList) h += promoList.map(p => `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid rgba(255,255,255,.06)"><div class="grow"><div class="t1" style="font-size:14px">${esc(p.code)}</div><div class="t2" style="font-size:11px">${rewTxt(p.kind, p.a, p.b)} · использовано ${p.used}${p.mx ? "/" + p.mx : ""}</div></div>${btn(ic("close", 16), "admpdel", `data-v="${esc(p.code)}"`, "t")}</div>`).join("");
@@ -247,6 +252,17 @@ A.admtakepct = function (e) { admGive("takepts", +e.dataset.v, 2); };
 A.admtakeamt = function () { const v = Number(String(KEEP.admamt || "").replace(",", ".")); if (!isFinite(v) || v <= 0) return toast("Введи сумму"); admGive("takepts", v, 1); };
 A.admtakeall = function () { admGive("takepts", -1, 1); };
 A.admgem = function (e) { admGive("gems", +e.dataset.v, 1); };
+A.admev = async function () { const r = await api("adm_evt", {name: KEEP.evn, mult: KEEP.evm, mins: KEEP.evt, cat: KEEP.evc}); if (r.error) return toast(r.error); toast("Событие запущено"); pollNow(); };
+A.admevs = async function () { await api("adm_evt_stop", {}); toast("Событие остановлено"); EVT = null; evtBar(); pollNow(); };
+A.evtc = async function () { const r = await api("evt_claim", {}); if (r.error) return toast(r.error); toast("Подарок скоро придёт"); pollNow(); };
+function evtBar() {
+  let el = document.getElementById("evtbar");
+  if (!EVT || now() >= EVT.until) { if (el) el.remove(); return; }
+  if (!el) { el = document.createElement("div"); el.id = "evtbar"; el.style.cssText = "position:fixed;top:calc(env(safe-area-inset-top) + 4px);left:50%;transform:translateX(-50%);z-index:60;background:linear-gradient(90deg,#ffb300,#ff7043);color:#2b1400;font-weight:700;font-size:12px;padding:5px 12px;border-radius:14px;display:flex;gap:8px;align-items:center;box-shadow:0 2px 10px #0006"; document.body.appendChild(el); }
+  const m = Math.max(0, Math.ceil((EVT.until - now()) / 60)), gift = EVT.cat !== undefined && !EVT.auto ? `<span data-a="evtc" style="background:#2b1400;color:#ffd54f;padding:2px 8px;border-radius:10px">🎁 забрать</span>` : "";
+  el.innerHTML = `⚡ ${esc(EVT.name)} ×${EVT.mult} · ${m >= 60 ? Math.floor(m / 60) + " ч " + (m % 60) + " м" : m + " мин"}${gift}`;
+}
+setInterval(() => { try { evtBar(); } catch (e) {} }, 20000);
 A.admbc = async function () { const r = await api("adm_bcast", {text: KEEP.bc || ""}); if (r.error) return toast(r.error); KEEP.bc = ""; toast("Отправлено всем"); render(); pollNow(); };
 A.admkind = function (e) { admKind = e.dataset.v; render(); };
 A.admpromo = async function () {
@@ -444,14 +460,14 @@ A.mnu = function (e) {
   const k = e.dataset.k;
   if (k === "back") { moreSub = 0; tab = 0; }
   else if (k === "lead" || k === "trade" || k === "chat") { tab = 4; sub = k === "lead" ? 0 : k === "trade" ? 1 : 2; }
-  else { tab = 5; moreSub = {set: 1, info: 2, adm: 3, ws: 4}[k]; if (k === "ws") wsLoad(); }
+  else { tab = 5; moreSub = {set: 1, info: 2, adm: 3, ws: 4, soc: 5}[k]; if (k === "ws") wsLoad(); if (k === "soc") socLoad(); }
   render(); $("#view").scrollTop = 0;
 };
 const _tTopOld = tTop; tTop = function () { return mback + _tTopOld(); };
 const _tab0 = A.tab; A.tab = function (e) { moreSub = 0; return _tab0(e); };
 tMore = function () {
   const head = `<div class="card"><div class="grow"><div class="t1">${nm(me.name, myBadges)}</div><div class="t2">ID ${me.id}</div></div></div>`;
-  if (moreSub === 0) return head + `<div class="t2" style="margin:12px 4px 0;font-weight:700">Сообщество</div>` + mbtn("podium", "Лидеры", "lead") + mbtn("swap", "Обмен", "trade") + mbtn("cat", "Чат", "chat") + mbtn("cube", "Мастерская", "ws") + `<div style="height:10px"></div>` + mbtn("tune", "Настройки", "set") + mbtn("check", "Информация", "info") + (isAdm ? mbtn("crown", "Админка", "adm", "adm") : "");
+  if (moreSub === 0) return head + `<div class="t2" style="margin:12px 4px 0;font-weight:700">Сообщество</div>` + mbtn("podium", "Лидеры", "lead") + mbtn("swap", "Обмен", "trade") + mbtn("cat", "Чат", "chat") + mbtn("cat", "Друзья и кланы", "soc") + mbtn("cube", "Мастерская", "ws") + `<div style="height:10px"></div>` + mbtn("tune", "Настройки", "set") + mbtn("check", "Информация", "info") + (isAdm ? mbtn("crown", "Админка", "adm", "adm") : "");
   if (moreSub === 4) return mback + tWorkshop();
   if (moreSub === 3 && isAdm) { if (!promoList) loadPromos(); return mback + admCard(); }
   if (moreSub === 2) {
@@ -1033,7 +1049,7 @@ function bmOffers(day) {
 }
 cz.bm = null;
 const _tCas3 = tCasino;
-const BC_PRICE = 60, BC_W = {2: 50, 3: 42, 4: 8};
+const BC_PRICE = 25, BC_W = {2: 50, 3: 42, 4: 8};
 const bcPool = () => ITEMS.map((it, i) => it[6] && it[6] !== 10 ? i : -1).filter(i => i >= 0);
 function bcRoll() {
   const pool = bcPool(); if (!pool.length) return -1; const q = Math.random() * 100, r = q < BC_W[4] ? 4 : q < BC_W[4] + BC_W[3] ? 3 : 2;
@@ -1282,7 +1298,7 @@ function drwFill() {
   const it = (icon, label, k) => `<button class="dri" data-a="drwgo" data-k="${k}">${ic(icon, 26)}<span>${label}</span></button>`;
   drwEl.querySelector(".drp").innerHTML = `<div class="drh"><div class="dra">${av}</div><button class="drt" data-a="ltheme" aria-label="Тема">${ic(lt ? "moon" : "sun", 26)}</button></div>
     <div class="drn">${nm(me.name, myBadges)}</div><div class="dru">${u.username ? "@" + esc(u.username) : "ID " + me.id}</div>
-    <div class="drl">${it("podium", "Лидеры", "lead")}${it("swap", "Обмен", "trade")}${it("cat", "Чат", "chat")}${it("cube", "Мастерская", "ws")}<div class="drd"></div>${it("tune", "Настройки", "set")}${it("check", "Информация", "info")}${isAdm ? it("crown", "Админка", "adm") : ""}</div>
+    <div class="drl">${it("podium", "Лидеры", "lead")}${it("swap", "Обмен", "trade")}${it("cat", "Чат", "chat")}${it("cat", "Друзья и кланы", "soc")}${it("cube", "Мастерская", "ws")}<div class="drd"></div>${it("tune", "Настройки", "set")}${it("check", "Информация", "info")}${isAdm ? it("crown", "Админка", "adm") : ""}</div>
     ${isApp() ? "" : `<button class="adc" data-a="adweb"><div class="adm"></div><div><b>Скачай приложение</b><span>Играй без Telegram, на весь экран</span></div></button>`}
     <div class="drv">MDMelonClicker v${CHANGES[0][0]}</div>`;
 }
@@ -1490,3 +1506,56 @@ A.updx = function () { document.querySelectorAll(".updw").forEach(x => x.remove(
     setTimeout(() => showUpd(), 1200);
   }, 500);
 })();
+
+
+/* ===== друзья и кланы ===== */
+const soc = {sub: 0, fr: null, cl: null, clan: null};
+async function socLoad() {
+  const [a, b] = await Promise.all([api("fr_list", {}), api("clan_list", {})]);
+  if (a && !a.error) soc.fr = a; if (b && !b.error) { soc.cl = b; soc.clan = b.mine ? (await api("clan_info", {})) : null; }
+  if (tab === 5 && moreSub === 5) render();
+}
+const _tMore5 = tMore;
+tMore = function () { if (moreSub === 5) return mback + tSocial(); return _tMore5(); };
+function tSocial() {
+  let h = `<div class="seg"><button class="${soc.sub === 0 ? "on" : ""}" data-a="socs" data-i="0">Друзья</button><button class="${soc.sub === 1 ? "on" : ""}" data-a="socs" data-i="1">Кланы</button></div>`;
+  if (soc.sub === 0) {
+    h += `<div class="card"><div class="grow"><div class="t1">Добавить друга</div><div class="t2">ID игрока виден в его профиле (нажми на аватар в топе или чате)</div></div></div><div style="display:flex;gap:8px;margin-bottom:10px"><input data-keep="frid" inputmode="numeric" placeholder="ID игрока" style="flex:1">${btn("Добавить", "fradd")}</div>`;
+    if (!soc.fr) return h + `<div class="t2" style="text-align:center;margin:30px">Загружаю…</div>`;
+    if (soc.fr.inc.length) { h += `<div class="sec">Заявки</div>`; soc.fr.inc.forEach(x => h += `<div class="card">${av(x.name, x.id, 40)}<div class="grow"><div class="t1">${esc(x.name)}</div></div>${btn("Принять", "frok", `data-i="${x.id}"`)}</div>`); }
+    h += `<div class="sec">Друзья · ${soc.fr.friends.length}</div>`;
+    h += soc.fr.friends.length ? soc.fr.friends.map(x => `<div class="card" data-a="prof" data-i="${x.id}">${av(x.name, x.id, 40)}<div class="grow"><div class="t1">${nm(x.name, x.badges)}</div><div class="t2" style="color:${x.online ? "var(--good)" : "var(--out)"}">${x.online ? "в игре" : "не в сети"} · ${fmt(x.cur)}</div></div></div>`).join("") : `<div class="t2" style="text-align:center;margin:20px">Пока никого. Открой чей-нибудь профиль и нажми «В друзья»</div>`;
+    return h;
+  }
+  if (!soc.cl) return h + `<div class="t2" style="text-align:center;margin:30px">Загружаю…</div>`;
+  const ci = soc.clan && soc.clan.clan;
+  if (ci) {
+    const own = ci.owner === me.id;
+    h += `<div class="card col"><div class="t1" style="font-size:18px;color:var(--pri)">🛡 ${esc(ci.name)}</div><div class="t2" style="margin:0">Очки клана (сумма накоплений игроков): <b>${fmt(ci.score)}</b> · участников ${soc.clan.members.length}/${soc.cl.max}</div></div>`;
+    h += `<div class="sec">Участники</div>` + soc.clan.members.map(x => `<div class="card" data-a="prof" data-i="${x.id}">${av(x.name, x.id, 40)}<div class="grow"><div class="t1">${nm(x.name, x.badges)}${x.id === ci.owner ? " 👑" : ""}</div><div class="t2" style="color:${x.online ? "var(--good)" : "var(--out)"}">${x.online ? "в игре" : "не в сети"} · ${fmt(x.total)}</div></div>${own && x.id !== me.id ? btn("✕", "clkick", `data-i="${x.id}"`, "o") : ""}</div>`).join("");
+    h += `<div style="margin-top:10px">${btn("Выйти из клана", "clleave", "", "o")}</div>`;
+    return h;
+  }
+  h += `<div class="card col"><div class="t1">Создать клан</div><div class="t2" style="margin:0">Нужно накопить 1 000 000 монет. До 20 участников.</div><input data-keep="cln" maxlength="20" placeholder="Название клана"><div>${btn("Создать", "clnew")}</div></div>`;
+  h += `<div class="sec">Таблица кланов</div>` + (soc.cl.rows.length ? soc.cl.rows.map((c, i) => `<div class="card"><div class="circ" style="width:38px;height:38px;font-weight:700">${i + 1}</div><div class="grow"><div class="t1">🛡 ${esc(c.name)}</div><div class="t2">${fmt(c.score)} · ${c.n}/${soc.cl.max}</div></div>${btn("Вступить", "cljoin", `data-i="${c.id}"`, c.n >= soc.cl.max ? "dis" : "")}</div>`).join("") : `<div class="t2" style="text-align:center;margin:20px">Кланов пока нет. Создай первый!</div>`);
+  return h;
+}
+A.socs = function (e) { soc.sub = +e.dataset.i; render(); };
+const socDo = async (path, body, msg) => { const r = await api(path, body); if (r.error) { toast(r.error); return r; } if (msg) toast(msg); await socLoad(); return r; };
+A.fradd = async function () { const id = Number(KEEP.frid); if (!id) return toast("Введи ID"); const r = await socDo("fr_add", {uid: id}, "Заявка отправлена"); if (!r.error) KEEP.frid = ""; };
+A.frad = async function (e) { const r = await api("fr_add", {uid: +e.dataset.i}); toast(r.error || (r.friend ? "Теперь вы друзья" : "Заявка отправлена")); closeModal(); socLoad(); };
+A.frok = async function (e) { const r = await api("fr_ok", {uid: +e.dataset.i}); toast(r.error || "Теперь вы друзья"); closeModal(); socLoad(); };
+A.frdl = async function (e) { await api("fr_del", {uid: +e.dataset.i}); toast("Удалён из друзей"); closeModal(); socLoad(); };
+A.frgp = function (e) {
+  const u = +e.dataset.i, ks = Object.keys(S.inv).filter(k => ITEMS[k]).sort((a, b) => ITEMS[b][2] - ITEMS[a][2] || a - b);
+  closeModal(); if (!ks.length) return toast("У тебя нет котов");
+  modal(`<div class="t1">Какого кота подарить?</div><div class="t2">Кот уйдёт насовсем. Не больше 5 подарков в день.</div><div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;max-height:300px;overflow-y:auto">${ks.map(k => `<div data-a="frgo" data-i="${u}" data-c="${k}" style="position:relative;cursor:pointer">${catEl(+k, 52, {})}<span style="position:absolute;right:-2px;bottom:-2px;background:var(--prc);color:var(--onprc);font-size:10px;font-weight:700;border-radius:8px;padding:0 5px">${S.inv[k]}</span></div>`).join("")}</div>`);
+};
+A.frgo = async function (e) {
+  await save(true); const r = await api("fr_gift", {uid: +e.dataset.i, cat: +e.dataset.c}); if (r.error) return toast(r.error);
+  adopt(r); closeModal(); toast("Подарок отправлен 🎁"); render();
+};
+A.clnew = async function () { await socDo("clan_create", {name: KEEP.cln}, "Клан создан"); };
+A.cljoin = async function (e) { await socDo("clan_join", {id: +e.dataset.i}, "Ты в клане"); };
+A.clleave = async function () { await socDo("clan_leave", {}, "Ты вышел из клана"); };
+A.clkick = async function (e) { await socDo("clan_kick", {uid: +e.dataset.i}, "Исключён"); };
