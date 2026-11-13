@@ -74,10 +74,10 @@ const SELLGEM = [0, 0, 0, 0, 0, 0, 0];
 
 // ---------- ui helpers
 const bar = f => `<div class="wb"><div class="tr"></div><div class="ac" style="width:${Math.max(0, Math.min(1, f)) * 100}%"><i></i></div></div>`;
-const NAV = [["Игра", "game"], ["Магазин", "bag"], ["Ролл", "box"], ["Награды", "cup"], ["Топ", "podium"], ["Ещё", "tune"], ["Казино", "ticket"]];
+const NAV = [["Игра", "game"], ["Магазин", "bag"], ["Кейсы", "box"], ["Награды", "cup"], ["Топ", "podium"], ["Ещё", "tune"], ["Казино", "ticket"]];
 const NAVT = [0, 1, 2, 3, 6, 5];
 function buildNav() { $("#nav").innerHTML = NAVT.map(i => NAV[i]).map((n, k) => `<button data-a="tab" data-i="${NAVT[k]}"><span class="pill">${ic(n[1], 24)}</span>${n[0]}</button>`).join(""); }
-function setNav() { document.querySelectorAll("#nav button").forEach((b, k) => b.classList.toggle("on", NAVT[k] === tab || (tab === 4 && NAVT[k] === 5))); $("#ttl").textContent = ["MDMelonClicker", "Магазин", "Ролл", "Награды", "Сообщество", "Ещё", "Казино"][tab]; }
+function setNav() { document.querySelectorAll("#nav button").forEach((b, k) => b.classList.toggle("on", NAVT[k] === tab || (tab === 4 && NAVT[k] === 5))); $("#ttl").textContent = ["MDMelonClicker", "Магазин", "Кейсы", "Награды", "Сообщество", "Ещё", "Казино"][tab]; }
 const btn = (txt, a, attrs, cls) => `<button class="btn ${cls || ""}" data-a="${a}" ${attrs || ""}>${txt}</button>`;
 const cost = (c, cur) => `data-cost="${c}" data-cur="${cur || "pts"}"`;
 const circ = (icon, sz) => `<div class="circ" style="${sz ? `width:${sz}px;height:${sz}px` : ""}">${ic(icon, Math.round((sz || 46) * .56))}</div>`;
@@ -136,15 +136,14 @@ function tShop() {
 }
 function tCases() {
   const [lv, xp, need] = level(); const t = now(); let h = "";
-  h += `<div class="card col"><div style="display:flex;align-items:center"><div class="t1 grow" style="display:flex;align-items:center;gap:8px">${ic("box", 18)}Ролл</div><span class="chip p">Ур. ${lv}</span></div><div class="t2">Собрано ${Object.keys(S.inv).filter(k => +k < 70 || +k >= 72).length} из ${ITEMS.length - 2} · бонус +${collBonus()}% ко всему · открыто ${S.opened}</div>${bar(Math.max(.02, xp / need))}<div class="t2" style="color:var(--out);font-size:11px">${xp} / ${need} XP · за уровень бесплатный кейс</div></div>`;
-  h += rollPanel();
+  h += `<div class="card col"><div style="display:flex;align-items:center"><div class="t1 grow" style="display:flex;align-items:center;gap:8px">${ic("box", 18)}Кейсы</div><span class="chip p">Ур. ${lv}</span></div><div class="t2">Собрано ${Object.keys(S.inv).filter(k => +k < 70 || +k >= 72).length} из ${ITEMS.length - 2} · бонус +${collBonus()}% ко всему · открыто ${S.opened}</div>${bar(Math.max(.02, xp / need))}<div class="t2" style="color:var(--out);font-size:11px">${xp} / ${need} XP · за уровень бесплатный кейс</div></div>`;
   h += `<div class="card p"><div class="grow"><div class="t1" style="display:flex;align-items:center;gap:8px">${ic("ticket", 18)}Бесплатный кейс</div><div class="t2" id="freeT"></div></div>${btn("Открыть", "free", 'id="freeB"')}</div>`;
   if (S.fc.some(x => x > 0)) h += `<div class="card"><div class="t1 grow" style="display:flex;align-items:center;gap:8px">${ic("ticket", 16)}За уровни:</div>${[0, 1, 2].filter(c => S.fc[c] > 0).map(c => btn(ic(CASES[c][0], 16) + "×" + S.fc[c], "lvcase", `data-i="${c}"`)).join("")}</div>`;
   CASES.forEach((c, ci) => {
-    const tot = c[3].reduce((a, b) => a + b, 0); const ch = c[3].map((x, i) => x ? RARS[i][0].slice(0, 5) + ". 1 к " + ruN(tot / x) : "").filter(Boolean).join(" · "); const cur = ci === GEM_CASE ? "gems" : "pts";
+    const tot = c[3].reduce((a, b) => a + b, 0); const ch = c[3].map((x, i) => x ? RARS[i][0].slice(0, 5) + ". " + String(+(x / tot * 100).toFixed(1)) + "%" : "").filter(Boolean).join(" · "); const cur = ci === GEM_CASE ? "gems" : "pts";
     h += `<div class="card${ci === 4 ? " bluecase" : ci === 5 ? " redcase" : ""}">${circ(c[0], 54)}<div class="grow"><div class="t1">${c[1]}</div><div class="t2" style="font-size:11px">${ci === 5 ? "70% — монеты (от 0.4× до 3× цены), 30% — течкот: Google, OnePlus, Vivo, Apple, Xiaomi, Samsung. Каждый даёт +50% ко всему" : ci === 4 ? "Шанс 2% выбить Королевского арбуза (×40 к тапу), 5% — особого кота Джоске (+100% ко всему). Иначе падает как в Золотом: " + ch : ch}</div></div>${btn((ci === GEM_CASE ? ic("gem", 14) : "") + fmt(c[2]), "case", `data-i="${ci}" data-n="1" ${cost(c[2], cur)}`)}${btn("×5", "case", `data-i="${ci}" data-n="5" ${cost(c[2] * 5, cur)}`, "o")}</div>`;
   });
-  h += `<div class="t2" style="margin:4px 4px 8px">Шанс «1 к N» указан для редкости целиком, у каждого кота он в несколько раз меньше (при выпадении показываем точный). ×5 — пачкой. Каждые 10 прокруток без эпика дают гарантированный эпик+. Голограмма: шанс 6% (12% в Золотом и Алмазном), даёт ×2 к бонусу.</div>`;
+  h += `<div class="t2" style="margin:4px 4px 8px">×5 — пачкой. Каждые 10 открытий без эпика дают гарантированный эпик+. Голограмма: шанс 6% (12% в Золотом и Алмазном), даёт ×2 к бонусу.</div>`;
   if (S.hist.length) h += `<div class="sec">Последние выпадения</div><div class="hs">${S.hist.slice(-10).reverse().map(i => catEl(i, 44)).join("")}</div>`;
   h += `<div class="sec">Запас дубликатов</div>`;
   RARS.forEach((R, r) => { if (r > 6) return; const d = dupCount(r); h += `<div class="card"><div class="grow"><div class="t1" style="color:${RC[r]}">${R[0]} ×${d}</div><div class="t2" style="font-size:11px">${r < 4 ? `Контракт: 5 → 1 выше · Апгрейд: 1 дубль, шанс ${Math.round(UPCH[r] * 100)}%` : "Только продажа"}</div></div>${r < 4 ? `<button class="chip ${d >= 5 ? "" : "dis"}" style="border:0;font-family:inherit" data-a="contract" data-i="${r}">5→1</button><button class="chip ${d >= 1 ? "" : "dis"}" style="border:0;font-family:inherit" data-a="upgrade" data-i="${r}">Апгрейд</button>` : ""}<button class="chip ${d >= 1 ? "" : "dis"}" style="border:0;font-family:inherit;color:var(--gold)" data-a="sell" data-i="${r}">${ic("coin", 14)}${fmt(d * sellVal(r))}${SELLGEM[r] ? " +" + d * SELLGEM[r] + "💎" : ""}</button></div>`; });
