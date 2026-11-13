@@ -1849,7 +1849,7 @@ offerCard = function (o, mineF) {
 const _tTopT = tTop;
 tTop = function () {
   if (sub !== 1) return _tTopT();
-  const seg = `<div class="seg"><button data-a="sub" data-i="0">Лидеры</button><button class="on" data-a="sub" data-i="1">Обмен</button><button data-a="sub" data-i="2">Чат</button></div>`;
+  const seg = `<div class="seg"><button data-a="sub" data-i="0">Лидеры</button><button class="on" data-a="sub" data-i="1">Обмен</button><button data-a="sub" data-i="2">Чат</button><button data-a="sub" data-i="3">Друзья</button><button data-a="sub" data-i="4">Кланы</button></div>`;
   let h = mback + seg;
   if (!offData) return h + `<div class="t2" style="text-align:center;margin:30px">Загружаю…</div>`;
   const mine = offData.filter(o => o.seller === me.id), oth = offData.filter(o => o.seller !== me.id), canL = oth.filter(o => (S.inv[o.want + ""] || 0) >= 1);
