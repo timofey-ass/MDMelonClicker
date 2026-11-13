@@ -1469,3 +1469,24 @@ reveal = function (ov, wk, againFn, fail) {
   if (fail || !wk || wk[0] === null || wk[1] === "coins" || ov._star || OVL !== ov || !LS("fxc", 1) || ITEMS[wk[0]][2] < STAR_MIN) return _revealStar(ov, wk, againFn, fail);
   ov._star = true; starScene(ov, wk[0], () => _revealStar(ov, wk, againFn, false));
 };
+
+/* ===== окно обновления ===== */
+function showUpd(force) {
+  if (document.querySelector(".updw")) return;
+  const c = CHANGES[0];
+  const o = document.createElement("div"); o.className = "ann updw";
+  o.innerHTML = `<div class="anc" style="padding:0;overflow:hidden;max-height:90vh;display:flex;flex-direction:column"><img src="/update.jpg" alt="" style="width:100%;display:block"><div style="padding:16px 18px 18px;overflow-y:auto"><div class="t1" style="color:var(--pri)">${esc(c[2] || "Обновление")} · v${c[0]}</div><div style="margin:8px 0 14px">${c[1].map(x => `<div style="font-size:14px;margin-top:5px">• ${x}</div>`).join("")}</div>${btn("Круто!", "updx")}</div></div>`;
+  document.body.appendChild(o);
+}
+A.updx = function () { document.querySelectorAll(".updw").forEach(x => x.remove()); };
+(function updWatch() {
+  const iv = setInterval(() => {
+    if (typeof S === "undefined" || !S) return;
+    clearInterval(iv);
+    const v = CHANGES[0][0], seen = LS("seenver", null);
+    if (seen === v) return;
+    LSset("seenver", v);
+    if (seen === null && !(S.total > 1000)) return;
+    setTimeout(() => showUpd(), 1200);
+  }, 500);
+})();

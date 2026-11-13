@@ -160,7 +160,7 @@ test("рулетка: неверные ставки отклоняются, вы
   for (const bet of [0, 99, -5, "x", Infinity, NaN]) assert.match((await call(A, "cz_roulette", { bet, pick: "r" })).error || "", /Неверная/, "bet=" + bet);
   assert.match((await call(A, "cz_roulette", { bet: 100, pick: "z" })).error || "", /Неверная/);
   let seen = new Set();
-  for (let i = 0; i < 80; i++) { const r = await call(A, "cz_roulette", { bet: 100, pick: "r" }); seen.add(r.payout === 0 ? "0" : r.jackpot ? "j" : String(r.payout)); }
+  for (let i = 0; i < 80; i++) { const r = await call(A, "cz_roulette", { bet: 100, pick: "r" }); if (r._status === 429) continue; seen.add(r.payout === 0 ? "0" : r.jackpot ? "j" : String(r.payout)); }
   for (const k of seen) assert.ok(["0", "200", "j"].includes(k), "выплата " + k);
 });
 
@@ -204,4 +204,27 @@ test("бот: /link отвечает адресом игры и странице
   assert.equal((await send("/link", sec)).status, 200);
   const m = tgCalls.find(c => c.url.includes("sendMessage"));
   assert.match(m.body.text, /https:\/\/game\.test\b/); assert.match(m.body.text, /\/download\.html/);
+});
+
+test("казино: выигрыш записывается сервером и проходит сохранение, а выдуманный — нет", async () => {
+  const { call, sq } = await makeEnv();
+  const big = 1e12;
+  await call(A, "save", { rev: 0, state: baseState({ pts: big, total: big, run: big }) });
+  let rev = 1, win = 0, bet = 4e11;
+  for (let i = 0; i < 60 && !win; i++) { const r = await call(A, "cz_roulette", { bet, pick: "r" }); if (r.payout > 0) win = r.payout; }
+  assert.ok(win > 0, "выигрыш за 60 попыток");
+  const st = baseState({ pts: big - bet + win, total: big + win, run: big + win });
+  const r = await call(A, "save", { rev, state: st }); rev = r.rev;
+  assert.ok(!r.clamp, "честный выигрыш не должен резаться");
+  // без новых выигрышей прибавить такую же сумму нельзя
+  const r2 = await call(A, "save", { rev, state: baseState({ pts: 1e16, total: 1e16, run: 1e16 }) });
+  assert.ok(r2.clamp || JSON.parse(sq.prepare("SELECT state FROM users WHERE id=1001").get().state).pts < 1e14);
+});
+
+test("лимит запросов: частые тяжёлые запросы получают 429, админ — нет", async () => {
+  const { call } = await makeEnv();
+  await call(A, "save", { rev: 0, state: baseState({ pts: 1e6, total: 1e6 }) });
+  let hit = 0; for (let i = 0; i < 60; i++) { const r = await call(A, "cz_info".replace("cz_info", "cz_roulette"), { bet: 100, pick: "r" }); if (r._status === 429) hit++; }
+  assert.ok(hit >= 15, "429 получено " + hit);
+  const ok = await call(ADMIN, "auth"); assert.notEqual(ok._status, 429);
 });
