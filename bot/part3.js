@@ -529,7 +529,7 @@ tMore = function () {
   if (moreSub === 2) {
     const st = [["Всего тапов", fmt(S.taps)], ["Накоплено за всё время", fmt(S.total)], ["За текущий забег", fmt(S.run)], ["Генераторов", owned()], ["Самоцветов", S.gems], ["Перерождений", S.prest], ["Звёзд поймано", S.stars], ["Лихорадок", S.fevers], ["Общий множитель", "x" + baseMult().toFixed(2)]];
     return mback + `<div class="card col" style="gap:0">${st.map(r => `<div style="display:flex;padding:3px 0"><span class="t2 grow" style="font-size:14px;margin:0">${r[0]}</span><span style="font-size:14px;font-weight:700">${r[1]}</span></div>`).join("")}</div>` +
-      bankHtml() + burnCard() + `<div class="card col"><div class="t1" style="color:var(--pri)">Как играть</div><div class="t2" style="font-size:13px">${TIPS}</div></div>` +
+      burnCard() + `<div class="card col"><div class="t1" style="color:var(--pri)">Как играть</div><div class="t2" style="font-size:13px">${TIPS}</div></div>` +
       `<div class="card col"><div class="t1" style="color:var(--pri)">Что нового</div>${CHANGES.map(c => `<div style="font-size:13px;font-weight:700;margin-top:8px">v${c[0]}</div>${c[1].map(x => `<div class="t2" style="font-size:12px;margin-top:2px">• ${x}</div>`).join("")}`).join("")}</div>`;
   }
   const fn = ["Нет", "Снежинки", "Тыквы"], fv = [0, 1, 2]; SETS.forEach((x, i) => { if (S.sets.includes(x[0])) { fn.push(x[1]); fv.push(3 + i); } });
@@ -787,7 +787,7 @@ A.czgo = async function (e) {
 };
 tCasino = function () {
   const back = `<button class="btn t bkb" data-a="czgo" data-k="0">← Казино</button>`;
-  const jp = `<div class="czjpc"><div class="czjt">🎰 ДЖЕКПОТ</div><div class="czjp czjv">${cz.jp === null ? "…" : fmt(cz.jp)}</div><div id="czlast" class="czjs"></div></div>`;
+  const jp = jpRow();
   const bal = `<div class="card" style="padding:10px 16px"><span class="t2 grow" style="margin:0">Баланс</span><b id="czbal" style="font-size:18px">${fmt(S.pts)}</b></div>`;
   if (cz.sub === 0) return jp + `<button class="mbtn" data-a="czgo" data-k="1"><span style="font-size:28px">🎡</span><span class="grow">Рулетка<div class="t2" style="margin:0;font-size:12px;font-weight:500">Красное и чёрное ×2, зелёное ×24 и сектор с джекпотом</div></span>${ic("arrow", 20)}</button>${gm("🃏", "Покер", "5 карт, одна замена. В одиночку раздаёт арбуз, вдвоём победитель забирает банк", 2, 3)}${gm("🎲", "Кости-блеф", "Спрятанные кубики: заявляй, блефуй или скажи «Не верю!»", 8, 6)}<div class="t2" style="margin:14px 6px;font-size:12px">Играть можно только на монеты. Выигрыш не идёт в таблицу лидеров и не считается за забег. Играй осторожно!</div>`;
   if (cz.sub === 1) {
@@ -1014,6 +1014,25 @@ cz.loan = null; cz.lmax = 0; cz.lpct = 50; cz.ban = 0; let collBusy = false, lnS
 const lnAmt = () => Math.max(1000, Math.min(cz.lmax, Math.floor(cz.lmax * cz.lpct / 100)));
 const fmtT = s => Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
 const lnLeft = () => cz.loan ? Math.max(0, Math.ceil((cz.loan.at - Date.now()) / 1000)) : 0;
+const jpLast = () => cz.last ? "Последний джекпот: " + cz.last.n + " — " + fmt(cz.last.a) : "Джекпот ещё никто не срывал";
+function jpReels() {
+  if (cz.jp === null) return "…";
+  const str = fmt(cz.jp);
+  return [...str].map(c => /\d/.test(c) ? `<span class="jr"><span class="jrs" data-d="${c}" style="transform:translateY(-${(20 + +c) * 1.1}em)">${"0123456789".repeat(3).split("").map(x => `<i>${x}</i>`).join("")}</span></span>` : `<span class="jc">${esc(c)}</span>`).join("");
+}
+function jpRow() {
+  const str = cz.jp === null ? "" : fmt(cz.jp), nd = (str.match(/\d/g) || []).length, k = nd >= 5 ? Math.max(.7, 1 - (nd - 4) * .07) : 1, L = cz.loan;
+  return `<div class="czrow"><button class="czbk" data-a="bankop"><img src="${BANK_LOGO}" alt=""><b>Банк</b><span>${L ? "Долг: " + fmt(L.amount) : "Взять в долг"}</span></button><div class="czjpc" style="${k < 1 ? "transform:scaleX(" + k.toFixed(2) + ");" : ""}" data-k="${k.toFixed(2)}"><div class="czjt">🎰 ДЖЕКПОТ</div><div class="czjv jrw">${jpReels()}</div><div id="czlast" class="czjs">${esc(jpLast())}</div></div></div>`;
+}
+A.bankop = function () { modal(`<div id="bkm">${bankHtml()}</div><div style="margin-top:12px;text-align:center">${btn("Закрыть", "mclose", "", "t")}</div>`); };
+let jpPend = true, jpPrevTab = -1;
+function jpSpin() {
+  const strips = document.querySelectorAll(".czjpc .jrs"), tile = document.querySelector(".czjpc"); if (!strips.length) return;
+  strips.forEach((el, i) => { const d = +el.dataset.d, fin = -(20 + d) * 1.1; try { el.animate([{transform: "translateY(0em)"}, {transform: `translateY(${fin}em)`}], {duration: 900 + i * 520, easing: "cubic-bezier(.15,.7,.2,1)", fill: "backwards"}); } catch (e) {} });
+  document.querySelectorAll(".czjpc .jc").forEach(el => { try { el.animate([{opacity: 0}, {opacity: 0, offset: .85}, {opacity: 1}], {duration: 900 + strips.length * 520}); } catch (e) {} });
+  const k = +tile.dataset.k; if (k < 1) { try { tile.animate([{transform: "scaleX(1)"}, {transform: "scaleX(1.04)", offset: .25}, {transform: `scaleX(${k})`}], {duration: 900 + strips.length * 520, easing: "ease-in-out"}); } catch (e) {} }
+}
+{ const _r1 = render; render = function () { _r1(); if (tab === 6 && cz.sub === 0) { if (jpPrevTab !== 6) jpPend = true; if (jpPend && cz.jp !== null && document.querySelector(".jrs")) { jpPend = false; requestAnimationFrame(jpSpin); } } if (tab !== 6) jpPend = true; jpPrevTab = tab; const b = document.getElementById("bkm"); if (b) b.innerHTML = bankHtml(); }; }
 function bankHtml() {
   const L = cz.loan, minus = S.pts < 0 ? `<div class="t2" style="font-size:12px;margin:0;text-align:center;background:rgba(0,0,0,.25);border-radius:12px;padding:8px">Ты в минусе. Можно объявить банкротство: долг пропадёт, но прогресс забега (монеты, генераторы, улучшения) сбросится, коты и самоцветы останутся. После этого банк закрыт на 3 дня.</div>${btn("Объявить банкротство", "lnbk", 'style="width:100%;justify-content:center"', "o")}` : "";
   if (!L) return `<div class="card col czbank">${bankLogo}<div class="t1" style="text-align:center;font-size:20px">Банк</div><div class="t2" style="font-size:12px;margin:0;text-align:center">Возьми монеты в долг и верни за 1 час без процентов. Не вернёшь — придут коты-коллекторы и заберут вдвое больше долга, баланс может уйти в минус. В минусе играть в казино нельзя.</div><div class="czchips">${[25, 50, 100].map(v => `<button class="chip${cz.lpct === v ? " on" : ""}" style="border:0;font-family:inherit" data-a="lnpct" data-v="${v}">${v}%</button>`).join("")}</div>${S.pts < 0 ? "" : cz.ban > 0 ? `<div class="t2" style="text-align:center;margin:0"><b>Банк закрыт ещё ${Math.ceil(cz.ban / 3600)} ч</b> после банкротства</div>` : `<button class="btn" data-a="lntake" style="width:100%;height:50px;justify-content:center"${cz.lmax < 1000 ? " disabled" : ""}>Взять ${fmt(lnAmt())} в долг</button>`}<div class="t2" style="font-size:11px;margin:0;text-align:center">Лимит: ${fmt(cz.lmax)} (30% от монет за забег)</div>${minus}</div>`;
