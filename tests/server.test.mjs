@@ -357,3 +357,20 @@ test("кланы 3: заставка, переименование, значки
   assert.ok((await call(A, "clan_bn", { img: "" })).ok);
   assert.equal((await call(B, "clan_info", {})).clan.bnimg, "");
 });
+
+test("кланы 4: картинка клана и покупка градиента за кристаллы", async () => {
+  const { call } = await makeEnv();
+  const img = "data:image/jpeg;base64,AAAA";
+  await call(A, "save", { rev: 0, state: baseState({ total: 2e6, run: 2e6, pts: 2e6, gems: 50 }) });
+  await call(B, "save", { rev: 0, state: baseState({}) });
+  const c = await call(A, "clan_create", { name: "Картинка", img }); assert.ok(c.ok);
+  assert.equal((await call(B, "clan_list", {})).rows[0].img, img);
+  assert.match((await call(B, "clan_style", { id: "G1" })).error, /Только глава|клан/i);
+  assert.match((await call(A, "clan_style", { id: "G9" })).error, /кристалл/);
+  const r = await call(A, "clan_style", { id: "G1" }); assert.equal(r.style, "G1"); assert.deepEqual(r.owned, ["G1"]); assert.equal(r.state.gems, 30);
+  assert.equal((await call(A, "clan_style", { id: "G1" })).state, undefined);
+  assert.equal((await call(B, "clan_list", {})).rows[0].style, "G1");
+  assert.equal((await call(A, "clan_style", { id: "" })).style, "");
+  assert.ok((await call(A, "clan_img", { img: "" })).ok);
+  assert.equal((await call(B, "clan_list", {})).rows[0].img, "");
+});
