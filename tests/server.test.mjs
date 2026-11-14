@@ -374,3 +374,21 @@ test("кланы 4: картинка клана и покупка градиен
   assert.ok((await call(A, "clan_img", { img: "" })).ok);
   assert.equal((await call(B, "clan_list", {})).rows[0].img, "");
 });
+
+test("кланы 5: админ удаляет клан и зовёт игрока", async () => {
+  const { call } = await makeEnv();
+  await call(A, "save", { rev: 0, state: baseState({ total: 2e6, run: 2e6, pts: 2e6 }) });
+  await call(B, "save", { rev: 0, state: baseState({}) });
+  const c = await call(A, "clan_create", { name: "Удалить" }); assert.ok(c.ok);
+  assert.notEqual((await call(B, "adm_clan_invite", { cid: c.id, q: "1001" })).ok, true);
+  assert.match((await call(ADMIN, "adm_clan_invite", { cid: c.id, q: "999999" })).error, /не найден/);
+  assert.match((await call(ADMIN, "adm_clan_invite", { cid: c.id, q: "1001" })).error, /уже в клане/);
+  const r = await call(ADMIN, "adm_clan_invite", { cid: c.id, q: "1002" }); assert.ok(r.ok);
+  assert.equal((await call(B, "clan_info", {})).inv.id, c.id);
+  assert.ok((await call(B, "clan_inv_ok", {})).ok);
+  assert.equal((await call(B, "clan_info", {})).clan.id, c.id);
+  assert.notEqual((await call(B, "adm_clan_del", { cid: c.id })).ok, true);
+  assert.ok((await call(ADMIN, "adm_clan_del", { cid: c.id })).ok);
+  assert.equal((await call(B, "clan_info", {})).clan, null);
+  assert.equal((await call(A, "clan_list", {})).rows.length, 0);
+});

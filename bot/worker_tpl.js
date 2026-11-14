@@ -828,7 +828,7 @@ async function api(path, req, env) {
       return J({rows, mine: my ? my.cid : 0, max: CL_MAX});
     }
     if (path === "clan_info") {
-      const cid = Number(b.id) || (my ? my.cid : 0); if (!cid) return J({clan: null, myreq: ((await db.prepare("SELECT cid FROM clan_req WHERE uid=?").bind(id).first()) || {}).cid || 0});
+      const cid = Number(b.id) || (my ? my.cid : 0); if (!cid) return J({clan: null, inv: await (async () => { const iv = await db.prepare("SELECT v FROM kv WHERE k=?").bind("inv" + id).first(); if (!iv) return null; const c = await db.prepare("SELECT id,name,icon FROM clans WHERE id=?").bind(Number(iv.v)).first(); return c || null; })(), myreq: ((await db.prepare("SELECT cid FROM clan_req WHERE uid=?").bind(id).first()) || {}).cid || 0});
       const c = await db.prepare("SELECT c.id,c.name,c.owner,c.icon,c.mode,c.descr,c.bank,c.badges,c.style," + score + " AS score FROM clans c WHERE c.id=?").bind(cid).first(); if (!c) return J({clan: null});
       c.level = clLevel(c.bank); c.next = CL_LV[c.level] || 0; c.badges = c.badges || ""; c.style = c.style || "";
       try { const ix = await db.prepare("SELECT v FROM kv WHERE k=?").bind("ci" + cid).first(); c.img = ix ? ix.v : ""; } catch (e) { c.img = ""; }
@@ -850,6 +850,14 @@ async function api(path, req, env) {
       await db.prepare("DELETE FROM clan_req WHERE uid=?").bind(id).run();
       const im0 = String(b.img || ""); if (im0 && CL_IMG.test(im0) && im0.length <= 16000) await db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES (?,?)").bind("ci" + r.meta.last_row_id, im0).run();
       return J({ok: true, id: r.meta.last_row_id});
+    }
+    if (path === "clan_inv_ok" || path === "clan_inv_no") {
+      const iv = await db.prepare("SELECT v FROM kv WHERE k=?").bind("inv" + id).first(); if (!iv) return J({error: "Приглашения нет"});
+      await db.prepare("DELETE FROM kv WHERE k=?").bind("inv" + id).run(); if (path === "clan_inv_no") return J({ok: true});
+      if (my) return J({error: "Ты уже в клане"});
+      const cid = Number(iv.v); if (!(await db.prepare("SELECT id FROM clans WHERE id=?").bind(cid).first())) return J({error: "Клан не найден"});
+      if ((await cnt(cid)) >= CL_MAX) return J({error: "В клане нет мест"});
+      await db.prepare("INSERT OR REPLACE INTO clan_m (uid,cid,ts,role) VALUES (?,?,?,0)").bind(id, cid, now).run(); await db.prepare("DELETE FROM clan_req WHERE uid=?").bind(id).run(); return J({ok: true});
     }
     if (path === "clan_join") {
       if (my) return J({error: "Сначала выйди из своего клана"});
@@ -1038,6 +1046,23 @@ async function api(path, req, env) {
       await db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES ('evt',?)").bind(JSON.stringify(e)).run();
       await db.prepare("INSERT INTO bcast (text,ts) VALUES (?,?)").bind("🎉 " + nm + "! Доход ×" + mult + " на " + (mins >= 60 ? Math.round(mins / 60 * 10) / 10 + " ч" : mins + " мин") + (e.cat !== undefined ? ". Загляни в игру: тебя ждёт подарок" : ""), now).run();
       return J({ok: true, evt: e});
+    }
+    if (path === "adm_clan_del") {
+      const cid = Number(b.cid); if (!(await db.prepare("SELECT id FROM clans WHERE id=?").bind(cid).first())) return J({error: "Клан не найден"});
+      for (const t of ["clan_m", "clan_req", "clan_chat"]) await db.prepare("DELETE FROM " + t + " WHERE cid=?").bind(cid).run();
+      await db.prepare("DELETE FROM clans WHERE id=?").bind(cid).run(); await db.prepare("DELETE FROM kv WHERE k IN (?,?,?)").bind("cb" + cid, "ci" + cid, "cso" + cid).run();
+      await db.prepare("DELETE FROM kv WHERE k LIKE 'inv%' AND v=?").bind(String(cid)).run();
+      return J({ok: true});
+    }
+    if (path === "adm_clan_invite") {
+      const cid = Number(b.cid), q = String(b.q || "").trim().slice(0, 30).replace(/[%_]/g, "");
+      if (!(await db.prepare("SELECT id FROM clans WHERE id=?").bind(cid).first())) return J({error: "Клан не найден"});
+      if (q.length < 1) return J({error: "Введи имя или ID"});
+      const u = /^\d+$/.test(q) ? await db.prepare("SELECT id,name FROM users WHERE id=?").bind(Number(q)).first() : await db.prepare("SELECT id,name FROM users WHERE name LIKE ? ORDER BY (name=?) DESC, total DESC LIMIT 1").bind("%" + q + "%", q).first();
+      if (!u) return J({error: "Игрок не найден"});
+      if (await db.prepare("SELECT cid FROM clan_m WHERE uid=?").bind(u.id).first()) return J({error: "Игрок уже в клане"});
+      await db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES (?,?)").bind("inv" + u.id, String(cid)).run();
+      return J({ok: true, name: u.name, id: u.id});
     }
     if (path === "adm_clan_badge") {
       const v = [...new Set(String(b.badges || "").split(""))].filter(c => CL_BD.includes(c)).join("");
