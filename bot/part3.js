@@ -33,10 +33,10 @@ const av = (name, id, sz) => { const h = (id * 47) % 360, ph = id === me.id ? ((
 
 // ---------- модалка
 function modal(html) {
-  closeModal(); const o = document.createElement("div"); o.className = "mdl"; o.style.animation = "updin .22s ease both"; o.innerHTML = `<div class="mdc" style="animation:cmSheet .34s cubic-bezier(.2,1,.3,1) both">${html}</div>`; o.addEventListener("click", e => { if (e.target === o) closeModal(); }); document.body.appendChild(o); return o;
+  closeModal(); const o = document.createElement("div"); o.className = "mdl"; o.style.animation = "updin .22s ease both"; o.innerHTML = `<div class="mdc" style="animation:cmSheet .34s cubic-bezier(.2,1,.3,1) both">${html}</div>`; o.addEventListener("click", e => { if (e.target === o) closeModal(); }); document.body.appendChild(o); document.body.classList.add("mdo"); return o;
 }
-function closeModal() { document.querySelectorAll(".mdl").forEach(m => m.remove()); }
-A.mclose = function () { document.querySelectorAll(".mdl").forEach(m => { m.style.transition = "opacity .2s"; m.style.opacity = 0; const c = m.firstChild; if (c) { c.style.transition = "transform .22s"; c.style.transform = "translateY(40px)"; } setTimeout(() => m.remove(), 210); }); };
+function closeModal() { document.querySelectorAll(".mdl").forEach(m => m.remove()); document.body.classList.remove("mdo"); }
+A.mclose = function () { document.body.classList.remove("mdo"); document.querySelectorAll(".mdl").forEach(m => { m.style.transition = "opacity .2s"; m.style.opacity = 0; const c = m.firstChild; if (c) { c.style.transition = "transform .22s"; c.style.transform = "translateY(40px)"; } setTimeout(() => m.remove(), 210); }); };
 
 // ---------- опрос сервера: выдачи, объявления, онлайн
 function applyReward(kind, a, b) {
@@ -313,8 +313,9 @@ A.admevs = async function () { await api("adm_evt_stop", {}); toast("Событ�
 A.evtc = async function () { const r = await api("evt_claim", {}); if (r.error) return toast(r.error); toast("Подарок скоро придёт"); pollNow(); };
 function evtBar() {
   let el = document.getElementById("evtbar");
-  if (!EVT || now() >= EVT.until) { if (el) el.remove(); return; }
-  if (!el) { el = document.createElement("div"); el.id = "evtbar"; el.style.cssText = "position:fixed;top:calc(env(safe-area-inset-top) + 4px);left:50%;transform:translateX(-50%);z-index:60;background:linear-gradient(90deg,#ffb300,#ff7043);color:#2b1400;font-weight:700;font-size:12px;padding:5px 12px;border-radius:14px;display:flex;gap:8px;align-items:center;box-shadow:0 2px 10px #0006"; document.body.appendChild(el); }
+  if (!EVT || now() >= EVT.until) { if (el) el.remove(); document.body.classList.remove("evton"); return; }
+  if (!el) { el = document.createElement("div"); el.id = "evtbar"; el.style.cssText = "position:fixed;left:12px;right:12px;z-index:60;background:linear-gradient(90deg,#ffb300,#ff7043);color:#2b1400;font-weight:800;font-size:14px;padding:9px 14px;border-radius:18px;display:flex;gap:10px;align-items:center;justify-content:center;box-shadow:0 2px 12px #0007"; document.body.appendChild(el); }
+  const nv = document.getElementById("nav"); el.style.bottom = ((nv ? nv.offsetHeight : 76) + 8) + "px"; document.body.classList.add("evton");
   const m = Math.max(0, Math.ceil((EVT.until - now()) / 60)), gift = EVT.cat !== undefined && !EVT.auto ? `<span data-a="evtc" style="background:#2b1400;color:#ffd54f;padding:2px 8px;border-radius:10px">🎁 забрать</span>` : "";
   el.innerHTML = `⚡ ${esc(EVT.name)} ×${EVT.mult} · ${m >= 60 ? Math.floor(m / 60) + " ч " + (m % 60) + " м" : m + " мин"}${gift}`;
 }
@@ -1021,16 +1022,15 @@ function jpReels() {
   return [...str].map(c => /\d/.test(c) ? `<span class="jr"><span class="jrs" data-d="${c}" style="transform:translateY(-${(20 + +c) * 1.1}em)">${"0123456789".repeat(3).split("").map(x => `<i>${x}</i>`).join("")}</span></span>` : `<span class="jc">${esc(c)}</span>`).join("");
 }
 function jpRow() {
-  const str = cz.jp === null ? "" : fmt(cz.jp), nd = (str.match(/\d/g) || []).length, k = nd >= 5 ? Math.max(.7, 1 - (nd - 4) * .07) : 1, L = cz.loan;
-  return `<div class="czrow"><button class="czbk" data-a="bankop"><img src="${BANK_LOGO}" alt=""><b>Банк</b><span>${L ? "Долг: " + fmt(L.amount) : "Взять в долг"}</span></button><div class="czjpc" style="${k < 1 ? "transform:scaleX(" + k.toFixed(2) + ");" : ""}" data-k="${k.toFixed(2)}"><div class="czjt">🎰 ДЖЕКПОТ</div><div class="czjv jrw">${jpReels()}</div><div id="czlast" class="czjs">${esc(jpLast())}</div></div></div>`;
+  const L = cz.loan;
+  return `<div class="czrow"><button class="czbk" data-a="bankop"><img src="${BANK_LOGO}" alt=""><b>Банк</b><span>${L ? "Долг: " + fmt(L.amount) : "Взять в долг"}</span></button><div class="czjpc"><div class="czjt">🎰 ДЖЕКПОТ</div><div class="czjv jrw">${jpReels()}</div><div id="czlast" class="czjs">${esc(jpLast())}</div></div></div>`;
 }
-A.bankop = function () { modal(`<div id="bkm">${bankHtml()}</div><div style="margin-top:12px;text-align:center">${btn("Закрыть", "mclose", "", "t")}</div>`); };
+A.bankop = function () { modal(`<div id="bkm">${bankHtml()}</div>`); };
 let jpPend = true, jpPrevTab = -1;
 function jpSpin() {
   const strips = document.querySelectorAll(".czjpc .jrs"), tile = document.querySelector(".czjpc"); if (!strips.length) return;
   strips.forEach((el, i) => { const d = +el.dataset.d, fin = -(20 + d) * 1.1; try { el.animate([{transform: "translateY(0em)"}, {transform: `translateY(${fin}em)`}], {duration: 900 + i * 520, easing: "cubic-bezier(.15,.7,.2,1)", fill: "backwards"}); } catch (e) {} });
   document.querySelectorAll(".czjpc .jc").forEach(el => { try { el.animate([{opacity: 0}, {opacity: 0, offset: .85}, {opacity: 1}], {duration: 900 + strips.length * 520}); } catch (e) {} });
-  const k = +tile.dataset.k; if (k < 1) { try { tile.animate([{transform: "scaleX(1)"}, {transform: "scaleX(1.04)", offset: .25}, {transform: `scaleX(${k})`}], {duration: 900 + strips.length * 520, easing: "ease-in-out"}); } catch (e) {} }
 }
 { const _r1 = render; render = function () { _r1(); if (tab === 6 && cz.sub === 0) { if (jpPrevTab !== 6) jpPend = true; if (jpPend && cz.jp !== null && document.querySelector(".jrs")) { jpPend = false; requestAnimationFrame(jpSpin); } } if (tab !== 6) jpPend = true; jpPrevTab = tab; const b = document.getElementById("bkm"); if (b) b.innerHTML = bankHtml(); }; }
 function bankHtml() {
