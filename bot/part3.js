@@ -1023,7 +1023,7 @@ function jpReels() {
 }
 function jpRow() {
   const L = cz.loan;
-  return `<div class="czrow"><button class="czbk" data-a="bankop"><img src="${BANK_LOGO}" alt=""><b>Банк</b><span>${L ? "Долг: " + fmt(L.amount) : "Взять в долг"}</span></button><div class="czjpc"><div class="czjt">🎰 ДЖЕКПОТ</div><div class="czjv jrw">${jpReels()}</div><div id="czlast" class="czjs">${esc(jpLast())}</div></div></div>`;
+  return `<div class="czrow"><button class="czbk" data-a="bankop"><img src="${BANK_LOGO}" alt=""><b>Банк</b><span>${L ? "Долг: " + fmt(L.amount) : "Взять в долг"}</span></button><div class="czjpc"><div class="czjt">★ ДЖЕКПОТ ★</div><div class="czjv jrw">${jpReels()}</div><div id="czlast" class="czjs">${esc(jpLast())}</div></div></div>`;
 }
 A.bankop = function () { modal(`<div id="bkm">${bankHtml()}</div>`); };
 let jpPend = true, jpPrevTab = -1;
