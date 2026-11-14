@@ -69,11 +69,12 @@ async function init(db) {
   try { await db.prepare("CREATE TABLE IF NOT EXISTS friends (a INTEGER, b INTEGER, st INTEGER DEFAULT 0, ts INTEGER, PRIMARY KEY (a, b))").run(); } catch (e) {}
   try { await db.prepare("CREATE TABLE IF NOT EXISTS clans (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE, owner INTEGER, ts INTEGER)").run(); } catch (e) {}
   try { await db.prepare("CREATE TABLE IF NOT EXISTS clan_m (uid INTEGER PRIMARY KEY, cid INTEGER, ts INTEGER)").run(); } catch (e) {}
-  for (const q of ["ALTER TABLE clans ADD COLUMN descr TEXT DEFAULT ''", "ALTER TABLE clans ADD COLUMN icon TEXT DEFAULT '🛡'", "ALTER TABLE clans ADD COLUMN mode INTEGER DEFAULT 0", "ALTER TABLE clans ADD COLUMN bank REAL DEFAULT 0", "ALTER TABLE clan_m ADD COLUMN role INTEGER DEFAULT 0", "ALTER TABLE clan_m ADD COLUMN don REAL DEFAULT 0"]) { try { await db.prepare(q).run(); } catch (e) {} }
+  for (const q of ["ALTER TABLE clans ADD COLUMN descr TEXT DEFAULT ''", "ALTER TABLE clans ADD COLUMN icon TEXT DEFAULT '🛡'", "ALTER TABLE clans ADD COLUMN mode INTEGER DEFAULT 0", "ALTER TABLE clans ADD COLUMN bank REAL DEFAULT 0", "ALTER TABLE clans ADD COLUMN badges TEXT DEFAULT ''", "ALTER TABLE clan_m ADD COLUMN role INTEGER DEFAULT 0", "ALTER TABLE clan_m ADD COLUMN don REAL DEFAULT 0"]) { try { await db.prepare(q).run(); } catch (e) {} }
   try { await db.prepare("CREATE TABLE IF NOT EXISTS clan_req (uid INTEGER PRIMARY KEY, cid INTEGER, ts INTEGER)").run(); } catch (e) {}
   try { await db.prepare("CREATE TABLE IF NOT EXISTS clan_chat (id INTEGER PRIMARY KEY AUTOINCREMENT, cid INTEGER, uid INTEGER, name TEXT, text TEXT, ts INTEGER)").run(); } catch (e) {}
   ready = true;
 }
+const CL_BD = "votpf", CL_IMG = /^data:image\/jpeg;base64,[A-Za-z0-9+\/=]+$/;
 const CL_LV = [1e6, 1e7, 1e8, 1e9, 1e10, 1e11, 1e12, 1e13, 1e14, 1e15];
 const clLevel = bank => CL_LV.filter(x => num(bank) >= x).length;
 function tidy(s) { if (Array.isArray(s.holo)) s.holo = s.holo.filter(i => (i + "") in s.inv); if (s.eq !== undefined && +s.eq >= 0 && !((s.eq + "") in s.inv)) s.eq = -1; }
@@ -830,13 +831,14 @@ async function api(path, req, env) {
     const role = my ? (my.role | 0) : -1;
     const needMgr = () => !my ? "Ты не в клане" : role < 1 ? "Только глава или офицер" : null;
     if (path === "clan_list") {
-      const rows = (await db.prepare("SELECT c.id,c.name,c.owner,c.icon,c.mode,c.descr,c.bank," + score + " AS score,(SELECT COUNT(*) FROM clan_m m WHERE m.cid=c.id) AS n FROM clans c ORDER BY score DESC LIMIT 30").all()).results.map(r => ({...r, level: clLevel(r.bank)}));
+      const rows = (await db.prepare("SELECT c.id,c.name,c.owner,c.icon,c.mode,c.descr,c.bank,c.badges," + score + " AS score,(SELECT COUNT(*) FROM clan_m m WHERE m.cid=c.id) AS n FROM clans c ORDER BY score DESC LIMIT 30").all()).results.map(r => ({...r, badges: r.badges || "", level: clLevel(r.bank)}));
       return J({rows, mine: my ? my.cid : 0, max: CL_MAX});
     }
     if (path === "clan_info") {
       const cid = Number(b.id) || (my ? my.cid : 0); if (!cid) return J({clan: null, myreq: ((await db.prepare("SELECT cid FROM clan_req WHERE uid=?").bind(id).first()) || {}).cid || 0});
-      const c = await db.prepare("SELECT c.id,c.name,c.owner,c.icon,c.mode,c.descr,c.bank," + score + " AS score FROM clans c WHERE c.id=?").bind(cid).first(); if (!c) return J({clan: null});
-      c.level = clLevel(c.bank); c.next = CL_LV[c.level] || 0;
+      const c = await db.prepare("SELECT c.id,c.name,c.owner,c.icon,c.mode,c.descr,c.bank,c.badges," + score + " AS score FROM clans c WHERE c.id=?").bind(cid).first(); if (!c) return J({clan: null});
+      c.level = clLevel(c.bank); c.next = CL_LV[c.level] || 0; c.badges = c.badges || "";
+      try { const bx = await db.prepare("SELECT v FROM kv WHERE k=?").bind("cb" + cid).first(); c.bnimg = bx ? bx.v : ""; } catch (e) { c.bnimg = ""; }
       const mem = (await db.prepare("SELECT u.id,u.name,u.total,u.seen,u.badges,m.role,m.don FROM clan_m m JOIN users u ON u.id=m.uid WHERE m.cid=? ORDER BY m.role DESC, u.total DESC LIMIT 40").bind(cid).all()).results.map(r => ({id: r.id, name: r.name, total: r.total, role: r.id === c.owner ? 2 : r.role, don: r.don || 0, online: (r.seen || 0) > now - 40, badges: bd(r.id, r.badges)}));
       await addPh(db, mem, "id");
       const reqs = my && my.cid === cid && role >= 1 ? (await db.prepare("SELECT r.uid AS id,u.name,u.total FROM clan_req r JOIN users u ON u.id=r.uid WHERE r.cid=? LIMIT 30").bind(cid).all()).results : [];
@@ -869,7 +871,7 @@ async function api(path, req, env) {
       if (c && c.owner === id) {
         const nx = await db.prepare("SELECT uid FROM clan_m WHERE cid=? ORDER BY role DESC, ts LIMIT 1").bind(my.cid).first();
         if (nx) { await db.prepare("UPDATE clans SET owner=? WHERE id=?").bind(nx.uid, my.cid).run(); await db.prepare("UPDATE clan_m SET role=2 WHERE uid=?").bind(nx.uid).run(); }
-        else { await db.prepare("DELETE FROM clans WHERE id=?").bind(my.cid).run(); await db.prepare("DELETE FROM clan_chat WHERE cid=?").bind(my.cid).run(); await db.prepare("DELETE FROM clan_req WHERE cid=?").bind(my.cid).run(); }
+        else { await db.prepare("DELETE FROM kv WHERE k=?").bind("cb" + my.cid).run(); await db.prepare("DELETE FROM clans WHERE id=?").bind(my.cid).run(); await db.prepare("DELETE FROM clan_chat WHERE cid=?").bind(my.cid).run(); await db.prepare("DELETE FROM clan_req WHERE cid=?").bind(my.cid).run(); }
       }
       return J({ok: true});
     }
@@ -884,7 +886,19 @@ async function api(path, req, env) {
       if (role < 2) return J({error: "Только глава"});
       const descr = String(b.descr || "").replace(/[<>]/g, "").trim().slice(0, 120), mode = b.mode ? 1 : 0;
       const icon = [..."🛡⚔🔥🍉🐱👑🌟🚀💎🦁🐉🌈"].includes(String(b.icon || "")) ? String(b.icon) : "🛡";
-      await db.prepare("UPDATE clans SET descr=?, mode=?, icon=? WHERE id=?").bind(descr, mode, icon, my.cid).run(); return J({ok: true});
+      const nn = b.name === undefined ? null : String(b.name).replace(/[<>&"]/g, "").trim().slice(0, 20);
+      if (nn !== null) {
+        if (nn.length < 3) return J({error: "Название от 3 символов"});
+        if (await db.prepare("SELECT id FROM clans WHERE name=? AND id!=?").bind(nn, my.cid).first()) return J({error: "Такое название занято"});
+      }
+      try { await db.prepare("UPDATE clans SET descr=?, mode=?, icon=?" + (nn !== null ? ", name=?" : "") + " WHERE id=?").bind(...[descr, mode, icon].concat(nn !== null ? [nn] : [], [my.cid])).run(); } catch (e) { return J({error: "Такое название занято"}); }
+      return J({ok: true});
+    }
+    if (path === "clan_bn") {
+      if (role < 2) return J({error: "Только глава"});
+      const img = String(b.img || ""); if (!img) { await db.prepare("DELETE FROM kv WHERE k=?").bind("cb" + my.cid).run(); return J({ok: true}); }
+      if (!CL_IMG.test(img) || img.length > 90000) return J({error: "Картинка слишком большая"});
+      await db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES (?,?)").bind("cb" + my.cid, img).run(); return J({ok: true});
     }
     if (path === "clan_role") {
       if (role < 2) return J({error: "Только глава"});
@@ -900,7 +914,7 @@ async function api(path, req, env) {
     if (path === "clan_disband") {
       if (role < 2) return J({error: "Только глава"});
       for (const t of ["clan_m", "clan_req", "clan_chat"]) await db.prepare("DELETE FROM " + t + " WHERE cid=?").bind(my.cid).run();
-      await db.prepare("DELETE FROM clans WHERE id=?").bind(my.cid).run(); return J({ok: true});
+      await db.prepare("DELETE FROM clans WHERE id=?").bind(my.cid).run(); await db.prepare("DELETE FROM kv WHERE k=?").bind("cb" + my.cid).run(); return J({ok: true});
     }
     if (path === "clan_req_ok" || path === "clan_req_no") {
       const e0 = needMgr(); if (e0) return J({error: e0});
@@ -950,7 +964,7 @@ async function api(path, req, env) {
     const uid = Number(b.uid); const u = await getUser(db, uid); if (!u) return J({error: "Игрок не найден"});
     const s = u.state ? JSON.parse(u.state) : {};
     const cats = Object.keys(s.inv || {}).length;
-    return J({id: u.id, name: u.name, un: id === ADMIN ? (u.un || "") : undefined, badges: bd(u.id, u.badges), banned: !!u.banned, ban: u.banned | 0, banat: u.banat || 0, online: (u.seen || 0) > now - 40, total: u.total, taps: s.taps || 0, cats, holo: (s.holo || []).length, prest: s.prest || 0, ach: (s.ach || []).length, eq: s.eq === undefined ? -1 : s.eq, bnimg: await (async () => { try { const x = await db.prepare("SELECT v FROM kv WHERE k=?").bind("bn" + uid).first(); return x ? x.v : ""; } catch (e) { return ""; } })(), photo: await (async () => { try { const x = await db.prepare("SELECT v FROM kv WHERE k=?").bind("ph" + uid).first(); return x ? x.v : ""; } catch (e) { return ""; } })(), pf: await (async () => { try { const x = await db.prepare("SELECT v FROM kv WHERE k=?").bind("pf" + uid).first(); return x ? JSON.parse(x.v) : {}; } catch (e) { return {}; } })(), seen: u.seen || 0, achs: s.ach || [], inv: s.inv || {}, stars: s.stars || 0, fevers: s.fevers || 0, gt: s.gt || 0, run: s.run || 0, fr: await (async () => { if (uid === id) return 0; const f = await db.prepare("SELECT a,st FROM friends WHERE (a=? AND b=?) OR (a=? AND b=?)").bind(id, uid, uid, id).first(); return !f ? 0 : f.st === 1 ? 1 : f.a === id ? 2 : 3; })(), clan: await (async () => { const c = await db.prepare("SELECT c.name,c.icon FROM clan_m m JOIN clans c ON c.id=m.cid WHERE m.uid=?").bind(uid).first(); return c ? (c.icon || "🛡") + " " + c.name : ""; })(), opened: s.opened || 0, bn: Number.isInteger(s.bn) ? s.bn : 0, offers: (await db.prepare("SELECT id,give,want FROM offers WHERE seller=? AND status='open' ORDER BY id DESC LIMIT 5").bind(u.id).all()).results});
+    return J({id: u.id, name: u.name, un: id === ADMIN ? (u.un || "") : undefined, badges: bd(u.id, u.badges), banned: !!u.banned, ban: u.banned | 0, banat: u.banat || 0, online: (u.seen || 0) > now - 40, total: u.total, taps: s.taps || 0, cats, holo: (s.holo || []).length, prest: s.prest || 0, ach: (s.ach || []).length, eq: s.eq === undefined ? -1 : s.eq, bnimg: await (async () => { try { const x = await db.prepare("SELECT v FROM kv WHERE k=?").bind("bn" + uid).first(); return x ? x.v : ""; } catch (e) { return ""; } })(), photo: await (async () => { try { const x = await db.prepare("SELECT v FROM kv WHERE k=?").bind("ph" + uid).first(); return x ? x.v : ""; } catch (e) { return ""; } })(), pf: await (async () => { try { const x = await db.prepare("SELECT v FROM kv WHERE k=?").bind("pf" + uid).first(); return x ? JSON.parse(x.v) : {}; } catch (e) { return {}; } })(), seen: u.seen || 0, achs: s.ach || [], inv: s.inv || {}, stars: s.stars || 0, fevers: s.fevers || 0, gt: s.gt || 0, run: s.run || 0, fr: await (async () => { if (uid === id) return 0; const f = await db.prepare("SELECT a,st FROM friends WHERE (a=? AND b=?) OR (a=? AND b=?)").bind(id, uid, uid, id).first(); return !f ? 0 : f.st === 1 ? 1 : f.a === id ? 2 : 3; })(), ...(await (async () => { const c = await db.prepare("SELECT c.id,c.name,c.icon,c.badges FROM clan_m m JOIN clans c ON c.id=m.cid WHERE m.uid=?").bind(uid).first(); return c ? {clan: (c.icon || "🛡") + " " + c.name, clanb: c.badges || "", clanid: c.id} : {clan: ""}; })()), opened: s.opened || 0, bn: Number.isInteger(s.bn) ? s.bn : 0, offers: (await db.prepare("SELECT id,give,want FROM offers WHERE seller=? AND status='open' ORDER BY id DESC LIMIT 5").bind(u.id).all()).results});
   }
   if (path === "promo_use") {
     const code = String(b.code || "").trim().toUpperCase().slice(0, 32); if (!code) return J({error: "Введи промокод"});
@@ -1009,6 +1023,11 @@ async function api(path, req, env) {
       await db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES ('evt',?)").bind(JSON.stringify(e)).run();
       await db.prepare("INSERT INTO bcast (text,ts) VALUES (?,?)").bind("🎉 " + nm + "! Доход ×" + mult + " на " + (mins >= 60 ? Math.round(mins / 60 * 10) / 10 + " ч" : mins + " мин") + (e.cat !== undefined ? ". Загляни в игру: тебя ждёт подарок" : ""), now).run();
       return J({ok: true, evt: e});
+    }
+    if (path === "adm_clan_badge") {
+      const v = [...new Set(String(b.badges || "").split(""))].filter(c => CL_BD.includes(c)).join("");
+      const r = await db.prepare("UPDATE clans SET badges=? WHERE id=?").bind(v, Number(b.cid)).run();
+      return J(r.meta.changes === 1 ? {ok: true, badges: v} : {error: "Клан не найден"});
     }
     if (path === "adm_bn_del") { await db.prepare("DELETE FROM kv WHERE k=?").bind("bn" + Number(b.uid)).run(); return J({ok: true}); }
     if (path === "adm_evt_stop") { await db.prepare("DELETE FROM kv WHERE k='evt'").run(); return J({ok: true}); }

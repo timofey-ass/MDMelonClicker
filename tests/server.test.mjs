@@ -335,3 +335,25 @@ test("золотой градиент: у админа есть сразу, у �
   assert.ok((await call(ADMIN, "ns_list", {})).owned.includes("GA"));
   assert.match((await call(ADMIN, "ns_set", { g: "GA", f: "" })).badges, /~GA/);
 });
+
+test("кланы 3: заставка, переименование, значки только от админа, чужой клан", async () => {
+  const { call } = await makeEnv();
+  await call(A, "save", { rev: 0, state: baseState({ total: 2e6, run: 2e6, pts: 2e6 }) });
+  await call(B, "save", { rev: 0, state: baseState({ pts: 100 }) });
+  const c = await call(A, "clan_create", { name: "Старое" }); assert.ok(c.ok);
+  assert.match((await call(A, "clan_edit", { name: "ab" })).error, /3 символ/);
+  assert.ok((await call(A, "clan_edit", { name: "Новое имя", descr: "", mode: 0, icon: "🛡" })).ok);
+  assert.equal((await call(B, "clan_info", { id: c.id })).clan.name, "Новое имя");
+  const img = "data:image/jpeg;base64,AAAA";
+  assert.ok((await call(A, "clan_bn", { img })).ok);
+  assert.equal((await call(B, "clan_info", { id: c.id })).clan.bnimg, img);
+  assert.ok(!(await call(A, "clan_bn", { img: "data:text/html;base64,AA" })).ok);
+  assert.equal((await call(B, "clan_info", { id: c.id })).myrole, -1);
+  assert.ok((await call(B, "clan_join", { id: c.id })).ok);
+  assert.match((await call(B, "clan_bn", { img })).error, /глава/);
+  assert.notEqual((await call(A, "adm_clan_badge", { cid: c.id, badges: "v" })).ok, true);
+  const r = await call(ADMIN, "adm_clan_badge", { cid: c.id, badges: "vxv" }); assert.equal(r.badges, "v");
+  assert.equal((await call(B, "clan_list", {})).rows[0].badges, "v");
+  assert.ok((await call(A, "clan_bn", { img: "" })).ok);
+  assert.equal((await call(B, "clan_info", {})).clan.bnimg, "");
+});
