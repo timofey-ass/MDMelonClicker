@@ -473,6 +473,17 @@ body.evton #mas{bottom:calc(134px + env(safe-area-inset-bottom))!important}
 .czjpc .jrs i{color:#1a1208;font-weight:900;text-shadow:none}
 .czjpc .jc{background:linear-gradient(#bdbdbd 0,#f4f4f4 14%,#fff 50%,#f4f4f4 86%,#bdbdbd 100%)!important;color:#b3261e;border-radius:4px;box-shadow:inset 0 0 6px rgba(0,0,0,.45)}
 .czjpc .czjs{color:#e8d9ff;opacity:.9;font-size:11px;margin-top:2px}
+.czbk{position:relative;overflow:hidden;background:radial-gradient(120% 80% at 50% 0%,#1fae72 0%,#0d6b45 55%,#073b27 100%)!important;box-shadow:0 0 0 2px #e6b422,0 0 22px rgba(30,200,120,.35),inset 0 0 18px rgba(0,0,0,.45)!important}
+.czbk::before{content:"";position:absolute;inset:auto 0 0 0;height:78%;background:url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 62' preserveAspectRatio='xMidYMax meet'><g fill='%23ffd45e'><polygon points='50,3 95,22 5,22'/><rect x='8' y='24' width='84' height='4'/><rect x='13' y='31' width='9' height='22'/><rect x='30' y='31' width='9' height='22'/><rect x='46' y='31' width='9' height='22'/><rect x='62' y='31' width='9' height='22'/><rect x='78' y='31' width='9' height='22'/><rect x='6' y='55' width='88' height='5'/></g></svg>") center bottom/100% auto no-repeat;opacity:.3}
+.czbk::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(45deg,transparent 0 10px,rgba(255,255,255,.04) 10px 11px);pointer-events:none}
+.czbk>*{position:relative;z-index:1}
+.czbk img{filter:drop-shadow(0 2px 8px rgba(0,0,0,.55)) saturate(1.1)}
+.czbk b{background:linear-gradient(#fff4b0,#ffc400 70%,#c98a00);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;filter:drop-shadow(0 1px 3px rgba(0,0,0,.6));letter-spacing:.06em}
+.czbk span{color:#eafff3}
+.czbk .cn{position:absolute;bottom:-14px;font-size:16px;font-style:normal;z-index:0;opacity:0;animation:cnf 3.6s ease-in infinite}
+@keyframes cnf{0%{transform:translateY(0) rotate(0);opacity:0}15%{opacity:.95}100%{transform:translateY(-120px) rotate(40deg);opacity:0}}
+.czbk.debt{background:radial-gradient(120% 80% at 50% 0%,#c0392b 0%,#7a1a10 60%,#3a0a06 100%)!important;box-shadow:0 0 0 2px #ff7043,0 0 22px rgba(255,70,40,.45),inset 0 0 18px rgba(0,0,0,.45)!important;animation:dbt 1.6s ease-in-out infinite}
+@keyframes dbt{50%{box-shadow:0 0 0 2px #ffb199,0 0 30px rgba(255,70,40,.8),inset 0 0 18px rgba(0,0,0,.45)}}
 </style></head><body>
 <div id="load"><div class="lw"><div class="lglow"></div><div class="lm" id="lm">🍉</div><div class="lsh"></div></div><div class="lti">MDMelonClicker</div><div id="lt">Подключаюсь…</div><div class="tr"><i id="lbar"></i></div><div id="ltip"></div></div>
 <div id="app"><div id="top"><h1 id="ttl">MDMelonClicker</h1><span id="gemc"></span></div><div id="view"></div><div id="nav"></div></div>
