@@ -1,0 +1,19 @@
+{
+  "packageId": "app.mdmelonclicker",
+  "host": "raspy-term-3ab3.timofea71.workers.dev",
+  "name": "MDMelonClicker",
+  "launcherName": "MDMelon",
+  "display": "standalone",
+  "orientation": "portrait",
+  "themeColor": "#17110d",
+  "navigationColor": "#17110d",
+  "backgroundColor": "#17110d",
+  "startUrl": "/",
+  "iconUrl": "https://raspy-term-3ab3.timofea71.workers.dev/icon-512.png",
+  "maskableIconUrl": "https://raspy-term-3ab3.timofea71.workers.dev/icon-maskable-512.png",
+  "webManifestUrl": "https://raspy-term-3ab3.timofea71.workers.dev/manifest.webmanifest",
+  "appVersion": "1.0.0",
+  "appVersionCode": 1,
+  "enableNotifications": false,
+  "fallbackType": "customtabs"
+}
