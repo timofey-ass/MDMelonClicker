@@ -1685,11 +1685,16 @@ A.clcs = function (e) { soc.cs = +e.dataset.i; if (soc.cs === 3) soc.ei = null; 
 A.cldon = async function () { const a = Math.floor(Number(KEEP.cldn)); if (!(a >= 1000)) return toast("Минимум 1 000"); await save(true); const r = await api("clan_donate", {amount: a}); if (r.error) return toast(r.error); adopt(r); KEEP.cldn = ""; toast("Спасибо, казна пополнена"); await socLoad(); };
 A.clsave = function () { return socDo("clan_edit", {descr: KEEP.cld || "", mode: soc.ei.mode ? 1 : 0, icon: soc.ei.icon}, "Сохранено"); };
 
-{ let _ck = "";
+{ let _ck = "", _n = 0, _t = 0;
   const _r0 = render;
+  const pop = (els, from) => els.forEach((el, i) => { if (i < from || !el.animate) return; try { el.animate([{opacity: 0, transform: "translateY(16px)"}, {opacity: 1, transform: "none"}], {duration: 380, delay: Math.min(i - from, 7) * 50, easing: "cubic-bezier(.2,.8,.3,1)", fill: "backwards"}); } catch (e) {} });
   render = function () {
     _r0();
-    const k = tab + ":" + sub + ":" + (typeof soc !== "undefined" ? soc.cs : 0);
-    if (k !== _ck) { _ck = k; if (tab === 4) { const v = $("#view"); if (v) { v.classList.remove("cmv"); void v.offsetWidth; v.classList.add("cmv"); setTimeout(() => v.classList.remove("cmv"), 800); } } }
+    const v = $("#view"); if (!v) return;
+    if (tab !== 4) { _ck = ""; return; }
+    v.classList.remove("vin");
+    const k = sub + ":" + (typeof soc !== "undefined" ? soc.cs : 0), kids = Array.from(v.children);
+    if (k !== _ck) { _ck = k; _n = kids.length; _t = Date.now(); pop(kids, 0); }
+    else if (Date.now() - _t < 2500 && kids.length > _n) { pop(kids, _n); _n = kids.length; }
   };
 }
