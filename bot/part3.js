@@ -1787,7 +1787,7 @@ A.clsave = function () { return socDo("clan_edit", {name: KEEP.cln2, descr: KEEP
 // ---------- ежедневный вход и рефералы
 let DLY = null, REF = null, dlyShown = false;
 const REFLINK = () => "https://t.me/mdmelonbot?startapp=ref_" + me.id;
-async function dlyLoad() { try { const r = await api("daily_info", {}); if (r && !r.error) DLY = r; } catch (e) {} try { const r = await api("ref_info", {}); if (r && !r.error) REF = r; } catch (e) {} }
+async function dlyLoad() { try { const r = await api("daily_info", {}); if (r && !r.error && r.rewards) DLY = r; } catch (e) {} try { const r = await api("ref_info", {}); if (r && !r.error && r.bonus) REF = r; } catch (e) {} }
 function dlyCard() {
   if (!DLY) return "";
   const idx = DLY.streak % 7;
@@ -1813,7 +1813,7 @@ setTimeout(async () => {
 
 // ---------- коллекция котов: награды за прогресс
 let COLL = null;
-async function collLoad() { try { const r = await api("coll_info", {}); if (r && !r.error) { COLL = r; if (tab === 2) render(); } } catch (e) {} }
+async function collLoad() { try { const r = await api("coll_info", {}); if (r && !r.error && r.ms) { COLL = r; if (tab === 2) render(); } } catch (e) {} }
 function collCard() {
   if (!COLL) return "";
   const TOT = 101, mx = COLL.ms[COLL.ms.length - 1][0];
@@ -1828,7 +1828,7 @@ A.collget = async function (e) {
 
 // ---------- сезоны: месячный рейтинг
 let lbMode = 0, SEAS = null;
-async function seasLoad() { try { const r = await api("season_top", {}); if (r && !r.error) { SEAS = r; if (tab === 4 && sub === 0 && lbMode === 1) render(); } } catch (e) {} }
+async function seasLoad() { try { const r = await api("season_top", {}); if (r && !r.error && r.rows) { SEAS = r; if (tab === 4 && sub === 0 && lbMode === 1) render(); } } catch (e) {} }
 function seasHtml() {
   if (!SEAS) return `<div class="t2" style="text-align:center;margin:30px">Загружаю…</div>`;
   const left = Math.max(0, SEAS.ends - Math.floor(Date.now() / 1000)), dd = Math.floor(left / 86400), hh = Math.floor(left % 86400 / 3600);
