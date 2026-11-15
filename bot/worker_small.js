@@ -76,6 +76,29 @@ async function init(db) {
 }
 const REF_BONUS = 25, REF_NEW = 10, DAILY_R = [5, 5, 10, 10, 15, 20, 50];
 const CL_BD = "votpf", CL_IMG = /^data:image\/jpeg;base64,[A-Za-z0-9+\/=]+$/;
+const SEASON_REW = [100, 50, 25], COLL_MS = [[10, 5], [25, 10], [50, 25], [75, 40], [90, 100]];
+const seasonId = now => { const d = new Date((now + 7200) * 1000); return d.getUTCFullYear() * 12 + d.getUTCMonth(); };
+const seasonEnd = now => { const d = new Date((now + 7200) * 1000); return Math.floor(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1) / 1000) - 7200; };
+const SEASON_Q = "SELECT u.id,u.name,u.badges,u.total - COALESCE(CAST(k.v AS REAL),0) AS score FROM users u LEFT JOIN kv k ON k.k='sb'||u.id WHERE u.banned<2 AND u.total - COALESCE(CAST(k.v AS REAL),0) > 0 ORDER BY score DESC LIMIT 50";
+let seasonSeen = -1;
+async function seasonEnsure(db, now) {
+  const sid = seasonId(now); if (seasonSeen === sid) return sid;
+  const x = await db.prepare("SELECT v FROM kv WHERE k='ssx'").first();
+  if (!x || Number(x.v) !== sid) {
+    const lock = await db.prepare("INSERT OR IGNORE INTO kv (k,v) VALUES (?,?)").bind("ssl" + sid, "1").run();
+    if (lock.meta.changes === 1) {
+      if (x) {
+        const top = (await db.prepare(SEASON_Q).all()).results.slice(0, 3);
+        for (let i = 0; i < top.length; i++) await db.prepare("INSERT INTO grants (uid,kind,a,b,ts) VALUES (?,?,?,?,?)").bind(top[i].id, "gems", SEASON_REW[i], 0, now).run();
+        await db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES ('sres',?)").bind(JSON.stringify({s: Number(x.v), top: top.map(r => ({id: r.id, name: r.name, score: r.score}))})).run();
+      }
+      await db.prepare("DELETE FROM kv WHERE k LIKE 'sb%'").run();
+      await db.prepare("INSERT OR REPLACE INTO kv (k,v) SELECT 'sb'||id, CAST(total AS TEXT) FROM users").run();
+      await db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES ('ssx',?)").bind(String(sid)).run();
+    }
+  }
+  seasonSeen = sid; return sid;
+}
 const ctWeek = now => Math.floor((Math.floor((now + 7200) / 86400) + 3) / 7), ctEnd = wk => ((wk + 1) * 7 - 3) * 86400 - 7200;
 async function findUser(db, q) {
   q = String(q || "").trim().slice(0, 30).replace(/[%_]/g, ""); if (!q) return null;
@@ -764,7 +787,27 @@ async function api(path, req, env) {
     if (r.error) { if (old) await db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES (?,?)").bind(kk, old).run(); else await db.prepare("DELETE FROM kv WHERE k=?").bind(kk).run(); return J(r); }
     return J({...r, gems: g, streak: d.s + 1, rewards: DAILY_R});
   }
+  if (path === "season_top") {
+    await seasonEnsure(db, now);
+    const rows = (await db.prepare(SEASON_Q).all()).results.map(r => ({...r, badges: bd(r.id, r.badges)})); await addPh(db, rows, "id");
+    const u = await getUser(db, id), bx = await db.prepare("SELECT v FROM kv WHERE k=?").bind("sb" + id).first(); let myScore = 0, rank = 0;
+    if (u) { myScore = Math.max(0, num(u.total) - (bx ? Number(bx.v) : 0)); if (myScore > 0) rank = (await db.prepare("SELECT COUNT(*)+1 AS r FROM users u LEFT JOIN kv k ON k.k='sb'||u.id WHERE u.banned<2 AND u.total - COALESCE(CAST(k.v AS REAL),0) > ?").bind(myScore).first()).r; }
+    const pr = await db.prepare("SELECT v FROM kv WHERE k='sres'").first(); let prev = null; try { prev = pr ? JSON.parse(pr.v) : null; } catch (e) {}
+    return J({rows, rank, myScore, ends: seasonEnd(now), rew: SEASON_REW, prev});
+  }
+  if (path === "coll_info" || path === "coll_claim") {
+    const u = await getUser(db, id); if (!u || !u.state) return J({error: "Нет данных"});
+    const st = JSON.parse(u.state), n = Object.keys(st.inv || {}).filter(k => +k < N_ITEMS && +k !== 70 && +k !== 71).length;
+    const cx = await db.prepare("SELECT v FROM kv WHERE k=?").bind("cm" + id).first(); let claimed = []; try { claimed = cx ? JSON.parse(cx.v) : []; } catch (e) {}
+    if (path === "coll_info") return J({n, claimed, ms: COLL_MS});
+    const i = Number(b.i); if (!Number.isInteger(i) || !COLL_MS[i]) return J({error: "Нет такой награды"});
+    if (n < COLL_MS[i][0]) return J({error: "Нужно собрать ещё"}); if (claimed.includes(i)) return J({error: "Уже получено"});
+    claimed.push(i); await db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES (?,?)").bind("cm" + id, JSON.stringify(claimed)).run();
+    const r = await mutate(db, id, s2 => { s2.gems = num(s2.gems) + COLL_MS[i][1]; }); if (r.error) { claimed.pop(); await db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES (?,?)").bind("cm" + id, JSON.stringify(claimed)).run(); return J(r); }
+    return J({...r, n, claimed, ms: COLL_MS, gems: COLL_MS[i][1]});
+  }
   if (path === "poll") {
+    await seasonEnsure(db, now);
     if (maintT && id !== ADMIN) return J({maint: maintT});
     await db.prepare("UPDATE users SET seen=? WHERE id=?").bind(now, id).run();
     try { const lt = await db.prepare("SELECT v FROM kv WHERE k='lbt'").first(); if (!lt || now - Number(lt.v) >= 60) { await db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES ('lbt',?)").bind(String(now)).run(); await lbTrack(db, env, now); } } catch (e) {}

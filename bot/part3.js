@@ -1810,3 +1810,42 @@ setTimeout(async () => {
   await dlyLoad(); if (!DLY || !DLY.can || dlyShown || document.querySelector(".mdl")) return; dlyShown = true;
   modal(dlyCard() + `<div style="margin-top:10px;text-align:center">${btn("Позже", "mclose", "", "t")}</div>`);
 }, 6000);
+
+// ---------- коллекция котов: награды за прогресс
+let COLL = null;
+async function collLoad() { try { const r = await api("coll_info", {}); if (r && !r.error) { COLL = r; if (tab === 2) render(); } } catch (e) {} }
+function collCard() {
+  if (!COLL) return "";
+  const TOT = 101, mx = COLL.ms[COLL.ms.length - 1][0];
+  return `<div class="card col clset"><div class="t1" style="display:flex;align-items:center;gap:8px;color:var(--pri)">${ic("star", 18)} Прогресс коллекции<span class="t2" style="margin:0 0 0 auto">${COLL.n} / ${TOT}</span></div><div class="lbb"><i style="width:${Math.min(100, COLL.n / TOT * 100)}%"></i></div>${COLL.ms.map((m, i) => { const ok = COLL.n >= m[0], got = COLL.claimed.includes(i); return `<div style="display:flex;align-items:center;gap:8px"><div class="t2 grow" style="margin:0;font-size:13px">${m[0]} котов</div><div class="t2" style="margin:0;display:flex;align-items:center;gap:2px">+${m[1]}${ic("gem", 12)}</div>${got ? `<span class="chip">${ic("check", 12)}</span>` : ok ? btn("Забрать", "collget", `data-i="${i}"`) : `<span class="t2" style="margin:0;font-size:12px;min-width:56px;text-align:right">ещё ${m[0] - COLL.n}</span>`}</div>`; }).join("")}</div>`;
+}
+const _tCases2 = tCases;
+tCases = function () { if (!COLL) collLoad(); const h = _tCases2(); return COLL ? h.replace('<div class="sec">Коллекция ·', collCard() + '<div class="sec">Коллекция ·') : h; };
+A.collget = async function (e) {
+  await save(true); const r = await api("coll_claim", {i: +e.dataset.i}); if (r.error) return toast(r.error);
+  adopt(r); COLL = {n: r.n, claimed: r.claimed, ms: r.ms}; toast("Награда за коллекцию: +" + r.gems + " кристаллов"); render();
+};
+
+// ---------- сезоны: месячный рейтинг
+let lbMode = 0, SEAS = null;
+async function seasLoad() { try { const r = await api("season_top", {}); if (r && !r.error) { SEAS = r; if (tab === 4 && sub === 0 && lbMode === 1) render(); } } catch (e) {} }
+function seasHtml() {
+  if (!SEAS) return `<div class="t2" style="text-align:center;margin:30px">Загружаю…</div>`;
+  const left = Math.max(0, SEAS.ends - Math.floor(Date.now() / 1000)), dd = Math.floor(left / 86400), hh = Math.floor(left % 86400 / 3600);
+  let h = `<div class="card col clset"><div class="t1" style="display:flex;align-items:center;gap:8px;color:var(--pri)">${ic("cup", 18)} Сезон месяца<span class="t2" style="margin:0 0 0 auto;font-size:12px">ещё ${dd} д ${hh} ч</span></div><div class="t2" style="margin:0">Считается всё, что ты заработал за месяц. Топ-3 в конце получают кристаллы: ${SEAS.rew.map(x => x + ic("gem", 12)).join(" · ")}. Сезон начинается заново для всех.</div></div>`;
+  h += `<div class="card" style="background:var(--sch)"><div class="t1 grow" style="color:var(--onprc)">Ты: ${fmt(SEAS.myScore)}${SEAS.rank ? " · место " + SEAS.rank : ""}</div></div>`;
+  if (SEAS.prev && SEAS.prev.top.length) h += `<div class="card col"><div class="t2" style="margin:0;font-weight:700">Победители прошлого сезона</div>${SEAS.prev.top.map((r, i) => `<div class="t2" style="margin:0;font-size:13px">${i + 1}. ${esc(r.name)} · ${fmt(r.score)}</div>`).join("")}</div>`;
+  h += SEAS.rows.length ? SEAS.rows.map((r, i) => `<div class="card ${r.id === me.id ? "p" : ""}" data-a="prof" data-i="${r.id}"><div class="circ" style="width:38px;height:38px;font-size:15px;font-weight:700"><span style="color:${["#ffd54f", "#cfd8dc", "#ffab91"][i] || "inherit"}">${i + 1}</span></div>${av(r.name, r.id, 40)}<div class="grow"><div class="t1">${nm(r.name, r.badges)}</div></div><div class="t1" style="font-size:15px">${fmt(r.score)}</div></div>`).join("") : `<div class="t2" style="text-align:center;margin:20px">Пока никто не набрал очков</div>`;
+  return h;
+}
+const _tTopS = tTop;
+tTop = function () {
+  if (sub !== 0) return _tTopS();
+  const seg = `<div class="seg" style="margin-top:0"><button class="${lbMode ? "" : "on"}" data-a="lbm" data-i="0">Сейчас</button><button class="${lbMode ? "on" : ""}" data-a="lbm" data-i="1">Сезон</button></div>`;
+  if (!lbMode) return injectSeg(_tTopS(), seg);
+  if (!SEAS) seasLoad();
+  const base = _tTopS(), k = base.indexOf('<div class="card">');
+  return base.slice(0, k) + seg + seasHtml();
+};
+function injectSeg(h, seg) { const k = h.indexOf('<div class="card">'); return k < 0 ? h : h.slice(0, k) + seg + h.slice(k); }
+A.lbm = function (e) { lbMode = +e.dataset.i; if (lbMode) { SEAS = null; seasLoad(); } render(); };

@@ -435,3 +435,18 @@ test("клан: приглашение от главы и задания нед�
   assert.equal((await call(A, "clan_info", {})).ct.tasks.length, 3);
   const g = (await call(B, "poll", {})).grants; assert.ok(g.every(x => x.kind === "gems") && g.length >= 1);
 });
+
+test("коллекция: награды за прогресс; сезон: рейтинг по приросту", async () => {
+  const { call } = await makeEnv();
+  const inv = {}; for (let i = 0; i < 12; i++) inv[i] = 1;
+  await call(A, "save", { rev: 0, state: baseState({ inv, gems: 0 }) });
+  const ci = await call(A, "coll_info", {}); assert.equal(ci.n, 12); assert.equal(ci.claimed.length, 0);
+  assert.match((await call(A, "coll_claim", { i: 1 })).error, /ещё/);
+  const r = await call(A, "coll_claim", { i: 0 }); assert.equal(r.gems, 5); assert.equal(r.state.gems, 5);
+  assert.match((await call(A, "coll_claim", { i: 0 })).error, /Уже/);
+  await call(B, "save", { rev: 0, state: baseState({ total: 1e6, pts: 1e6 }) });
+  const s1 = await call(A, "season_top", {}); assert.ok(Array.isArray(s1.rows)); assert.ok(s1.ends > Date.now() / 1000);
+  assert.equal(s1.myScore, 0);
+  const g = await call(B, "save", { rev: 1, state: baseState({ total: 3e6, pts: 3e6 }) });
+  const s2 = await call(B, "season_top", {}); assert.equal(s2.rows[0].id, 1002); assert.equal(s2.rank, 1);
+});
