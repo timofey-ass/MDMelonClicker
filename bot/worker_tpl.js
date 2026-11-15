@@ -69,6 +69,18 @@ async function init(db) {
 }
 const REF_BONUS = 25, REF_NEW = 10, DAILY_R = [5, 5, 10, 10, 15, 20, 50];
 const CL_BD = "votpf", CL_IMG = /^data:image\/jpeg;base64,[A-Za-z0-9+\/=]+$/;
+const ctWeek = now => Math.floor((Math.floor((now + 7200) / 86400) + 3) / 7), ctEnd = wk => ((wk + 1) * 7 - 3) * 86400 - 7200;
+async function findUser(db, q) {
+  q = String(q || "").trim().slice(0, 30).replace(/[%_]/g, ""); if (!q) return null;
+  return /^\d+$/.test(q) ? await db.prepare("SELECT id,name FROM users WHERE id=?").bind(Number(q)).first() : await db.prepare("SELECT id,name FROM users WHERE name LIKE ? ORDER BY (name=?) DESC, total DESC LIMIT 1").bind("%" + q + "%", q).first();
+}
+async function ctLoad(db, cid, bank, n, now) {
+  const wk = ctWeek(now), x = await db.prepare("SELECT v FROM kv WHERE k=?").bind("ct" + cid).first(); let d = null; try { d = x ? JSON.parse(x.v) : null; } catch (e) {}
+  if (!d || d.wk !== wk) { d = {wk, tot: 0, mem: {}, big: 0, paid: [], g: [Math.max(1e6, Math.round(num(bank) * .1)), Math.min(5, Math.max(2, Math.ceil(n / 2))), Math.max(1e6, Math.round(num(bank) * .03))]}; await db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES (?,?)").bind("ct" + cid, JSON.stringify(d)).run(); }
+  return d;
+}
+const CT_REW = [10, 10, 15];
+const ctView = d => ({ends: ctEnd(d.wk), tasks: [d.tot, Object.keys(d.mem).length, d.big].map((cur, i) => ({id: i + 1, cur, goal: d.g[i], rew: CT_REW[i], done: d.paid.includes(i + 1)}))});
 const CL_LV = [1e6, 1e7, 1e8, 1e9, 1e10, 1e11, 1e12, 1e13, 1e14, 1e15];
 const clLevel = bank => CL_LV.filter(x => num(bank) >= x).length;
 function tidy(s) { if (Array.isArray(s.holo)) s.holo = s.holo.filter(i => (i + "") in s.inv); if (s.eq !== undefined && +s.eq >= 0 && !((s.eq + "") in s.inv)) s.eq = -1; }
@@ -863,7 +875,8 @@ async function api(path, req, env) {
       const reqs = my && my.cid === cid && role >= 1 ? (await db.prepare("SELECT r.uid AS id,u.name,u.total FROM clan_req r JOIN users u ON u.id=r.uid WHERE r.cid=? LIMIT 30").bind(cid).all()).results : [];
       const myreq = my ? 0 : ((await db.prepare("SELECT cid FROM clan_req WHERE uid=?").bind(id).first()) || {}).cid || 0;
       let owned = []; if (my && my.cid === cid && role >= 2) { const ox = await db.prepare("SELECT v FROM kv WHERE k=?").bind("cso" + cid).first(); owned = ox ? JSON.parse(ox.v) : []; }
-      return J({clan: c, owned, members: mem, reqs, mine: my ? my.cid : 0, myrole: my && my.cid === cid ? (c.owner === id ? 2 : role) : -1, myreq, max: CL_MAX});
+      const ct = my && my.cid === cid ? ctView(await ctLoad(db, cid, c.bank, mem.length, now)) : null;
+      return J({clan: c, ct, owned, members: mem, reqs, mine: my ? my.cid : 0, myrole: my && my.cid === cid ? (c.owner === id ? 2 : role) : -1, myreq, max: CL_MAX});
     }
     if (path === "clan_create") {
       if (my) return J({error: "Ты уже в клане"});
@@ -875,6 +888,14 @@ async function api(path, req, env) {
       await db.prepare("DELETE FROM clan_req WHERE uid=?").bind(id).run();
       const im0 = String(b.img || ""); if (im0 && CL_IMG.test(im0) && im0.length <= 16000) await db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES (?,?)").bind("ci" + r.meta.last_row_id, im0).run();
       return J({ok: true, id: r.meta.last_row_id});
+    }
+    if (path === "clan_invite") {
+      if (!my || role < 1) return J({error: "Звать игроков могут глава и офицеры"});
+      const u = await findUser(db, b.q); if (!u) return J({error: "Игрок не найден"});
+      if (await db.prepare("SELECT cid FROM clan_m WHERE uid=?").bind(u.id).first()) return J({error: "Игрок уже в клане"});
+      if ((await cnt(my.cid)) >= CL_MAX) return J({error: "В клане нет мест"});
+      await db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES (?,?)").bind("inv" + u.id, String(my.cid)).run();
+      return J({ok: true, name: u.name});
     }
     if (path === "clan_inv_ok" || path === "clan_inv_no") {
       const iv = await db.prepare("SELECT v FROM kv WHERE k=?").bind("inv" + id).first(); if (!iv) return J({error: "Приглашения нет"});
@@ -982,7 +1003,14 @@ async function api(path, req, env) {
       if (r.error) return J(r);
       await db.prepare("UPDATE clans SET bank=COALESCE(bank,0)+? WHERE id=?").bind(a, my.cid).run();
       await db.prepare("UPDATE clan_m SET don=COALESCE(don,0)+? WHERE uid=?").bind(a, id).run();
-      return J(r);
+      try {
+        const cb = await db.prepare("SELECT bank FROM clans WHERE id=?").bind(my.cid).first(), n0 = await cnt(my.cid), d = await ctLoad(db, my.cid, cb ? cb.bank : 0, n0, now);
+        d.tot += a; d.mem[id] = (d.mem[id] || 0) + a; d.big = Math.max(d.big, a);
+        const cur = [d.tot, Object.keys(d.mem).length, d.big]; let paid = false;
+        for (let i = 0; i < 3; i++) if (cur[i] >= d.g[i] && !d.paid.includes(i + 1)) { d.paid.push(i + 1); paid = true; for (const m of (await db.prepare("SELECT uid FROM clan_m WHERE cid=?").bind(my.cid).all()).results) await db.prepare("INSERT INTO grants (uid,kind,a,b,ts) VALUES (?,?,?,?,?)").bind(m.uid, "gems", CT_REW[i], 0, now).run(); }
+        await db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES (?,?)").bind("ct" + my.cid, JSON.stringify(d)).run();
+        return J({...r, ct: ctView(d), ctPaid: paid});
+      } catch (e) { return J(r); }
     }
     return J({error: "?"});
   }
@@ -1083,7 +1111,7 @@ async function api(path, req, env) {
       const cid = Number(b.cid), q = String(b.q || "").trim().slice(0, 30).replace(/[%_]/g, "");
       if (!(await db.prepare("SELECT id FROM clans WHERE id=?").bind(cid).first())) return J({error: "Клан не найден"});
       if (q.length < 1) return J({error: "Введи имя или ID"});
-      const u = /^\d+$/.test(q) ? await db.prepare("SELECT id,name FROM users WHERE id=?").bind(Number(q)).first() : await db.prepare("SELECT id,name FROM users WHERE name LIKE ? ORDER BY (name=?) DESC, total DESC LIMIT 1").bind("%" + q + "%", q).first();
+      const u = await findUser(db, q);
       if (!u) return J({error: "Игрок не найден"});
       if (await db.prepare("SELECT cid FROM clan_m WHERE uid=?").bind(u.id).first()) return J({error: "Игрок уже в клане"});
       await db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES (?,?)").bind("inv" + u.id, String(cid)).run();

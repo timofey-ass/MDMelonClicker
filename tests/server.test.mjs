@@ -416,3 +416,22 @@ test("рефералы: бонус обоим, себя приглашать н�
   assert.equal((await call(A, "ref_info", {})).count, 1);
   assert.equal((await call(S1, "poll", {})).grants.length, 0);
 });
+
+test("клан: приглашение от главы и задания недели", async () => {
+  const { call } = await makeEnv();
+  await call(A, "save", { rev: 0, state: baseState({ total: 5e6, run: 5e6, pts: 5e6 }) });
+  await call(B, "save", { rev: 0, state: baseState({ pts: 5e3, total: 5e3 }) });
+  const c = await call(A, "clan_create", { name: "Задания" }); assert.ok(c.ok);
+  assert.match((await call(B, "clan_invite", { q: "1001" })).error, /глава и офицеры/);
+  assert.match((await call(A, "clan_invite", { q: "нет такого" })).error, /не найден/);
+  assert.match((await call(A, "clan_invite", { q: "1001" })).error, /уже в клане/);
+  assert.ok((await call(A, "clan_invite", { q: "1002" })).ok);
+  assert.equal((await call(B, "clan_info", {})).inv.id, c.id);
+  assert.ok((await call(B, "clan_inv_ok", {})).ok);
+  const d1 = await call(A, "clan_donate", { amount: 2e6 });
+  assert.deepEqual(d1.ct.tasks.map(t => t.done), [true, false, true]);
+  const d2 = await call(B, "clan_donate", { amount: 2000 });
+  assert.deepEqual(d2.ct.tasks.map(t => t.done), [true, true, true]);
+  assert.equal((await call(A, "clan_info", {})).ct.tasks.length, 3);
+  const g = (await call(B, "poll", {})).grants; assert.ok(g.every(x => x.kind === "gems") && g.length >= 1);
+});
