@@ -283,6 +283,7 @@ const admCard = () => {
   h += btn("Отобрать кота: " + it[1] + " ×" + admQty, "admtakecat", 'style="width:100%;justify-content:center"', "o");
   h += `<div class="buyrow3">${[10, 50, 99].map(x => btn("−" + x + "%", "admtakepct", `data-v="${x}"`, "o")).join("")}</div><input data-keep="admamt" placeholder="Своя сумма, например 5e25" style="margin-top:6px">` + btn("Забрать эту сумму", "admtakeamt", 'style="width:100%;justify-content:center"', "o") + btn("Забрать все монеты", "admtakeall", 'style="width:100%;justify-content:center"', "o") + `` + btn("Забрать все самоцветы", "admtakegem", 'data-v="-1" style="width:100%;justify-content:center"', "o") + `</div>`;
   h += `<div class="card col"><div class="t1" style="color:var(--pri)">Банк (тест)</div><div class="t2" style="font-size:12px;margin:0">Пропускает час твоего долга: коллекторы придут сразу.</div>${btn("⏩ Пропустить час долга", "admskip", 'style="width:100%;justify-content:center"', "o")}</div>`;
+  if (KEEP.tgc === undefined) KEEP.tgc = "Вышло обновление v" + CHANGES[0][0] + " «" + CHANGES[0][2] + "»:\n" + CHANGES[0][1].map(x => "• " + x).join("\n");
   h += `<div class="card col"><div class="t1" style="color:var(--pri)">Сообщение во все чаты бота</div><div class="t2" style="font-size:12px;margin:0">Придёт каждому игроку в личку от бота, с кнопкой «Играть». Уходит порциями, пока игроки заходят в игру.</div><textarea data-keep="tgc" rows="3" maxlength="1000" placeholder="Текст сообщения"></textarea><div id="tgst" class="t2" style="font-size:12px;margin:0">${tgStat ? tgStat : ""}</div>${btn("Отправить в чаты", "admtg", 'style="width:100%;justify-content:center"', "o")}</div>`;
   if (!tgStat) setTimeout(tgRefresh, 50);
   h += banCard();
@@ -538,12 +539,12 @@ tMore = function () {
   if (moreSub === 2) {
     const st = [["Всего тапов", fmt(S.taps)], ["Накоплено за всё время", fmt(S.total)], ["За текущий забег", fmt(S.run)], ["Генераторов", owned()], ["Самоцветов", S.gems], ["Перерождений", S.prest], ["Звёзд поймано", S.stars], ["Лихорадок", S.fevers], ["Общий множитель", "x" + baseMult().toFixed(2)]];
     return mback + `<div class="card col" style="gap:0">${st.map(r => `<div style="display:flex;padding:3px 0"><span class="t2 grow" style="font-size:14px;margin:0">${r[0]}</span><span style="font-size:14px;font-weight:700">${r[1]}</span></div>`).join("")}</div>` +
-      burnCard() + `<div class="card col"><div class="t1" style="color:var(--pri)">Как играть</div><div class="t2" style="font-size:13px">${TIPS}</div></div>` +
+      refCard() + burnCard() + `<div class="card col"><div class="t1" style="color:var(--pri)">Как играть</div><div class="t2" style="font-size:13px">${TIPS}</div></div>` +
       `<div class="card col"><div class="t1" style="color:var(--pri)">Что нового</div>${CHANGES.map(c => `<div style="font-size:13px;font-weight:700;margin-top:8px">v${c[0]}</div>${c[1].map(x => `<div class="t2" style="font-size:12px;margin-top:2px">• ${x}</div>`).join("")}`).join("")}</div>`;
   }
   const fn = ["Нет", "Снежинки", "Тыквы"], fv = [0, 1, 2]; SETS.forEach((x, i) => { if (S.sets.includes(x[0])) { fn.push(x[1]); fv.push(3 + i); } });
   return mback + `<div class="card col"><div class="t1" style="color:var(--pri)">Оформление</div><div class="card click" style="margin:4px 0 0;padding:8px 0;background:none;border:0" data-a="ltheme"><div class="t1 grow" style="font-size:14px">Светлая тема</div><div class="sw ${LS("lt", 0) ? "on" : ""}"></div></div>${optRow("Цвет", THEMES.map(t => t[0]), "th", THEMES.map((_, i) => i), LS("th", 0))}${optRow("Падающий фон", fn, "fall", fv, LS("fall", 0))}</div>` +
-    `<div class="card col"><div class="t1" style="color:var(--pri)">Игра</div>${tog("Вибрация", "hap", LS("hap", 1))}${tog("Звуки кейсов", "snd", LS("snd", 1))}${tog("Звуки игры (клики, покупки)", "sgm", LS("sgm", 1))}${tog("Анимации клика", "fxt", LS("fxt", 1))}${tog("Анимации открытия кейсов", "fxc", LS("fxc", 1))}<div class="card click" style="margin:4px 0 0;padding:8px 0;background:none;border:0" data-a="rfl"><div class="t1 grow" style="font-size:14px">Меньше вспышек</div><div class="sw ${LS("rfl", 0) ? "on" : ""}"></div></div></div>` +
+    langCard() + `<div class="card col"><div class="t1" style="color:var(--pri)">Игра</div>${tog("Вибрация", "hap", LS("hap", 1))}${tog("Звуки кейсов", "snd", LS("snd", 1))}${tog("Звуки игры (клики, покупки)", "sgm", LS("sgm", 1))}${tog("Анимации клика", "fxt", LS("fxt", 1))}${tog("Анимации открытия кейсов", "fxc", LS("fxc", 1))}<div class="card click" style="margin:4px 0 0;padding:8px 0;background:none;border:0" data-a="rfl"><div class="t1 grow" style="font-size:14px">Меньше вспышек</div><div class="sw ${LS("rfl", 0) ? "on" : ""}"></div></div></div>` +
     `<div class="card col"><div class="t1" style="color:var(--pri)">Промокод</div><div style="display:flex;gap:8px"><input data-keep="promo" placeholder="Введи промокод" style="text-transform:uppercase">${btn("Ок", "promo")}</div></div>` +
     `<button class="btn t" data-a="reset" style="width:100%;justify-content:center;margin-top:4px">Сбросить весь прогресс</button>`;
 };
@@ -1380,7 +1381,7 @@ function drwFill() {
   const it = (icon, label, k) => `<button class="dri" data-a="drwgo" data-k="${k}">${ic(icon, 26)}<span>${label}</span></button>`;
   drwEl.querySelector(".drp").innerHTML = `<div class="drh"><div class="dra">${av}</div><button class="drt" data-a="ltheme" aria-label="Тема">${ic(lt ? "moon" : "sun", 26)}</button></div>
     <div class="drn">${nm(me.name, myBadges)}</div><div class="dru">${u.username ? "@" + esc(u.username) : "ID " + me.id}</div>
-    <div class="drl">${it("podium", "Сообщество", "com")}${it("cube", "Мастерская", "ws")}<div class="drd"></div>${it("tune", "Настройки", "set")}${it("check", "Информация", "info")}${isAdm ? it("crown", "Админка", "adm") : ""}</div>
+    <div class="drl">$<button class="dri" data-a="dlyopen">${ic("box", 26)}<span>Ежедневная награда</span>${DLY && DLY.can ? '<i class="dtd"></i>' : ""}</button>${it("podium", "Сообщество", "com")}${it("cube", "Мастерская", "ws")}<div class="drd"></div>${it("tune", "Настройки", "set")}${it("check", "Информация", "info")}${isAdm ? it("crown", "Админка", "adm") : ""}</div>
     ${isApp() ? "" : `<button class="adc" data-a="adweb"><div class="adm"></div><div><b>Скачай приложение</b><span>Играй без Telegram, на весь экран</span></div></button>`}
     <div class="drv">MDMelonClicker v${CHANGES[0][0]}</div>`;
 }
@@ -1799,17 +1800,16 @@ function refCard() {
   return `<div class="card col"><div class="t1" style="display:flex;align-items:center;gap:8px;color:var(--pri)">${ic("userplus", 18)} Пригласи друзей</div><div class="t2" style="margin:0">За каждого нового игрока тебе +${b} ${ic("gem", 13)}, ему +${w} ${ic("gem", 13)}. Приглашено: <b>${n}</b></div><div style="display:flex;gap:8px;flex-wrap:wrap">${btn(ic("tg", 16) + " Отправить другу", "refshare", "", "")}${btn("Копировать ссылку", "refcopy", "", "o")}</div></div>`;
 }
 const _tAch1 = tAch;
-tAch = function () { if (!WM || Date.now() - WM.at > 30000) wmLoad(); return wmCard() + dlyCard() + refCard() + _tAch1(); };
+tAch = function () { if (!WM || Date.now() - WM.at > 30000) wmLoad(); return wmCard() + _tAch1(); };
 A.dlyget = async function () {
   await save(true); const r = await api("daily_claim", {}); if (r.error) { toast(r.error); await dlyLoad(); return render(); }
-  adopt(r); DLY.can = false; DLY.streak = r.streak; toast("Награда за вход: +" + r.gems + " кристаллов"); try { hap("ok"); gsfx("win"); } catch (e) {} closeModal(); render();
+  adopt(r); DLY.can = false; DLY.streak = r.streak; toast("Награда за вход: +" + r.gems + " кристаллов"); try { hap("ok"); gsfx("win"); } catch (e) {} closeModal(); dlyDot(); render();
 };
 A.refshare = function () { const u = "https://t.me/share/url?url=" + encodeURIComponent(REFLINK()) + "&text=" + encodeURIComponent("Играю в MDMelonClicker, заходи: коты, кейсы и кланы"); try { if (tg && tg.openTelegramLink) return tg.openTelegramLink(u); } catch (e) {} window.open(u, "_blank"); };
 A.refcopy = async function () { try { await navigator.clipboard.writeText(REFLINK()); toast("Ссылка скопирована"); } catch (e) { const t = document.createElement("textarea"); t.value = REFLINK(); document.body.appendChild(t); t.select(); try { document.execCommand("copy"); toast("Ссылка скопирована"); } catch (x) { toast(REFLINK()); } t.remove(); } };
-setTimeout(async () => {
-  await dlyLoad(); if (!DLY || !DLY.can || dlyShown || document.querySelector(".mdl")) return; dlyShown = true;
-  modal(dlyCard() + `<div style="margin-top:10px;text-align:center">${btn("Позже", "mclose", "", "t")}</div>`);
-}, 6000);
+setTimeout(async () => { await dlyLoad(); dlyDot(); }, 2500);
+function dlyDot() { const b = document.querySelector('#nav [data-a="drw"]'); if (b) b.classList.toggle("dd", !!(DLY && DLY.can)); }
+A.dlyopen = async function () { drwOpen(false); await dlyLoad(); dlyDot(); if (!DLY) return toast("Нет связи"); modal(dlyCard() + `<div style="margin-top:10px;text-align:center">${btn("Закрыть", "mclose", "", "t")}</div>`); };
 
 // ---------- коллекция котов: награды за прогресс
 let COLL = null;
@@ -1880,7 +1880,7 @@ const EN = {
 "Тебе выдали:":"You received:","Тебе выдали":"You received","Пока тебя не было: +":"While you were away: +","🏛 Часовой налог: −":"🏛 Hourly tax: −","🏛 Налог за офлайн: −":"🏛 Offline tax: −","Награда за вход: +":"Login reward: +","Награда за коллекцию: +":"Collection reward: +",
 "Налог на богатство":"Wealth tax","Лихорадка":"Fever","Золотой градиент":"Golden gradient","Закат":"Sunset","Океан":"Ocean","Мята":"Mint","Арбуз":"Watermelon","Неон":"Neon","Радуга":"Rainbow","Лава":"Lava","Космос":"Space","Жирный":"Bold","Курсив":"Italic","Рукописный":"Handwritten","Строгий":"Strict","Широкий":"Wide","Звёзды":"Stars","Снежинки":"Snowflakes","Тыквы":"Pumpkins","Нет":"None","Светлая тема":"Light theme",
 "Обычный":"Common","Редкий":"Rare","Эпический":"Epic","Легендарный":"Legendary","Мифический":"Mythic","Особый":"Special","Течкот":"Techcat","Королевский":"Royal","Секретный":"Secret","Админский":"Admin",
-"Язык":"Language","Выбери язык":"Choose language","Загружаю котов…":"Loading cats…","Готовлю котов…":"Preparing cats…","Сообщение всем в игре":"Message to everyone in the game","Войти через Telegram":"Sign in with Telegram","Технический перерыв":"Maintenance break","Игра снова работает!":"The game is back!",
+"Язык":"Language","Ежедневная награда":"Daily reward","Выбери язык":"Choose language","Загружаю котов…":"Loading cats…","Готовлю котов…":"Preparing cats…","Сообщение всем в игре":"Message to everyone in the game","Войти через Telegram":"Sign in with Telegram","Технический перерыв":"Maintenance break","Игра снова работает!":"The game is back!",
 "Тапай подряд — включится лихорадка!":"Keep tapping to trigger fever!","Лови золотые звёзды: они дают бонус.":"Catch the golden stars for a bonus.","Налоги растут вместе с богатством: чем больше монет, тем выше ставка. Тратить выгоднее, чем копить.":"Taxes grow with your wealth: the more coins, the higher the rate. Spending beats hoarding.",
 "За каждого нового игрока тебе +":"For each new player you get +","Заявок нет":"No requests","Заявок пока нет.":"No requests yet.","Кланов пока нет. Создай первый!":"No clans yet. Create the first one!","Ты в клане":"You are in a clan","Участники ·":"Members ·","Вы":"You","Тебя зовут в клан":"You are invited to the clan",
 "всем кланом внести":"clan-wide donations of","игрока вносят вклад":"players contribute","одно пожертвование от":"a single donation of","монет":"coins","кристаллов":"gems","Серия":"Streak","ещё":"left","мин назад":"min ago","ч назад":"h ago","дн назад":"d ago","давно":"long ago","в игре":"online","не в сети":"offline","ур.":"lv.","Ур.":"Lv.","бонус":"bonus","Очки:":"Score:","Казна":"Treasury","Лимит:":"Limit:","Тестер":"Tester","Создатель":"Creator","Гений":"Genius"
@@ -1924,11 +1924,10 @@ function langApply() {
 }
 function langSet(l) { LSset("lang", l); if (l === "ru") { location.reload(); return; } langApply(); try { render(); } catch (e) {} }
 A.lang = function (e) { const l = e.dataset.i; closeModal(); if (l === "ru") { const was = LS("lang", "ru") === "en"; LSset("lang", "ru"); if (was) location.reload(); else langApply(); return; } langSet(l); };
-const _tMoreL = tMore;
-tMore = function () {
+function langCard() {
   const en = LS("lang", "ru") === "en";
-  return `<div class="card col" data-nt="1"><div class="t1" style="color:var(--pri)">Язык / Language</div><div class="seg" style="margin:0"><button class="${en ? "" : "on"}" data-a="lang" data-i="ru">Русский</button><button class="${en ? "on" : ""}" data-a="lang" data-i="en">English</button></div></div>` + _tMoreL();
-};
+  return `<div class="card col" data-nt="1"><div class="t1" style="color:var(--pri)">Язык / Language</div><div class="seg" style="margin:0"><button class="${en ? "" : "on"}" data-a="lang" data-i="ru">Русский</button><button class="${en ? "on" : ""}" data-a="lang" data-i="en">English</button></div></div>`;
+}
 setTimeout(() => {
   if (LS("lang", null) === null) {
     let guess = "ru"; try { const lc = (tg.initDataUnsafe.user.language_code || "").toLowerCase(); if (lc && !["ru", "uk", "be"].includes(lc)) guess = "en"; } catch (e) {}
