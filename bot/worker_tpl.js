@@ -788,6 +788,49 @@ async function api(path, req, env) {
     if (r.error) { if (old) await db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES (?,?)").bind(kk, old).run(); else await db.prepare("DELETE FROM kv WHERE k=?").bind(kk).run(); return J(r); }
     return J({...r, gems: g, streak: d.s + 1, rewards: DAILY_R});
   }
+  if (path === "wm_info" || path === "wm_water") {
+    // Мировой арбуз: весь сервер поливает общий арбуз монетами; созрел -> кристаллы участникам и бонус дохода всем
+    const goalOf = r => Math.min(20000, 3000 + 500 * r), WM_COOL = 600;
+    await db.prepare("INSERT OR IGNORE INTO kv (k,v) VALUES ('wr','1')").run(); await db.prepare("INSERT OR IGNORE INTO kv (k,v) VALUES ('wp','0')").run();
+    const rd = async () => ({r: Number((await db.prepare("SELECT v FROM kv WHERE k='wr'").first()).v), p: Number((await db.prepare("SELECT v FROM kv WHERE k='wp'").first()).v)});
+    const info = async extra => {
+      const {r, p} = await rd(), mine = await db.prepare("SELECT v FROM kv WHERE k=?").bind("wc" + r + ":" + id).first();
+      const top = (await db.prepare("SELECT k,v FROM kv WHERE k LIKE ? ORDER BY CAST(v AS INTEGER) DESC LIMIT 5").bind("wc" + r + ":%").all()).results;
+      const names = {}; for (const t of top) { const uid = Number(t.k.split(":")[1]), u = await db.prepare("SELECT name FROM users WHERE id=?").bind(uid).first(); names[uid] = u ? u.name : "?"; }
+      const lt = await db.prepare("SELECT v FROM kv WHERE k='wl'").first(), tt = await db.prepare("SELECT v FROM kv WHERE k=?").bind("wt" + id).first();
+      let last = null; try { last = lt ? JSON.parse(lt.v) : null; } catch (e) {}
+      return {r, p, goal: goalOf(r), my: mine ? Number(mine.v) : 0, top: top.map(t => ({id: Number(t.k.split(":")[1]), name: names[Number(t.k.split(":")[1])], ml: Number(t.v)})), last, cd: Math.max(0, (tt ? Number(tt.v) : 0) + WM_COOL - now), ...extra};
+    };
+    if (path === "wm_info") return J(await info({}));
+    const amt = Math.floor(Number(b.amt));
+    if (!Number.isFinite(amt) || amt < 1000) return J({error: "Минимум 1 000 монет"});
+    const tt = await db.prepare("SELECT v FROM kv WHERE k=?").bind("wt" + id).first();
+    if (tt && now - Number(tt.v) < WM_COOL) return J({error: "Арбуз ещё впитывает воду, подожди"});
+    await db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES (?,?)").bind("wt" + id, String(now)).run();
+    const mr = await mutate(db, id, st => { if (num(st.pts) < amt) return "Не хватает монет"; st.pts -= amt; });
+    if (mr.error) { await db.prepare("DELETE FROM kv WHERE k=?").bind("wt" + id).run(); return J(mr); }
+    const ml = Math.floor(Math.pow(Math.log10(amt), 2)), cur = (await rd()).r, ck = "wc" + cur + ":" + id;
+    await db.prepare("INSERT OR IGNORE INTO kv (k,v) VALUES (?,'0')").bind(ck).run();
+    await db.prepare("UPDATE kv SET v=CAST(CAST(v AS INTEGER)+? AS TEXT) WHERE k=?").bind(ml, ck).run();
+    await db.prepare("UPDATE kv SET v=CAST(CAST(v AS REAL)+? AS TEXT) WHERE k='wp'").bind(ml).run();
+    let harvest = false; const st2 = await rd();
+    if (st2.p >= goalOf(st2.r)) {
+      const adv = await db.prepare("UPDATE kv SET v=CAST(CAST(v AS INTEGER)+1 AS TEXT) WHERE k='wr' AND CAST(v AS INTEGER)=?").bind(st2.r).run();
+      if (adv.meta.changes === 1) {
+        harvest = true; await db.prepare("UPDATE kv SET v=CAST(MAX(0, CAST(v AS REAL)-?) AS TEXT) WHERE k='wp'").bind(goalOf(st2.r)).run();
+        const parts = (await db.prepare("SELECT k,v FROM kv WHERE k LIKE ? ORDER BY CAST(v AS INTEGER) DESC").bind("wc" + st2.r + ":%").all()).results, tops = [];
+        for (let i = 0; i < parts.length; i++) {
+          const uid = Number(parts[i].k.split(":")[1]), g = 10 + (i < 3 ? [30, 20, 10][i] : 0);
+          await db.prepare("INSERT INTO grants (uid,kind,a,b,ts) VALUES (?,?,?,?,?)").bind(uid, "gems", g, 0, now).run();
+          if (i < 3) { const u = await db.prepare("SELECT name FROM users WHERE id=?").bind(uid).first(); tops.push({id: uid, name: u ? u.name : "?", ml: Number(parts[i].v)}); }
+        }
+        await db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES ('wl',?)").bind(JSON.stringify({r: st2.r, n: parts.length, top: tops, at: now})).run();
+        const ex = await db.prepare("SELECT v FROM kv WHERE k='evt'").first(); let live = false; try { if (ex) { const e0 = JSON.parse(ex.v); live = e0.until > now && e0.from <= now && e0.mult >= 1.5; } } catch (e) {}
+        if (!live) await db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES ('evt',?)").bind(JSON.stringify({id: "wm" + st2.r, name: "Мировой арбуз созрел", mult: 1.5, from: now, until: now + 1800})).run();
+      }
+    }
+    return J({...mr, ml, harvest, info: await info({})});
+  }
   if (path === "season_top") {
     await seasonEnsure(db, now);
     const rows = (await db.prepare(SEASON_Q).all()).results.map(r => ({...r, badges: bd(r.id, r.badges)})); await addPh(db, rows, "id");

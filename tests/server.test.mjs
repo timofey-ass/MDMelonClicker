@@ -461,3 +461,20 @@ test("защита: мусор в inv и массивах вычищается",
   assert.deepEqual(Object.keys(st.inv).sort(), ["5", "8"]); assert.equal(st.inv["5"], 3); assert.equal(st.inv["8"], 1e6);
   assert.equal(st.ach.length, 300); assert.equal(st.click, 2000); assert.equal(st.perks.a, 2000);
 });
+
+test("мировой арбуз: полив, кулдаун, созревание и награды", async () => {
+  const { call, env } = await makeEnv();
+  await call(A, "save", { rev: 0, state: baseState({ total: 5e6, run: 5e6, pts: 5e6 }) });
+  await call(B, "save", { rev: 0, state: baseState({ pts: 5000, total: 5000 }) });
+  const i0 = await call(A, "wm_info", {}); assert.equal(i0.r, 1); assert.equal(i0.p, 0); assert.equal(i0.goal, 3500);
+  assert.match((await call(A, "wm_water", { amt: 10 })).error, /Минимум/);
+  const w1 = await call(B, "wm_water", { amt: 1000 }); assert.equal(w1.ml, 9); assert.equal(w1.state.pts, 4000); assert.equal(w1.info.my, 9);
+  assert.match((await call(B, "wm_water", { amt: 1000 })).error, /впитывает/);
+  assert.match((await call(A, "wm_water", { amt: 9e9 })).error, /Не хватает/);
+  await env.DB.prepare("UPDATE kv SET v='3490' WHERE k='wp'").run();
+  const w2 = await call(A, "wm_water", { amt: 1e6 }); assert.equal(w2.ml, 36); assert.equal(w2.harvest, true); assert.equal(w2.info.r, 2);
+  assert.deepEqual((await call(A, "poll", {})).grants.map(x => x.a), [40]);
+  assert.deepEqual((await call(B, "poll", {})).grants.map(x => x.a), [30]);
+  assert.equal((await call(B, "poll", {})).evt.mult, 1.5);
+  assert.equal((await call(A, "wm_info", {})).last.r, 1);
+});

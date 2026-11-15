@@ -1799,7 +1799,7 @@ function refCard() {
   return `<div class="card col"><div class="t1" style="display:flex;align-items:center;gap:8px;color:var(--pri)">${ic("userplus", 18)} Пригласи друзей</div><div class="t2" style="margin:0">За каждого нового игрока тебе +${b} ${ic("gem", 13)}, ему +${w} ${ic("gem", 13)}. Приглашено: <b>${n}</b></div><div style="display:flex;gap:8px;flex-wrap:wrap">${btn(ic("tg", 16) + " Отправить другу", "refshare", "", "")}${btn("Копировать ссылку", "refcopy", "", "o")}</div></div>`;
 }
 const _tAch1 = tAch;
-tAch = function () { return dlyCard() + refCard() + _tAch1(); };
+tAch = function () { if (!WM || Date.now() - WM.at > 30000) wmLoad(); return wmCard() + dlyCard() + refCard() + _tAch1(); };
 A.dlyget = async function () {
   await save(true); const r = await api("daily_claim", {}); if (r.error) { toast(r.error); await dlyLoad(); return render(); }
   adopt(r); DLY.can = false; DLY.streak = r.streak; toast("Награда за вход: +" + r.gems + " кристаллов"); try { hap("ok"); gsfx("win"); } catch (e) {} closeModal(); render();
@@ -1901,7 +1901,7 @@ Object.assign(EN, {
 "Жар-птица":"Firebird","25 лихорадок":"25 fevers","Бессмертный":"Immortal","5 перерождений":"5 rebirths","Кейсомания":"Case mania","Открыть 100 кейсов":"Open 100 cases","Обычный кейс":"Common case","Редкий кейс":"Rare case","Золотой кейс":"Golden case","Алмазный кейс":"Diamond case","Особый кейс":"Special case","Течкот-кейс":"Techcat case",
 "Золотой палец":"Golden finger","+10% к тапам за уровень":"+10% to taps per level","Мурлыка":"Purrer","+10% к доходу за уровень":"+10% income per level","Звёздный магнит":"Star magnet","Золотые звёзды чаще на 50%":"Golden stars 50% more often","Быстрый кейс":"Fast case","Бесплатный кейс быстрее на 15%":"Free case 15% faster",
 "Едоки":"Eaters","Напитки":"Drinks","Радиация":"Radiation","Течкоты":"Techcats","Булка":"Bun","Бургер":"Burger","Самса":"Samsa","Яблоко":"Apple","Дыня":"Melon","Тыква":"Pumpkin","Апельсин":"Orange","Клубника":"Strawberry","Банан":"Banana","Груша":"Pear","Вишня":"Cherry","Персик":"Peach","Хлеб":"Bread","Леденец":"Lollipop","Пепси":"Pepsi","Кола":"Cola","Реактор":"Reactor","Юпитер":"Jupiter","Земля":"Earth","Метеорит":"Meteorite",
-"Тапов":"Taps","тапов":"taps","генераторов":"generators","ко всему":"to everything","ему +":"them +","Опыт":"XP","Открыто":"Opened","из":"of"
+"Мировой арбуз":"World watermelon","Раунд":"Round","Полить":"Water","Лучшие поливальщики":"Top waterers","Твой вклад:":"Your contribution:","Арбуз ещё впитывает воду, подожди":"The melon is still soaking, wait","Монеты тратятся на рост арбуза":"Coins are spent on growing the melon","Можно полить через":"You can water again in","Весь сервер поливает один арбуз. Созреет: каждому участнику кристаллы и ×1.5 к доходу всем на 30 минут.":"The whole server waters one melon. When it ripens, every participant gets gems and everyone gets x1.5 income for 30 minutes.","Мировой арбуз созрел":"World watermelon ripened","Минимум 1 000 монет":"Minimum 1,000 coins","мл":"ml","Тапов":"Taps","тапов":"taps","генераторов":"generators","ко всему":"to everything","ему +":"them +","Опыт":"XP","Открыто":"Opened","из":"of"
 });
 EN_LIST.length = 0; Object.keys(EN).filter(k => k.length >= 4).sort((a, b) => b.length - a.length).forEach(k => EN_LIST.push(k));
 let langObs = null;
@@ -1935,3 +1935,27 @@ setTimeout(() => {
     modal(`<div data-nt="1" style="text-align:center"><div class="t1" style="font-size:20px">Выбери язык · Choose language</div><div style="display:flex;gap:10px;justify-content:center;margin-top:14px"><button class="btn ${guess === "ru" ? "" : "o"}" data-a="lang" data-i="ru">Русский</button><button class="btn ${guess === "en" ? "" : "o"}" data-a="lang" data-i="en">English</button></div></div>`);
   } else langApply();
 }, 1200);
+
+// ---------- Мировой арбуз: общий арбуз всего сервера
+let WM = null;
+async function wmLoad() { if (WM) WM.at = Date.now(); try { const r = await api("wm_info", {}); if (r && !r.error && r.goal) { WM = r; WM.at = Date.now(); if (tab === 3) render(); } } catch (e) {} }
+function wmCard() {
+  if (!WM) return "";
+  const f = Math.min(1, WM.p / WM.goal), sz = Math.round(70 + 60 * f), mine = WM.my;
+  const melon = `<svg viewBox="0 0 100 100" width="${sz}" height="${sz}" style="flex:none;transition:all .6s"><defs><radialGradient id="wmg" cx="38%" cy="32%"><stop offset="0" stop-color="#7bd16a"/><stop offset="1" stop-color="#1f7a3a"/></radialGradient></defs><ellipse cx="50" cy="55" rx="42" ry="38" fill="url(#wmg)"/><g stroke="#14572a" stroke-width="4" stroke-linecap="round" fill="none" opacity=".55"><path d="M50 18v74"/><path d="M30 24c-8 18-8 48 0 64"/><path d="M70 24c8 18 8 48 0 64"/><path d="M14 40c-2 12-1 24 4 34"/><path d="M86 40c2 12 1 24-4 34"/></g><path d="M50 18c0-8 6-12 12-12" stroke="#2e7d32" stroke-width="5" fill="none" stroke-linecap="round"/></svg>`;
+  const amts = [[.01, "1%"], [.1, "10%"], [.5, "50%"]].map(([k, l]) => [Math.max(1000, Math.floor(S.pts * k)), l]);
+  const can = WM.cd <= 0;
+  const cdTxt = WM.cd > 0 ? `Можно полить через ${Math.ceil(WM.cd / 60)} мин` : "Монеты тратятся на рост арбуза";
+  return `<div class="card col clset"><div class="t1" style="display:flex;align-items:center;gap:8px;color:var(--pri)">${ic("star", 18)} Мировой арбуз<span class="t2" style="margin:0 0 0 auto;font-size:12px">Раунд ${WM.r}</span></div>
+<div style="display:flex;align-items:center;gap:14px"><div style="width:130px;height:130px;display:flex;align-items:center;justify-content:center">${melon}</div><div class="grow"><div class="t2" style="margin:0">Весь сервер поливает один арбуз. Созреет: каждому участнику кристаллы и ×1.5 к доходу всем на 30 минут.</div><div class="t1" style="font-size:15px;margin-top:6px">${fmt(Math.floor(WM.p))} / ${fmt(WM.goal)} мл</div></div></div>
+<div class="lbb"><i style="width:${f * 100}%"></i></div>
+<div class="t2" style="margin:0;font-size:12px">Твой вклад: <b>${mine} мл</b> · ${cdTxt}</div>
+<div style="display:flex;gap:8px;flex-wrap:wrap">${amts.map(([a, l]) => btn(`Полить ${l} · ${fmt(a)}`, "wmw", `data-i="${a}"${can && S.pts >= a ? "" : " disabled"}`, "o")).join("")}</div>
+${WM.top.length ? `<div class="t2" style="margin:0;font-weight:700">Лучшие поливальщики</div>${WM.top.map((t, i) => `<div class="t2" style="margin:0;font-size:13px">${i + 1}. ${esc(t.name)} · ${t.ml} мл</div>`).join("")}` : ""}
+${WM.last ? `<div class="t2" style="margin:0;font-size:12px">Прошлый арбуз (раунд ${WM.last.r}) созрел: участников ${WM.last.n}${WM.last.top[0] ? ", лучший: " + esc(WM.last.top[0].name) : ""}</div>` : ""}</div>`;
+}
+A.wmw = async function (e) {
+  const amt = +e.dataset.i; await save(true); const r = await api("wm_water", {amt}); if (r.error) { toast(r.error); return wmLoad(); }
+  adopt(r); WM = r.info; WM.at = Date.now(); gsfx("buy"); hap("ok");
+  toast(r.harvest ? "Арбуз созрел! Награды уже в пути, доход ×1.5 для всех" : "Арбуз вырос на " + r.ml + " мл"); render();
+};
