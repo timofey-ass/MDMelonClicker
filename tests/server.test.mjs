@@ -410,9 +410,11 @@ test("рефералы: бонус обоим, себя приглашать н�
   await call(S1, "save", { rev: 0, state: baseState({}) });
   await call(C, "save", { rev: 0, state: baseState({}) });
   assert.equal((await call(A, "ref_info", {})).count, 1);
-  const ga = (await call(A, "poll", {})).grants, gc = (await call(C, "poll", {})).grants;
-  assert.deepEqual(ga.map(x => [x.kind, x.a]), [["gems", 25]]); assert.deepEqual(gc.map(x => [x.kind, x.a]), [["gems", 10]]);
-  await call(C, "save", { rev: 1, state: baseState({}) });
+  assert.equal((await call(A, "poll", {})).grants.length, 0);
+  const gc = (await call(C, "poll", {})).grants; assert.deepEqual(gc.map(x => [x.kind, x.a]), [["gems", 10]]);
+  await call(C, "save", { rev: 1, state: baseState({ total: 30000, run: 30000, pts: 30000 }) });
+  assert.deepEqual((await call(A, "poll", {})).grants.map(x => [x.kind, x.a]), [["gems", 25]]);
+  await call(C, "save", { rev: 2, state: baseState({ total: 60000, run: 60000, pts: 60000 }) });
   assert.equal((await call(A, "ref_info", {})).count, 1);
   assert.equal((await call(S1, "poll", {})).grants.length, 0);
 });
@@ -449,4 +451,13 @@ test("коллекция: награды за прогресс; сезон: ре
   assert.equal(s1.myScore, 0);
   const g = await call(B, "save", { rev: 1, state: baseState({ total: 3e6, pts: 3e6 }) });
   const s2 = await call(B, "season_top", {}); assert.equal(s2.rows[0].id, 1002); assert.equal(s2.rank, 1);
+});
+
+test("защита: мусор в inv и массивах вычищается", async () => {
+  const { call } = await makeEnv();
+  const bad = baseState({ inv: { "5": 3, "x": 9, "9999": 1, "7": -4, "8": 1e30 }, ach: new Array(1000).fill(1), click: 1e9, perks: { a: 1e9 } });
+  await call(A, "save", { rev: 0, state: bad });
+  const st = (await call(A, "auth", {})).state;
+  assert.deepEqual(Object.keys(st.inv).sort(), ["5", "8"]); assert.equal(st.inv["5"], 3); assert.equal(st.inv["8"], 1e6);
+  assert.equal(st.ach.length, 300); assert.equal(st.click, 2000); assert.equal(st.perks.a, 2000);
 });

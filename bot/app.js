@@ -61,8 +61,8 @@ function addXp(n) { const b = level()[0]; S.xp += n; for (let lv = b + 1; lv <= 
 const setIdx = key => { const s = SETS.find(x => x[0] === key); return ITEMS.map((it, i) => s[2].includes(it[1]) ? i : -1).filter(i => i >= 0); };
 function stat(k) { if (k === "owned") return owned(); if (k === "items") return Object.keys(S.inv).length; return S[k] || 0; }
 function checkAch() {
-  for (const [key, nm, , bn] of SETS) if (!S.sets.includes(key) && setIdx(key).every(i => (i + "") in S.inv)) { S.sets.push(key); toast("Сет «" + nm + "» собран: +" + bn + "% ко всему"); hap("ok"); if (key === "tech") { LSset("fall", 3 + SETS.length - 1); toast("Течкоты собраны! Включён фон из нулей и единиц"); } try { fxConfetti(80); } catch (e) {} }
-  for (const [id, title, , key, goal] of ACH) if (!S.ach.includes(id) && stat(key) >= goal) { S.ach.push(id); toast("🏆 " + title + ": +2% ко всему"); hap("ok"); }
+  for (const [key, nm, , bn] of SETS) if (!S.sets.includes(key) && setIdx(key).every(i => (i + "") in S.inv)) { S.sets.push(key); toast("Сет «" + nm + "» собран: +" + bn + "% ко всему"); hap("ok"); gsfx("win"); if (key === "tech") { LSset("fall", 3 + SETS.length - 1); toast("Течкоты собраны! Включён фон из нулей и единиц"); } try { fxConfetti(80); } catch (e) {} }
+  for (const [id, title, , key, goal] of ACH) if (!S.ach.includes(id) && stat(key) >= goal) { S.ach.push(id); toast("🏆 " + title + ": +2% ко всему"); hap("ok"); gsfx("win"); }
 }
 const pickR = ri => { const l = ITEMS.map((it, i) => it[2] === ri && !it[6] && !it[7] ? i : -1).filter(i => i >= 0); return l[Math.floor(Math.random() * l.length)]; };
 function rarR(w) { let r = Math.random() * w.reduce((a, b) => a + b, 0); for (let i = 0; i < w.length; i++) { r -= w[i]; if (r <= 0) return i; } return 0; }
@@ -243,8 +243,8 @@ const A = {
   boost() { const c = Math.max(5000, cps() * 300); if (S.pts < c) return; if (now() < S.boost + 180) return toast("Ускорение ещё остывает"); S.pts -= c; S.boost = now() + 60; mark(); hap(); render(); },
   prest() { const g = pendingGems(); if (g < 1) return toast("Нужно накопить хотя бы 1 000 000 за забег"); if (!armed) { armed = true; toast("Нажми ещё раз: сброс за 💎 " + g); setTimeout(() => armed = false, 4000); return; } armed = false; Object.assign(S, {pts: 0, run: 0, click: 0, crit: 0, fev: 0, b: BUILDS.map(() => 0), boost: 0}); S.gems += g; S.gt += g; S.prest++; fever = frenzy = 0; toast("💎 +" + g + ". Бонус теперь +" + 10 * S.gt + "%"); hap("ok"); mark(); save(true); render(); },
   perk(e) { const k = e.dataset.i, p = PERKS.find(x => x[0] === k), lv = perk(k), c = p[4] * (lv + 1); if (lv >= p[5]) return; if (S.gems < c) return toast("Не хватает самоцветов"); S.gems -= c; S.perks[k] = lv + 1; mark(); hap(); render(); },
-  upg(e) { const i = +e.dataset.i, c = uCost(i); if (S.pts < c || S[UK[i]] >= UPGR[i][5]) return; S.pts -= c; S[UK[i]]++; mark(); hap(); render(); },
-  bld(e) { const i = +e.dataset.i, n = bCount(i), c = bCost(i, n); if (S.pts < c) return; S.pts -= c; S.b[i] += n; checkAch(); mark(); hap(); render(); },
+  upg(e) { const i = +e.dataset.i, c = uCost(i); if (S.pts < c || S[UK[i]] >= UPGR[i][5]) return; S.pts -= c; S[UK[i]]++; mark(); hap(); gsfx("buy"); render(); },
+  bld(e) { const i = +e.dataset.i, n = bCount(i), c = bCost(i, n); if (S.pts < c) return; S.pts -= c; S.b[i] += n; checkAch(); mark(); hap(); gsfx("buy"); render(); },
   free() { openCase(0, 1); },
   lvcase(e) { openCase(+e.dataset.i, 2); },
   case(e) { openCase(+e.dataset.i, 0, +e.dataset.n); },
@@ -310,7 +310,7 @@ function tap() {
   g *= 1 - taxTap(S.pts);
   S.pts += g; S.run += g; S.total += g; S.taps++;
   if (t >= fever) { combo = Math.min(100, combo + 7); if (combo >= 100) { fever = t + 6 + S.fev; S.fevers++; toast("🔥 Лихорадка! x2"); hap("heavy"); } }
-  hap(crit ? "medium" : "light"); floatTxt((crit ? "КРИТ +" : "+") + fmt(g), crit ? "#ffd54f" : "var(--on)", crit ? 26 : 20); mark();
+  hap(crit ? "medium" : "light"); gsfx(crit ? "crit" : "tap"); floatTxt((crit ? "КРИТ +" : "+") + fmt(g), crit ? "#ffd54f" : "var(--on)", crit ? 26 : 20); mark();
 }
 function spawnStar() {
   const f = $("#field"); if (!f) return; const s = document.createElement("div"); s.className = "star"; s.innerHTML = ic("star", 44, "#ffd54f"); s.style.left = (20 + Math.random() * 60) + "%"; s.style.top = (10 + Math.random() * 70) + "%";
@@ -430,6 +430,14 @@ function sfx(kind, n) {
   if (kind === "tick") tone(1500, 18, .05, "square");
   else if (kind === "up") tone(SCALE[(n || 0) % SCALE.length], 60, .09, "triangle");
   else if (kind === "boom") tone(90, 220, .25, "sawtooth");
+}
+let gsT = 0;
+function gsfx(k) {
+  if (!LS("sgm", 1)) return; const t = performance.now();
+  if (k === "tap") { if (t - gsT < 55) return; gsT = t; tone(500 + Math.random() * 90, 35, .035, "sine"); }
+  else if (k === "crit") { tone(784, 70, .07, "triangle"); setTimeout(() => tone(1175, 90, .07, "triangle"), 60); }
+  else if (k === "buy") { tone(660, 50, .06, "triangle"); setTimeout(() => tone(880, 70, .06, "triangle"), 55); }
+  else if (k === "win") [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => tone(f, 120, .08, "triangle"), 90 * i));
 }
 function jingle(ri, fail) { const seq = fail ? [330, 262, 196] : JING[Math.min(4, ri)]; seq.forEach((f, i) => setTimeout(() => tone(f, 160, .1, "triangle"), 110 * i)); }
 function buzz(lvl) {
@@ -733,7 +741,7 @@ tMore = function () {
   let h = `<div class="card"><div class="grow"><div class="t1">${esc(me.name || "Игрок")}</div><div class="t2">ID ${me.id}</div></div></div>`;
   const fn = ["Нет", "Снежинки", "Тыквы"], fv = [0, 1, 2]; SETS.forEach((x, i) => { if (S.sets.includes(x[0])) { fn.push(x[1]); fv.push(3 + i); } });
   h += `<div class="card col"><div class="t1" style="color:var(--pri)">Оформление</div>${optRow("Тема", THEMES.map(t => t[0]), "th", THEMES.map((_, i) => i), LS("th", 0))}${optRow("Падающий фон", fn, "fall", fv, LS("fall", 0))}</div>`;
-  h += `<div class="card col"><div class="t1" style="color:var(--pri)">Игра</div>${tog("Вибрация", "hap", LS("hap", 1))}${tog("Звуки кейсов", "snd", LS("snd", 1))}${tog("Анимации клика", "fxt", LS("fxt", 1))}${tog("Анимации открытия кейсов", "fxc", LS("fxc", 1))}</div>`;
+  h += `<div class="card col"><div class="t1" style="color:var(--pri)">Игра</div>${tog("Вибрация", "hap", LS("hap", 1))}${tog("Звуки кейсов", "snd", LS("snd", 1))}${tog("Звуки игры (клики, покупки)", "sgm", LS("sgm", 1))}${tog("Анимации клика", "fxt", LS("fxt", 1))}${tog("Анимации открытия кейсов", "fxc", LS("fxc", 1))}</div>`;
   const st = [["Всего тапов", fmt(S.taps)], ["Накоплено за всё время", fmt(S.total)], ["За текущий забег", fmt(S.run)], ["Генераторов", owned()], ["Самоцветов", S.gems], ["Перерождений", S.prest], ["Звёзд поймано", S.stars], ["Лихорадок", S.fevers], ["Общий множитель", "x" + baseMult().toFixed(2)]];
   h += `<div class="card col" style="gap:0">${st.map(r => `<div style="display:flex;padding:3px 0"><span class="t2 grow" style="font-size:14px;margin:0">${r[0]}</span><span style="font-size:14px;font-weight:700">${r[1]}</span></div>`).join("")}</div>`;
   h += `<div class="card col"><div class="t1" style="color:var(--pri)">Как играть</div><div class="t2" style="font-size:13px">${TIPS}</div></div>`;

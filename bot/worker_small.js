@@ -74,7 +74,7 @@ async function init(db) {
   try { await db.prepare("CREATE TABLE IF NOT EXISTS clan_chat (id INTEGER PRIMARY KEY AUTOINCREMENT, cid INTEGER, uid INTEGER, name TEXT, text TEXT, ts INTEGER)").run(); } catch (e) {}
   ready = true;
 }
-const REF_BONUS = 25, REF_NEW = 10, DAILY_R = [5, 5, 10, 10, 15, 20, 50];
+const REF_BONUS = 25, REF_NEW = 10, REF_NEED = 20000, DAILY_R = [5, 5, 10, 10, 15, 20, 50];
 const CL_BD = "votpf", CL_IMG = /^data:image\/jpeg;base64,[A-Za-z0-9+\/=]+$/;
 const SEASON_REW = [100, 50, 25], COLL_MS = [[10, 5], [25, 10], [50, 25], [75, 40], [90, 100]];
 const seasonId = now => { const d = new Date((now + 7200) * 1000); return d.getUTCFullYear() * 12 + d.getUTCMonth(); };
@@ -123,6 +123,10 @@ function clean(s, prev, dt, al) {
   if (JSON.stringify(s).length > 40000) return null;
   if (!Array.isArray(s.b) || !s.inv || typeof s.inv !== "object") return null;
   s.b = s.b.slice(0, 32).map(v => Math.floor(fin(v, 1e6)));
+  { const ni = {}; let n = 0; for (const k of Object.keys(s.inv)) { if (!/^\d{1,4}$/.test(k) || +k >= N_ITEMS + 600 || ++n > 800) continue; const v = Math.floor(fin(s.inv[k], 1e6)); if (v > 0) ni[k] = v; } s.inv = ni; }
+  for (const k of ["ach", "sets", "holo", "hist"]) if (s[k] !== undefined) s[k] = Array.isArray(s[k]) ? s[k].slice(0, k === "hist" ? 80 : 300) : [];
+  for (const k of ["click", "crit", "fev", "pity", "cv"]) if (s[k] !== undefined) s[k] = Math.floor(fin(s[k], 2000));
+  if (s.perks !== undefined) { const np = {}; if (s.perks && typeof s.perks === "object" && !Array.isArray(s.perks)) for (const k of Object.keys(s.perks).slice(0, 60)) np[String(k).slice(0, 30)] = Math.floor(fin(s.perks[k], 2000)); s.perks = np; }
   for (const k of ["taps", "stars", "fevers", "prest", "opened", "xp", "gt"]) if (s[k] !== undefined) s[k] = Math.floor(fin(s[k], 1e15));
   for (const k of ["run", "total"]) s[k] = fin(s[k], ABS_MAX);
   s.gems = Math.floor(fin(s.gems, GEM_MAX));
@@ -281,7 +285,7 @@ async function api(path, req, env) {
         if (ru && (!cx || Number(cx.v) < 100)) {
           await db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES (?,?)").bind("rf" + id, String(rid)).run();
           await db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES (?,?)").bind("rfc" + rid, String((cx ? Number(cx.v) : 0) + 1)).run();
-          await db.prepare("INSERT INTO grants (uid,kind,a,b,ts) VALUES (?,?,?,?,?)").bind(rid, "gems", REF_BONUS, 0, now).run();
+          await db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES (?,?)").bind("rfp" + id, String(rid)).run();
           await db.prepare("INSERT INTO grants (uid,kind,a,b,ts) VALUES (?,?,?,?,?)").bind(id, "gems", REF_NEW, 0, now).run();
         }
       }
@@ -289,6 +293,10 @@ async function api(path, req, env) {
       const n = await getUser(db, id); return J({rev: n.rev});
     }
     const res = await db.prepare("UPDATE users SET state=?, rev=rev+1, total=?, cur=?, name=?, upd=? WHERE id=? AND rev=?").bind(JSON.stringify(s), num(s.total), Math.max(0, num(s.pts)), name, now, id, Number(b.rev)).run();
+    if (res.meta.changes === 1 && prev && num(prev.total) < REF_NEED && num(s.total) >= REF_NEED) {
+      const rp = await db.prepare("SELECT v FROM kv WHERE k=?").bind("rfp" + id).first();
+      if (rp) { await db.prepare("DELETE FROM kv WHERE k=?").bind("rfp" + id).run(); await db.prepare("INSERT INTO grants (uid,kind,a,b,ts) VALUES (?,?,?,?,?)").bind(Number(rp.v), "gems", REF_BONUS, 0, now).run(); }
+    }
     if (res.meta.changes === 1) { if (prev) await allowUse(db, id, num(s.pts) - num(prev.pts), now); return J(clamped ? {rev: Number(b.rev) + 1, clamp: true, state: s} : {rev: Number(b.rev) + 1}); }
     if (!u.state) return J({reset: true, rev: u.rev});
     return J({conflict: true, state: JSON.parse(u.state), rev: u.rev});

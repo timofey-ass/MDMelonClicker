@@ -543,7 +543,7 @@ tMore = function () {
   }
   const fn = ["Нет", "Снежинки", "Тыквы"], fv = [0, 1, 2]; SETS.forEach((x, i) => { if (S.sets.includes(x[0])) { fn.push(x[1]); fv.push(3 + i); } });
   return mback + `<div class="card col"><div class="t1" style="color:var(--pri)">Оформление</div><div class="card click" style="margin:4px 0 0;padding:8px 0;background:none;border:0" data-a="ltheme"><div class="t1 grow" style="font-size:14px">Светлая тема</div><div class="sw ${LS("lt", 0) ? "on" : ""}"></div></div>${optRow("Цвет", THEMES.map(t => t[0]), "th", THEMES.map((_, i) => i), LS("th", 0))}${optRow("Падающий фон", fn, "fall", fv, LS("fall", 0))}</div>` +
-    `<div class="card col"><div class="t1" style="color:var(--pri)">Игра</div>${tog("Вибрация", "hap", LS("hap", 1))}${tog("Звуки кейсов", "snd", LS("snd", 1))}${tog("Анимации клика", "fxt", LS("fxt", 1))}${tog("Анимации открытия кейсов", "fxc", LS("fxc", 1))}<div class="card click" style="margin:4px 0 0;padding:8px 0;background:none;border:0" data-a="rfl"><div class="t1 grow" style="font-size:14px">Меньше вспышек</div><div class="sw ${LS("rfl", 0) ? "on" : ""}"></div></div></div>` +
+    `<div class="card col"><div class="t1" style="color:var(--pri)">Игра</div>${tog("Вибрация", "hap", LS("hap", 1))}${tog("Звуки кейсов", "snd", LS("snd", 1))}${tog("Звуки игры (клики, покупки)", "sgm", LS("sgm", 1))}${tog("Анимации клика", "fxt", LS("fxt", 1))}${tog("Анимации открытия кейсов", "fxc", LS("fxc", 1))}<div class="card click" style="margin:4px 0 0;padding:8px 0;background:none;border:0" data-a="rfl"><div class="t1 grow" style="font-size:14px">Меньше вспышек</div><div class="sw ${LS("rfl", 0) ? "on" : ""}"></div></div></div>` +
     `<div class="card col"><div class="t1" style="color:var(--pri)">Промокод</div><div style="display:flex;gap:8px"><input data-keep="promo" placeholder="Введи промокод" style="text-transform:uppercase">${btn("Ок", "promo")}</div></div>` +
     `<button class="btn t" data-a="reset" style="width:100%;justify-content:center;margin-top:4px">Сбросить весь прогресс</button>`;
 };
@@ -1802,7 +1802,7 @@ const _tAch1 = tAch;
 tAch = function () { return dlyCard() + refCard() + _tAch1(); };
 A.dlyget = async function () {
   await save(true); const r = await api("daily_claim", {}); if (r.error) { toast(r.error); await dlyLoad(); return render(); }
-  adopt(r); DLY.can = false; DLY.streak = r.streak; toast("Награда за вход: +" + r.gems + " кристаллов"); try { hap("medium"); } catch (e) {} closeModal(); render();
+  adopt(r); DLY.can = false; DLY.streak = r.streak; toast("Награда за вход: +" + r.gems + " кристаллов"); try { hap("ok"); gsfx("win"); } catch (e) {} closeModal(); render();
 };
 A.refshare = function () { const u = "https://t.me/share/url?url=" + encodeURIComponent(REFLINK()) + "&text=" + encodeURIComponent("Играю в MDMelonClicker, заходи: коты, кейсы и кланы"); try { if (tg && tg.openTelegramLink) return tg.openTelegramLink(u); } catch (e) {} window.open(u, "_blank"); };
 A.refcopy = async function () { try { await navigator.clipboard.writeText(REFLINK()); toast("Ссылка скопирована"); } catch (e) { const t = document.createElement("textarea"); t.value = REFLINK(); document.body.appendChild(t); t.select(); try { document.execCommand("copy"); toast("Ссылка скопирована"); } catch (x) { toast(REFLINK()); } t.remove(); } };
@@ -1823,7 +1823,7 @@ const _tCases2 = tCases;
 tCases = function () { if (!COLL) collLoad(); const h = _tCases2(); return COLL ? h.replace('<div class="sec">Коллекция ·', collCard() + '<div class="sec">Коллекция ·') : h; };
 A.collget = async function (e) {
   await save(true); const r = await api("coll_claim", {i: +e.dataset.i}); if (r.error) return toast(r.error);
-  adopt(r); COLL = {n: r.n, claimed: r.claimed, ms: r.ms}; toast("Награда за коллекцию: +" + r.gems + " кристаллов"); render();
+  adopt(r); COLL = {n: r.n, claimed: r.claimed, ms: r.ms}; toast("Награда за коллекцию: +" + r.gems + " кристаллов"); gsfx("win"); hap("ok"); render();
 };
 
 // ---------- сезоны: месячный рейтинг
@@ -1849,3 +1849,89 @@ tTop = function () {
 };
 function injectSeg(h, seg) { const k = h.indexOf('<div class="card">'); return k < 0 ? h : h.slice(0, k) + seg + h.slice(k); }
 A.lbm = function (e) { lbMode = +e.dataset.i; if (lbMode) { SEAS = null; seasLoad(); } render(); };
+
+// ---------- язык: русский / English (перевод интерфейса на лету)
+const EN = {
+"Игра":"Game","Магазин":"Shop","Кейсы":"Cases","Награды":"Rewards","Топ":"Top","Ещё":"More","Меню":"Menu","Казино":"Casino","Сообщество":"Community","Назад":"Back","← Назад":"← Back","← Казино":"← Casino",
+"Лидеры":"Leaders","Обмен":"Trade","Чат":"Chat","Друзья":"Friends","Кланы":"Clans","Сейчас":"Now","Сезон":"Season","Участники":"Members","Заявки":"Requests","Клан":"Clan","Все кланы":"All clans",
+"Улучшения":"Upgrades","Генераторы":"Generators","Настройки":"Settings","Информация":"Info","Оформление":"Appearance","Тема":"Theme","Цвет":"Color","Шрифт":"Font","Вибрация":"Vibration","Звуки кейсов":"Case sounds","Звуки игры (клики, покупки)":"Game sounds (taps, purchases)",
+"Анимации клика":"Tap animations","Анимации открытия кейсов":"Case opening animations","Меньше вспышек":"Fewer flashes","Что нового":"What's new","Как играть":"How to play","Сбросить весь прогресс":"Reset all progress","Нажми ещё раз: всё пропадёт!":"Tap again: everything will be lost!",
+"Всего тапов":"Total taps","Накоплено за всё время":"Earned all time","За текущий забег":"Current run","Самоцветов":"Gems","Перерождений":"Rebirths","Перерождение":"Rebirth","Достижений":"Achievements","Котов собрано":"Cats collected",
+"Ежедневный вход":"Daily login","Серия:":"Streak:","Забрать":"Claim","Приходи завтра: серия растёт, награда тоже":"Come back tomorrow: the streak and the reward grow","день":"day",
+"Пригласи друзей":"Invite friends","Отправить другу":"Send to a friend","Копировать ссылку":"Copy link","Ссылка скопирована":"Link copied","Приглашено:":"Invited:","Позже":"Later",
+"Задания недели":"Weekly tasks","Награда выдаётся каждому участнику клана":"The reward goes to every clan member","Наполнить казну":"Fill the treasury","Командная работа":"Teamwork","Крупный вклад":"Big contribution",
+"Прогресс коллекции":"Collection progress","Коллекция · нажми на кота, чтобы посмотреть инфо":"Collection · tap a cat to see info","Сеты котов · нажми, чтобы посмотреть":"Cat sets · tap to view","Последние выпадения":"Recent drops","Запас дубликатов":"Duplicates",
+"Бесплатный кейс":"Free case","Открыть":"Open","Открыто":"Opened","Открываем…":"Opening…","Загружаю…":"Loading…","Загрузка…":"Loading…","Подключаюсь…":"Connecting…","Готово":"Done","Готово!":"Done!","Отмена":"Cancel","Закрыть":"Close","Сохранить":"Save","Сохранено":"Saved","Создать":"Create","Купить":"Buy","Куплено":"Bought","Продано":"Sold","Принять":"Accept","Отклонить":"Decline","Обновить":"Refresh",
+"Золотой лидер":"Golden leader","Таблица лидеров":"Leaderboard","Монеты на данный момент, траты в казино тоже считаются":"Current coins; casino spending counts too","Ты:":"You:","место":"rank","Сезон месяца":"Monthly season","Победители прошлого сезона":"Last season's winners","Пока никто не набрал очков":"Nobody has scored yet",
+"Найти игрока":"Find a player","Найти":"Search","Имя или ID":"Name or ID","По имени или по ID (ID виден в профиле)":"By name or ID (your ID is in your profile)","Результаты":"Results","Друзья ·":"Friends ·","Ничего не найдено":"Nothing found","Подарок отправлен":"Gift sent","Монеты отправлены":"Coins sent","Теперь вы друзья":"You are friends now",
+"Создать клан":"Create clan","Название клана":"Clan name","Описание клана":"Clan description","Таблица кланов":"Clan table","Вступить":"Join","Заявка":"Apply","Вступление":"Joining","Свободное":"Open","По заявкам":"By request","Выйти из клана":"Leave clan","Распустить":"Disband","Опасная зона":"Danger zone",
+"Внешний вид":"Appearance","Заставка":"Banner","Картинка клана":"Clan picture","Выбрать":"Choose","Выбрать картинку":"Choose picture","Другая картинка":"Another picture","Название и описание":"Name and description","Градиент названия":"Name gradient","обычный":"default","куплен":"owned","выбран":"selected",
+"Заставка не задана":"No banner set","Заставка обновлена":"Banner updated","Картинка обновлена":"Picture updated","Приглашение в клан":"Clan invitation","Пригласить игрока":"Invite a player","Позвать":"Invite","Приглашение отправлено:":"Invitation sent:","Игрок не найден":"Player not found","Игрок уже в клане":"Player is already in a clan","Клан создан":"Clan created","Клан распущен":"Clan disbanded",
+"Уровень":"Level","Казна:":"Treasury:","Сколько внести в казну":"Amount to donate","Внести":"Donate","Спасибо, казна пополнена":"Thanks, the treasury is topped up","Очки (накопления участников):":"Score (members' savings):",
+"Админ":"Admin","Админка":"Admin","Админ-панель":"Admin panel","Значки клана":"Clan badges","Подтверждённый клан":"Verified clan","Официальный клан":"Official clan","Лучший клан":"Top clan","Партнёр":"Partner","Огонь":"Fire",
+"Заходи в ТГ чат":"Join our Telegram chat","Общаемся, делимся находками и новостями":"Chat, share finds and news","Сообщение":"Message","Пока тихо. Напиши первым!":"It's quiet. Write first!",
+"Профиль":"Profile","Мой профиль":"My profile","Стиль ника":"Nick style","Своё фото":"Own photo","Профиль сохранён":"Profile saved","Текущий кот":"Current cat","Витрина":"Showcase","Витрина: до 3 любимых котов":"Showcase: up to 3 favorite cats","Инвентарь ·":"Inventory ·","Достижения ·":"Achievements ·","Кот":"Cat","Монеты":"Coins","В друзья":"Add friend","Кристаллы":"Gems",
+"Банк":"Bank","Долг":"Debt","Баланс":"Balance","Рулетка":"Roulette","Ставка":"Bet","СТАВКА":"BET","Крутить":"Spin","ПОБЕДА!":"WIN!","ПОРАЖЕНИЕ":"LOSS","ДЖЕКПОТ!":"JACKPOT!","Победа!":"Win!","Неудача":"Miss","Не повезло…":"Unlucky…","Выигрыш +":"Win +",
+"Сделай 3000 тапов":"Make 3000 taps","Открой 20 кейсов":"Open 20 cases","Купи 50 генераторов":"Buy 50 generators","Награда получена":"Reward claimed","Получено":"Claimed","Ещё не выполнено":"Not completed yet",
+"Обменять":"Trade","Обмен котами":"Cat trading","Мои предложения":"My offers","Все предложения":"All offers","Пока нет предложений":"No offers yet","Новый обмен":"New trade","Предложить":"Offer","Предложение создано":"Offer created","Обмен состоялся!":"Trade complete!","У тебя нет котов для обмена":"You have no cats to trade",
+"Мастерская":"Workshop","Идеи":"Ideas","Коты":"Cats","Новая идея":"New idea","Идея отправлена":"Idea sent","Предлагай своих котов в мастерской.":"Suggest your own cats in the workshop.",
+"Промокоды":"Promo codes","Промокод":"Promo code","Введи промокод":"Enter a promo code","Промокод активирован:":"Promo code activated:",
+"Не хватает кристаллов":"Not enough gems","Не хватает самоцветов":"Not enough gems","Не хватает монет":"Not enough coins","Нет связи с сервером":"No connection to the server","Нет связи":"No connection","Не удалось загрузить":"Failed to load","Занято, попробуй ещё раз":"Busy, try again","Сегодня уже получено":"Already claimed today","Только глава":"Owner only","Игрок не найден":"Player not found","Клан не найден":"Clan not found","Такое название занято":"That name is taken","Название от 3 символов":"Name must be 3+ characters","Приглашения нет":"No invitation","Нужно собрать ещё":"Collect more first","Уже получено":"Already claimed","Картинка слишком большая":"Image is too large",
+"Тебе выдали:":"You received:","Тебе выдали":"You received","Пока тебя не было: +":"While you were away: +","🏛 Часовой налог: −":"🏛 Hourly tax: −","🏛 Налог за офлайн: −":"🏛 Offline tax: −","Награда за вход: +":"Login reward: +","Награда за коллекцию: +":"Collection reward: +",
+"Налог на богатство":"Wealth tax","Лихорадка":"Fever","Золотой градиент":"Golden gradient","Закат":"Sunset","Океан":"Ocean","Мята":"Mint","Арбуз":"Watermelon","Неон":"Neon","Радуга":"Rainbow","Лава":"Lava","Космос":"Space","Жирный":"Bold","Курсив":"Italic","Рукописный":"Handwritten","Строгий":"Strict","Широкий":"Wide","Звёзды":"Stars","Снежинки":"Snowflakes","Тыквы":"Pumpkins","Нет":"None","Светлая тема":"Light theme",
+"Обычный":"Common","Редкий":"Rare","Эпический":"Epic","Легендарный":"Legendary","Мифический":"Mythic","Особый":"Special","Течкот":"Techcat","Королевский":"Royal","Секретный":"Secret","Админский":"Admin",
+"Язык":"Language","Выбери язык":"Choose language","Загружаю котов…":"Loading cats…","Готовлю котов…":"Preparing cats…","Сообщение всем в игре":"Message to everyone in the game","Войти через Telegram":"Sign in with Telegram","Технический перерыв":"Maintenance break","Игра снова работает!":"The game is back!",
+"Тапай подряд — включится лихорадка!":"Keep tapping to trigger fever!","Лови золотые звёзды: они дают бонус.":"Catch the golden stars for a bonus.","Налоги растут вместе с богатством: чем больше монет, тем выше ставка. Тратить выгоднее, чем копить.":"Taxes grow with your wealth: the more coins, the higher the rate. Spending beats hoarding.",
+"За каждого нового игрока тебе +":"For each new player you get +","Заявок нет":"No requests","Заявок пока нет.":"No requests yet.","Кланов пока нет. Создай первый!":"No clans yet. Create the first one!","Ты в клане":"You are in a clan","Участники ·":"Members ·","Вы":"You","Тебя зовут в клан":"You are invited to the clan",
+"всем кланом внести":"clan-wide donations of","игрока вносят вклад":"players contribute","одно пожертвование от":"a single donation of","монет":"coins","кристаллов":"gems","Серия":"Streak","ещё":"left","мин назад":"min ago","ч назад":"h ago","дн назад":"d ago","давно":"long ago","в игре":"online","не в сети":"offline","ур.":"lv.","Ур.":"Lv.","бонус":"bonus","Очки:":"Score:","Казна":"Treasury","Лимит:":"Limit:","Тестер":"Tester","Создатель":"Creator","Гений":"Genius"
+};
+const EN_LIST = Object.keys(EN).filter(k => k.length >= 4).sort((a, b) => b.length - a.length);
+const CY = /[А-Яа-яЁё]/;
+function trEn(s) {
+  if (!CY.test(s)) return s;
+  const t = s.trim(); if (EN[t] !== undefined) return s.replace(t, EN[t]);
+  let r = s; for (const k of EN_LIST) if (r.includes(k)) r = r.split(k).join(EN[k]);
+  return r.replace(/(\d+) д (\d+) ч/g, "$1d $2h").replace(/(\d+) ч (\d+) мин/g, "$1h $2m").replace(/(\d+) мин/g, "$1 min").replace(/(\d+) дн\./g, "$1 d").replace(/день (\d)/g, "day $1").replace(/(\d) из (\d)/g, "$1 of $2");
+}
+Object.assign(EN, {
+"Котёнок":"Kitten","Лапки-помощники":"Helper paws","Молочная ферма":"Milk farm","Рыбный порт":"Fish port","Мурлыка-фабрика":"Purr factory","Портал Мяу":"Meow portal","Космокот":"Cosmocat","Сила клика":"Click power","+1 к каждому тапу":"+1 to every tap","Критический тап":"Critical tap","Шанс x5: 5% + 3% за уровень":"x5 chance: 5% + 3% per level","+1 с к длительности (6 с)":"+1 s duration (6 s)",
+"Первые лапки":"First paws","100 тапов":"100 taps","Тыкатель":"Tapper","1 000 тапов":"1,000 taps","Мастер кликов":"Click master","10 000 тапов":"10,000 taps","Копилка":"Piggy bank","Накопить 1 000":"Save 1,000","Миллионер":"Millionaire","Накопить 1 000 000":"Save 1,000,000","Миллиардер":"Billionaire","Накопить 1 000 000 000":"Save 1,000,000,000",
+"Команда":"Team","10 генераторов":"10 generators","Колония":"Colony","50 генераторов":"50 generators","Империя":"Empire","200 генераторов":"200 generators","Звёздочёт":"Stargazer","Поймать 5 звёзд":"Catch 5 stars","В огне":"On fire","3 лихорадки":"3 fevers","Новая жизнь":"New life","Первое перерождение":"First rebirth","Первый кейс":"First case","Открыть 10 кейсов":"Open 10 cases",
+"Коллекционер":"Collector","Собрать 10 предметов":"Collect 10 items","Всё и сразу":"Everything at once","Собрать все предметы":"Collect all items","Пятьдесят тысяч":"Fifty thousand","50 000 тапов":"50,000 taps","Триллионер":"Trillionaire","Накопить 1 000 000 000 000":"Save 1,000,000,000,000","Мегаполис":"Megacity","100 генераторов":"100 generators","Ловец звёзд":"Star catcher","Поймать 50 звёзд":"Catch 50 stars",
+"Жар-птица":"Firebird","25 лихорадок":"25 fevers","Бессмертный":"Immortal","5 перерождений":"5 rebirths","Кейсомания":"Case mania","Открыть 100 кейсов":"Open 100 cases","Обычный кейс":"Common case","Редкий кейс":"Rare case","Золотой кейс":"Golden case","Алмазный кейс":"Diamond case","Особый кейс":"Special case","Течкот-кейс":"Techcat case",
+"Золотой палец":"Golden finger","+10% к тапам за уровень":"+10% to taps per level","Мурлыка":"Purrer","+10% к доходу за уровень":"+10% income per level","Звёздный магнит":"Star magnet","Золотые звёзды чаще на 50%":"Golden stars 50% more often","Быстрый кейс":"Fast case","Бесплатный кейс быстрее на 15%":"Free case 15% faster",
+"Едоки":"Eaters","Напитки":"Drinks","Радиация":"Radiation","Течкоты":"Techcats","Булка":"Bun","Бургер":"Burger","Самса":"Samsa","Яблоко":"Apple","Дыня":"Melon","Тыква":"Pumpkin","Апельсин":"Orange","Клубника":"Strawberry","Банан":"Banana","Груша":"Pear","Вишня":"Cherry","Персик":"Peach","Хлеб":"Bread","Леденец":"Lollipop","Пепси":"Pepsi","Кола":"Cola","Реактор":"Reactor","Юпитер":"Jupiter","Земля":"Earth","Метеорит":"Meteorite",
+"Тапов":"Taps","тапов":"taps","генераторов":"generators","ко всему":"to everything","ему +":"them +","Опыт":"XP","Открыто":"Opened","из":"of"
+});
+EN_LIST.length = 0; Object.keys(EN).filter(k => k.length >= 4).sort((a, b) => b.length - a.length).forEach(k => EN_LIST.push(k));
+let langObs = null;
+function trNode(n) {
+  if (n.nodeType === 3) { const p = n.parentNode; if (!p || p.closest && p.closest("[data-nt], #chatlist, textarea, script, style")) return; const v = trEn(n.nodeValue); if (v !== n.nodeValue) n.nodeValue = v; return; }
+  if (n.nodeType !== 1 || (n.closest && n.closest("[data-nt], #chatlist"))) return;
+  if (n.placeholder && CY.test(n.placeholder)) n.placeholder = trEn(n.placeholder);
+  if (n.title && CY.test(n.title)) n.title = trEn(n.title);
+  for (const c of n.childNodes) trNode(c);
+}
+function langApply() {
+  const en = LS("lang", "ru") === "en";
+  document.documentElement.lang = en ? "en" : "ru";
+  if (langObs) { langObs.disconnect(); langObs = null; }
+  if (!en) return;
+  let q = new Set(), t = 0;
+  const flush = () => { t = 0; langObs.disconnect(); q.forEach(n => { if (document.body.contains(n)) trNode(n); }); q.clear(); langObs.observe(document.body, {childList: true, subtree: true, characterData: true}); };
+  langObs = new MutationObserver(ms => { for (const m of ms) { if (m.type === "characterData") q.add(m.target); else m.addedNodes.forEach(n => q.add(n)); } if (!t) t = requestAnimationFrame(flush); });
+  trNode(document.body); langObs.observe(document.body, {childList: true, subtree: true, characterData: true});
+}
+function langSet(l) { LSset("lang", l); if (l === "ru") { location.reload(); return; } langApply(); try { render(); } catch (e) {} }
+A.lang = function (e) { const l = e.dataset.i; closeModal(); if (l === "ru") { const was = LS("lang", "ru") === "en"; LSset("lang", "ru"); if (was) location.reload(); else langApply(); return; } langSet(l); };
+const _tMoreL = tMore;
+tMore = function () {
+  const en = LS("lang", "ru") === "en";
+  return `<div class="card col" data-nt="1"><div class="t1" style="color:var(--pri)">Язык / Language</div><div class="seg" style="margin:0"><button class="${en ? "" : "on"}" data-a="lang" data-i="ru">Русский</button><button class="${en ? "on" : ""}" data-a="lang" data-i="en">English</button></div></div>` + _tMoreL();
+};
+setTimeout(() => {
+  if (LS("lang", null) === null) {
+    let guess = "ru"; try { const lc = (tg.initDataUnsafe.user.language_code || "").toLowerCase(); if (lc && !["ru", "uk", "be"].includes(lc)) guess = "en"; } catch (e) {}
+    modal(`<div data-nt="1" style="text-align:center"><div class="t1" style="font-size:20px">Выбери язык · Choose language</div><div style="display:flex;gap:10px;justify-content:center;margin-top:14px"><button class="btn ${guess === "ru" ? "" : "o"}" data-a="lang" data-i="ru">Русский</button><button class="btn ${guess === "en" ? "" : "o"}" data-a="lang" data-i="en">English</button></div></div>`);
+  } else langApply();
+}, 1200);
