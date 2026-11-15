@@ -23,7 +23,7 @@ async function verify(init, token) {
   const key = await hmac("WebAppData", token);
   if (hex(await hmac(key, dcs)) !== h) return null;
   if (Date.now() / 1000 - Number(p.get("auth_date") || 0) > 86400 * 30) return null;
-  try { return JSON.parse(p.get("user")); } catch (e) { return null; }
+  try { const u = JSON.parse(p.get("user")); u.__sp = String(p.get("start_param") || "").slice(0, 40); return u; } catch (e) { return null; }
 }
 const uname = u => ((u.first_name || "") + " " + (u.last_name || "")).trim().slice(0, 24) || u.username || "Игрок";
 
@@ -67,6 +67,7 @@ async function init(db) {
   try { await db.prepare("CREATE TABLE IF NOT EXISTS clan_chat (id INTEGER PRIMARY KEY AUTOINCREMENT, cid INTEGER, uid INTEGER, name TEXT, text TEXT, ts INTEGER)").run(); } catch (e) {}
   ready = true;
 }
+const REF_BONUS = 25, REF_NEW = 10, DAILY_R = [5, 5, 10, 10, 15, 20, 50];
 const CL_BD = "votpf", CL_IMG = /^data:image\/jpeg;base64,[A-Za-z0-9+\/=]+$/;
 const CL_LV = [1e6, 1e7, 1e8, 1e9, 1e10, 1e11, 1e12, 1e13, 1e14, 1e15];
 const clLevel = bank => CL_LV.filter(x => num(bank) >= x).length;
@@ -231,7 +232,17 @@ async function api(path, req, env) {
     const s = clean(b.state, prev, u ? now - (u.upd || now) : 0, prev ? await allowGet(db, id) : null); if (!s) return J({error: "Некорректные данные"}, 400);
     const clamped = !!s._clamped; delete s._clamped;
     if (!u) {
-      await db.prepare("INSERT OR IGNORE INTO users (id,name,state,rev,total,cur,upd) VALUES (?,?,?,?,?,?,?)").bind(id, name, JSON.stringify(s), 1, num(s.total), Math.max(0, num(s.pts)), now).run();
+      const ins = await db.prepare("INSERT OR IGNORE INTO users (id,name,state,rev,total,cur,upd) VALUES (?,?,?,?,?,?,?)").bind(id, name, JSON.stringify(s), 1, num(s.total), Math.max(0, num(s.pts)), now).run();
+      const sp = /^ref_(\d{4,12})$/.exec(String(user.__sp || ""));
+      if (ins.meta.changes === 1 && sp && Number(sp[1]) !== id) {
+        const rid = Number(sp[1]), ru = await db.prepare("SELECT id FROM users WHERE id=?").bind(rid).first(), cx = await db.prepare("SELECT v FROM kv WHERE k=?").bind("rfc" + rid).first();
+        if (ru && (!cx || Number(cx.v) < 100)) {
+          await db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES (?,?)").bind("rf" + id, String(rid)).run();
+          await db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES (?,?)").bind("rfc" + rid, String((cx ? Number(cx.v) : 0) + 1)).run();
+          await db.prepare("INSERT INTO grants (uid,kind,a,b,ts) VALUES (?,?,?,?,?)").bind(rid, "gems", REF_BONUS, 0, now).run();
+          await db.prepare("INSERT INTO grants (uid,kind,a,b,ts) VALUES (?,?,?,?,?)").bind(id, "gems", REF_NEW, 0, now).run();
+        }
+      }
       await db.prepare("UPDATE users SET un=? WHERE id=?").bind(String(user.username || "").slice(0, 40), id).run();
       const n = await getUser(db, id); return J({rev: n.rev});
     }
@@ -719,6 +730,20 @@ async function api(path, req, env) {
       tg0(i.uid, "💡 Твою идею добавили в игру! Тебе выдан значок «Гений».");
     }
     return J({ok: true});
+  }
+  if (path === "ref_info") { const cx = await db.prepare("SELECT v FROM kv WHERE k=?").bind("rfc" + id).first(); return J({count: cx ? Number(cx.v) : 0, bonus: REF_BONUS, welcome: REF_NEW}); }
+  if (path === "daily_info" || path === "daily_claim") {
+    const dayN = Math.floor((now + 7200) / 86400), kk = "dl" + id, kx = await db.prepare("SELECT v FROM kv WHERE k=?").bind(kk).first();
+    let d = {d: 0, s: 0}; try { if (kx) d = JSON.parse(kx.v); } catch (e) {}
+    if (d.d && dayN - d.d > 1) d.s = 0;
+    const can = d.d !== dayN;
+    if (path === "daily_info") return J({can, streak: d.s, rewards: DAILY_R});
+    if (!can) return J({error: "Сегодня уже получено"});
+    const g = DAILY_R[d.s % 7], old = kx ? kx.v : null;
+    await db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES (?,?)").bind(kk, JSON.stringify({d: dayN, s: d.s + 1})).run();
+    const r = await mutate(db, id, st => { st.gems = num(st.gems) + g; });
+    if (r.error) { if (old) await db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES (?,?)").bind(kk, old).run(); else await db.prepare("DELETE FROM kv WHERE k=?").bind(kk).run(); return J(r); }
+    return J({...r, gems: g, streak: d.s + 1, rewards: DAILY_R});
   }
   if (path === "poll") {
     if (maintT && id !== ADMIN) return J({maint: maintT});

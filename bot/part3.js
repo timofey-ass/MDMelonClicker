@@ -474,7 +474,7 @@ const MAS_TIPS = [
   "Анимации можно отключить в «Ещё» → «Игра».",
   "Перерождение: 1 000 000 за забег = 1 самоцвет.",
   "В профиле игрока можно выбрать баннер и посмотреть его обмены.",
-  "Копить миллиарды невыгодно: свыше 1 млрд идёт небольшой налог."
+  "Налоги растут вместе с богатством: чем больше монет, тем выше ставка. Тратить выгоднее, чем копить."
 ];
 let masEl = null, masT = 0, masSide = 0, masBag = [], masQ = [], masRun = 0;
 const masBlocked = () => (tab === 6 && cz.sub >= 2) || OVL || document.hidden || document.querySelector(".mdl,.coll,.kick");
@@ -1409,7 +1409,7 @@ function taxTick() {
   if (!S.tx2) { S.tx2 = now(); mark(); return; }
   let k = Math.min(48, Math.floor((now() - S.tx2) / 3600)); if (k < 1) return;
   S.tx2 += k * 3600; let burned = 0;
-  for (; k > 0 && S.pts >= TAX2_AT; k--) { const b = S.pts * (S.pts >= TAX3_AT ? TAX3_HR : TAX2_HR); S.pts -= b; burned += b; }
+  for (; k > 0 && S.pts >= TAX2_AT; k--) { const b = S.pts * taxHr(S.pts); S.pts -= b; burned += b; }
   if (S.pts < TAX2_AT) S.tx2 = 0;
   S.burnT = (S.burnT || 0) + burned; mark(); toast("🏛 Часовой налог: −" + fmt(burned)); try { hap("heavy"); } catch (e) {}
 }
@@ -1773,3 +1773,30 @@ A.clsave = function () { return socDo("clan_edit", {name: KEEP.cln2, descr: KEEP
     else if (Date.now() - _t < 2500 && kids.length > _n) { pop(kids, _n); _n = kids.length; }
   };
 }
+
+// ---------- ежедневный вход и рефералы
+let DLY = null, REF = null, dlyShown = false;
+const REFLINK = () => "https://t.me/mdmelonbot?startapp=ref_" + me.id;
+async function dlyLoad() { try { const r = await api("daily_info", {}); if (r && !r.error) DLY = r; } catch (e) {} try { const r = await api("ref_info", {}); if (r && !r.error) REF = r; } catch (e) {} }
+function dlyCard() {
+  if (!DLY) return "";
+  const idx = DLY.streak % 7;
+  const tiles = DLY.rewards.map((g, i) => { const cur = DLY.can ? i === idx : false; const ok = DLY.can ? i < idx : (idx === 0 ? DLY.streak > 0 : i < idx); return `<div style="flex:1;min-width:0;padding:8px 2px;border-radius:12px;text-align:center;background:${cur ? "var(--prc)" : "var(--sch)"};border:2px solid ${cur ? "var(--pri)" : "transparent"};opacity:${ok ? .55 : 1}"><div class="t2" style="margin:0;font-size:11px">${ok ? ic("check", 12) : "день " + (i + 1)}</div><div style="font-weight:800;font-size:14px;margin-top:2px;display:flex;align-items:center;justify-content:center;gap:2px">${g}${ic("gem", 12)}</div></div>`; }).join("");
+  return `<div class="card col"><div class="t1" style="display:flex;align-items:center;gap:8px;color:var(--pri)">${ic("box", 18)} Ежедневный вход<span class="t2" style="margin:0 0 0 auto;font-size:12px">Серия: ${DLY.streak}</span></div><div style="display:flex;gap:4px">${tiles}</div>${DLY.can ? btn("Забрать " + DLY.rewards[idx] + " ", "dlyget", "", "") .replace("</button>", ic("gem", 14) + "</button>") : `<div class="t2" style="margin:0;text-align:center">Приходи завтра: серия растёт, награда тоже</div>`}</div>`;
+}
+function refCard() {
+  const n = REF ? REF.count : 0, b = REF ? REF.bonus : 25, w = REF ? REF.welcome : 10;
+  return `<div class="card col"><div class="t1" style="display:flex;align-items:center;gap:8px;color:var(--pri)">${ic("userplus", 18)} Пригласи друзей</div><div class="t2" style="margin:0">За каждого нового игрока тебе +${b} ${ic("gem", 13)}, ему +${w} ${ic("gem", 13)}. Приглашено: <b>${n}</b></div><div style="display:flex;gap:8px;flex-wrap:wrap">${btn(ic("tg", 16) + " Отправить другу", "refshare", "", "")}${btn("Копировать ссылку", "refcopy", "", "o")}</div></div>`;
+}
+const _tAch1 = tAch;
+tAch = function () { return dlyCard() + refCard() + _tAch1(); };
+A.dlyget = async function () {
+  await save(true); const r = await api("daily_claim", {}); if (r.error) { toast(r.error); await dlyLoad(); return render(); }
+  adopt(r); DLY.can = false; DLY.streak = r.streak; toast("Награда за вход: +" + r.gems + " кристаллов"); try { hap("medium"); } catch (e) {} closeModal(); render();
+};
+A.refshare = function () { const u = "https://t.me/share/url?url=" + encodeURIComponent(REFLINK()) + "&text=" + encodeURIComponent("Играю в MDMelonClicker, заходи: коты, кейсы и кланы"); try { if (tg && tg.openTelegramLink) return tg.openTelegramLink(u); } catch (e) {} window.open(u, "_blank"); };
+A.refcopy = async function () { try { await navigator.clipboard.writeText(REFLINK()); toast("Ссылка скопирована"); } catch (e) { const t = document.createElement("textarea"); t.value = REFLINK(); document.body.appendChild(t); t.select(); try { document.execCommand("copy"); toast("Ссылка скопирована"); } catch (x) { toast(REFLINK()); } t.remove(); } };
+setTimeout(async () => {
+  await dlyLoad(); if (!DLY || !DLY.can || dlyShown || document.querySelector(".mdl")) return; dlyShown = true;
+  modal(dlyCard() + `<div style="margin-top:10px;text-align:center">${btn("Позже", "mclose", "", "t")}</div>`);
+}, 6000);

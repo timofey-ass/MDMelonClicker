@@ -300,10 +300,14 @@ document.addEventListener("click", e => { const el = e.target.closest("[data-a]"
 
 // ---------- coin / loop
 function floatTxt(txt, color, size, x, y) { const f = $("#field"); if (!f) return; const e = document.createElement("div"); e.className = "fl"; e.textContent = txt; e.style.color = color; e.style.fontSize = size + "px"; e.style.marginLeft = (x !== undefined ? x : (Math.random() * 160 - 80)) + "px"; e.style.marginTop = (y !== undefined ? y : -100) + "px"; f.appendChild(e); setTimeout(() => e.remove(), 800); }
-const TAX_AT = 1e12, TAX_TAP = .4, TAX_OFF = .05, TAX2_AT = 1e15, TAX2_TAP = .5, TAX2_HR = .25, TAX3_AT = 5e17, TAX3_TAP = .7, TAX3_HR = .4;
+const TAX_AT = 1e12, TAX2_AT = 1e15;
+// прогрессивные налоги: чем больше монет, тем выше ставка (без потолка-ступенек)
+const taxTap = p => p < TAX_AT ? 0 : Math.min(.92, .4 + .055 * Math.log10(p / TAX_AT));
+const taxOff = p => p < TAX_AT ? 0 : Math.min(.2, .05 + .01 * Math.log10(p / TAX_AT));
+const taxHr = p => p < TAX2_AT ? 0 : Math.min(.6, .25 + .05 * Math.log10(p / TAX2_AT));
 function tap() {
   const t = now(); let g = tapValue(); const crit = Math.random() < Math.min(.65, .05 + .03 * S.crit); if (crit) g *= 5;
-  if (S.pts >= TAX_AT) g *= S.pts >= TAX3_AT ? 1 - TAX3_TAP : S.pts >= TAX2_AT ? 1 - TAX2_TAP : 1 - TAX_TAP;
+  g *= 1 - taxTap(S.pts);
   S.pts += g; S.run += g; S.total += g; S.taps++;
   if (t >= fever) { combo = Math.min(100, combo + 7); if (combo >= 100) { fever = t + 6 + S.fev; S.fevers++; toast("🔥 Лихорадка! x2"); hap("heavy"); } }
   hap(crit ? "medium" : "light"); floatTxt((crit ? "КРИТ +" : "+") + fmt(g), crit ? "#ffd54f" : "var(--on)", crit ? 26 : 20); mark();
@@ -752,7 +756,7 @@ boot = async function () {
     const gain = Math.min(Math.max(0, now() - (S.ts || now())), 8 * 3600) * cps();
     const away = Math.max(0, now() - (S.ts || now())); let burned = 0;
     if (gain >= 1) { S.pts += gain; S.run += gain; S.total += gain; mark(); toast("Пока тебя не было: +" + fmt(gain)); }
-    if (S.pts < TAX2_AT) for (let k = Math.min(24, Math.floor(away / 7200)); k > 0 && S.pts >= TAX_AT; k--) { const b = S.pts * TAX_OFF; S.pts -= b; burned += b; }
+    if (S.pts < TAX2_AT) for (let k = Math.min(24, Math.floor(away / 7200)); k > 0 && S.pts >= TAX_AT; k--) { const b = S.pts * taxOff(S.pts); S.pts -= b; burned += b; }
     if (burned > 0) { S.burnT = (S.burnT || 0) + burned; mark(); setTimeout(() => toast("🏛 Налог за офлайн: −" + fmt(burned)), 2400); }
   }, 200);
 };

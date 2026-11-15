@@ -40,7 +40,7 @@ export function loadWorker() {
 }
 
 export function initData(user, authDate = Math.floor(Date.now() / 1000), token = BOT_TOKEN) {
-  const p = new URLSearchParams({ auth_date: String(authDate), user: JSON.stringify(user), query_id: "q" });
+  const p = new URLSearchParams({ auth_date: String(authDate), user: JSON.stringify(user), query_id: "q" }); if (user.__sp) p.set("start_param", user.__sp);
   const dcs = [...p.entries()].map(([k, v]) => k + "=" + v).sort().join("\n");
   const key = createHmac("sha256", "WebAppData").update(token).digest();
   p.set("hash", createHmac("sha256", key).update(dcs).digest("hex"));

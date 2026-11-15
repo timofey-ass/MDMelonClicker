@@ -392,3 +392,27 @@ test("кланы 5: админ удаляет клан и зовёт игрок�
   assert.equal((await call(B, "clan_info", {})).clan, null);
   assert.equal((await call(A, "clan_list", {})).rows.length, 0);
 });
+
+test("ежедневный вход и рефералы", async () => {
+  const { call } = await makeEnv();
+  await call(A, "save", { rev: 0, state: baseState({ gems: 0 }) });
+  const i1 = await call(A, "daily_info", {}); assert.equal(i1.can, true); assert.equal(i1.streak, 0);
+  const c1 = await call(A, "daily_claim", {}); assert.equal(c1.gems, 5); assert.equal(c1.state.gems, 5); assert.equal(c1.streak, 1);
+  assert.match((await call(A, "daily_claim", {})).error, /уже/);
+  assert.equal((await call(A, "daily_info", {})).can, false);
+  assert.equal((await call(A, "ref_info", {})).count, 0);
+});
+
+test("рефералы: бонус обоим, себя приглашать нельзя, повторно не платит", async () => {
+  const { call } = await makeEnv();
+  await call(A, "save", { rev: 0, state: baseState({}) });
+  const C = { ...U(1003), __sp: "ref_1001" }, S1 = { ...U(1004), __sp: "ref_1004" };
+  await call(S1, "save", { rev: 0, state: baseState({}) });
+  await call(C, "save", { rev: 0, state: baseState({}) });
+  assert.equal((await call(A, "ref_info", {})).count, 1);
+  const ga = (await call(A, "poll", {})).grants, gc = (await call(C, "poll", {})).grants;
+  assert.deepEqual(ga.map(x => [x.kind, x.a]), [["gems", 25]]); assert.deepEqual(gc.map(x => [x.kind, x.a]), [["gems", 10]]);
+  await call(C, "save", { rev: 1, state: baseState({}) });
+  assert.equal((await call(A, "ref_info", {})).count, 1);
+  assert.equal((await call(S1, "poll", {})).grants.length, 0);
+});
