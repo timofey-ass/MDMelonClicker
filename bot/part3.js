@@ -753,7 +753,7 @@ A.accept = async function (e) {
 // ---------- Казино: рулетка с джекпотом и простой покер
 const cz = {sub: 0, bet: 100, pick: "r", busy: false, hist: [], jp: null, last: null, jpAt: 0, rot: 0, phase: 0, hand: [], hold: [false, false, false, false, false], pbet: 0, res: null};
 const ZN = 26, ZS = 360 / ZN, secCol = i => i === 0 ? "g" : i === 13 ? "j" : (i % 2 === 1 ? "r" : "b");
-const gm = (emo, title, desc, k1, k2) => `<div class="gmc"><div class="gmh"><span style="font-size:30px">${emo}</span><span class="grow"><b>${title}</b><div class="t2" style="margin:2px 0 0;font-size:12px;font-weight:500">${desc}</div></span></div><div class="gmb"><button data-a="czgo" data-k="${k1}">👤 В одиночку</button><button data-a="czgo" data-k="${k2}">👥 Вдвоём</button></div></div>`;
+const gm = (emo, title, desc, k1, k2) => `<div class="gmc"><div class="gmh"><div class="circ">${ic(emo, 26)}</div><span class="grow"><b>${title}</b><div class="t2" style="margin:2px 0 0;font-size:12px;font-weight:500">${desc}</div></span></div><div class="gmb"><button data-a="czgo" data-k="${k1}">В одиночку</button><button data-a="czgo" data-k="${k2}">Вдвоём</button></div></div>`;
 const ZC = {r: "#e53935", b: "#263238", g: "#2e7d32", j: "#ffc107"};
 const RK = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "В", "Д", "К", "Т"], SU = ["♠", "♥", "♦", "♣"];
 function pkEvalC(h) {
@@ -799,7 +799,7 @@ tCasino = function () {
   const back = `<button class="btn t bkb" data-a="czgo" data-k="0">← Казино</button>`;
   const jp = jpRow();
   const bal = `<div class="card" style="padding:10px 16px"><span class="t2 grow" style="margin:0">Баланс</span><b id="czbal" style="font-size:18px">${fmt(S.pts)}</b></div>`;
-  if (cz.sub === 0) return jp + `<button class="mbtn" data-a="czgo" data-k="1"><span style="font-size:28px">🎡</span><span class="grow">Рулетка<div class="t2" style="margin:0;font-size:12px;font-weight:500">Красное и чёрное ×2, зелёное ×24 и сектор с джекпотом</div></span>${ic("arrow", 20)}</button>${gm("🃏", "Покер", "5 карт, одна замена. В одиночку раздаёт арбуз, вдвоём победитель забирает банк", 2, 3)}${gm("🎲", "Кости-блеф", "Спрятанные кубики: заявляй, блефуй или скажи «Не верю!»", 8, 6)}<div class="t2" style="margin:14px 6px;font-size:12px">Играть можно только на монеты. Выигрыш не идёт в таблицу лидеров и не считается за забег. Играй осторожно!</div>`;
+  if (cz.sub === 0) return jp + `<div class="gml"><button class="mbtn" data-a="czgo" data-k="1"><div class="circ">${ic("roulette", 26)}</div><span class="grow">Рулетка<div class="t2" style="margin:0;font-size:12px;font-weight:500">Красное и чёрное ×2, зелёное ×24 и сектор с джекпотом</div></span>${ic("arrow", 20)}</button>${gm("cards", "Покер", "5 карт, одна замена. В одиночку раздаёт арбуз, вдвоём победитель забирает банк", 2, 3)}${gm("dice", "Кости-блеф", "Спрятанные кубики: заявляй, блефуй или скажи «Не верю!»", 8, 6)}</div><div class="t2" style="margin:14px 6px;font-size:12px">Играть можно только на монеты. Выигрыш не идёт в таблицу лидеров и не считается за забег. Играй осторожно!</div>`;
   if (cz.sub === 1) {
     const stops = Array.from({length: ZN}, (_, i) => `${ZC[secCol(i)]} ${i * ZS}deg ${(i + 1) * ZS}deg`).join(",");
     const lab = (i, t) => `<span class="rlab" style="transform:rotate(${(i + .5) * ZS}deg) translateY(-104px)">${t}</span>`;
@@ -1930,8 +1930,8 @@ const _tChC = tCasino;
 tCasino = function () {
   if (cz.sub >= 9 && cz.sub <= 11) return chScreen();
   const h = _tChC(); if (cz.sub !== 0) return h;
-  const card = `<div class="gmc"><div class="gmh"><div class="circ">${ic("chess", 26)}</div><span class="grow"><b>Шахматы · 5 минут</b><div class="t2" style="margin:2px 0 0;font-size:12px;font-weight:500">С Арбуз-ботом (победа ×1.9) или с другим игроком на банк</div></span></div><div class="gmb"><button data-a="czgo" data-k="9">${ic("user", 18)} В одиночку</button><button data-a="czgo" data-k="10">${ic("users", 18)} Вдвоём</button></div></div>`;
-  const k = h.indexOf('<div class="t2" style="margin:14px 6px;font-size:12px">Играть можно'); return k < 0 ? h + card : h.slice(0, k) + card + h.slice(k);
+  const card = `<div class="gmc"><div class="gmh"><div class="circ">${ic("chess", 26)}</div><span class="grow"><b>Шахматы · 5 минут</b><div class="t2" style="margin:2px 0 0;font-size:12px;font-weight:500">С Арбуз-ботом (победа ×1.9) или с другим игроком на банк</div></span></div><div class="gmb"><button data-a="czgo" data-k="9">В одиночку</button><button data-a="czgo" data-k="10">Вдвоём</button></div></div>`;
+  let k = h.indexOf('<div class="t2" style="margin:14px 6px;font-size:12px">Играть можно'); if (k < 6 || h.slice(k - 6, k) !== "</div>") return h + card; k -= 6; return h.slice(0, k) + card + h.slice(k);
 };
 const _czgoCh = A.czgo;
 A.czgo = function (e) {
