@@ -153,6 +153,7 @@ const allowUse = async (db, uid, grew, now) => {
   await db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES (?,?)").bind("al" + uid, JSON.stringify(a)).run();
 };
 const casinoPay = (db, uid, amount) => amount > 0 ? allowAdd(db, uid, amount, 0) : null;
+/*CHESS*/
 async function banPurge(db, now) {
   const rows = (await db.prepare("SELECT id FROM users WHERE banned=2 AND banat>0 AND banat<? AND state IS NOT NULL LIMIT 20").bind(now - BAN_DAYS * 86400).all()).results;
   for (const r of rows) {
@@ -214,7 +215,7 @@ async function lbTrack(db, env, now) {
     }
   }
 }
-const RL = new Map(), RL_HEAVY = /^(ns_|bn_|evt_|cz_|dc_|p2_|(offer|accept|cancel)$|chat_send|promo_use|bm_buy|loan_|uc_submit|idea_submit|import|fr_|gift|clan_)/;
+const RL = new Map(), RL_HEAVY = /^(ns_|bn_|evt_|cz_|ch_|dc_|p2_|(offer|accept|cancel)$|chat_send|promo_use|bm_buy|loan_|uc_submit|idea_submit|import|fr_|gift|clan_)/;
 function rateHit(id, path, now) {
   if (id === ADMIN) return false;
   if (RL.size > 5000) RL.clear();
@@ -450,6 +451,40 @@ async function api(path, req, env) {
     const ev = pkEval(hand);
     await casinoPay(db, id, h.bet * ev.m);
     return J({hand, name: ev.n, mult: ev.m, payout: h.bet * ev.m, bet: h.bet});
+  }
+  // ---------- шахматы с ботом, 5 минут на партию; ходы, часы и выплата считаются здесь
+  const chKey = "ch" + id, CH_MS = 300000, CH_PAY = 1.9;
+  const chGet = async () => { const r = await db.prepare("SELECT v FROM kv WHERE k=?").bind(chKey).first(); return r ? JSON.parse(r.v) : null; };
+  const chSave = g => db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES (?,?)").bind(chKey, JSON.stringify(g)).run();
+  const chView = (g, pm) => ({s: g.s, bet: g.bet, pm: Math.max(0, Math.round(pm)), om: g.om, lm: g.lm || null, chk: chCheck(g.s)});
+  const chEnd = async (g, res, why, pm) => {
+    const del = await db.prepare("DELETE FROM kv WHERE k=?").bind(chKey).run(); if (del.meta.changes !== 1) return J({error: "Партия уже закончена"});
+    const pay = res === "win" ? Math.floor(g.bet * CH_PAY) : res === "draw" ? g.bet : 0;
+    await casinoPay(db, id, pay);
+    return J(Object.assign(chView(g, pm), {done: res, why, pay}));
+  };
+  if (path === "ch_state") {
+    const g = await chGet(); if (!g) return J({none: true});
+    const pm = g.pm - (Date.now() - g.last); if (pm <= 0) return chEnd(g, "loss", "time", 0);
+    return J(chView(g, pm));
+  }
+  if (path === "ch_start") {
+    const old = await chGet(); if (old) return J(Object.assign(chView(old, old.pm - (Date.now() - old.last)), {resume: true}));
+    const bet = Math.floor(Number(b.bet)); if (!(bet >= 100) || !isFinite(bet)) return J({error: "Неверная ставка"});
+    const g = {s: chNew(), bet, pm: CH_MS, om: CH_MS, last: Date.now(), lm: null};
+    await chSave(g); return J(chView(g, g.pm));
+  }
+  if (path === "ch_resign") { const g = await chGet(); if (!g) return J({error: "Нет партии"}); return chEnd(g, "loss", "resign", g.pm - (Date.now() - g.last)); }
+  if (path === "ch_move") {
+    const g = await chGet(); if (!g) return J({error: "Нет партии", none: true});
+    const pm = g.pm - (Date.now() - g.last); if (pm <= 0) return chEnd(g, "loss", "time", 0);
+    const f = Math.floor(Number(b.f)), t = Math.floor(Number(b.t));
+    const mv = chLegal(g.s).find(m => m[0] === f && m[1] === t); if (!mv) return J(Object.assign(chView(g, pm), {error: "Так ходить нельзя", bad: true}));
+    let s = chApply(g.s, mv); g.s = s; g.lm = [f, t]; g.pm = pm; g.last = Date.now();
+    let st = chStatus(s); if (st === "mate") return chEnd(g, "win", "mate", pm); if (st) return chEnd(g, "draw", st, pm);
+    const bm = chBest(s, Math.random); s = chApply(s, bm); g.s = s; g.lm = [bm[0], bm[1]]; g.om = Math.max(0, g.om - 800 - Math.floor(Math.random() * 3500));
+    st = chStatus(s); if (st === "mate") return chEnd(g, "loss", "mate", pm); if (st) return chEnd(g, "draw", st, pm);
+    await chSave(g); return J(chView(g, pm));
   }
   // ---------- покер на двоих
   const pkScore = h => {

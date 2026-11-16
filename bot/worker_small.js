@@ -160,6 +160,90 @@ const allowUse = async (db, uid, grew, now) => {
   await db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES (?,?)").bind("al" + uid, JSON.stringify(a)).run();
 };
 const casinoPay = (db, uid, amount) => amount > 0 ? allowAdd(db, uid, amount, 0) : null;
+// ---------- шахматы: общий код клиента и сервера (0 = a8, 63 = h1; белые >0, чёрные <0; 1 п, 2 к, 3 с, 4 л, 5 ф, 6 кр)
+const CH_V = [0, 100, 320, 330, 500, 900, 20000];
+function chNew() { const b = Array(64).fill(0), k = [4, 2, 3, 5, 6, 3, 2, 4]; for (let c = 0; c < 8; c++) { b[c] = -k[c]; b[8 + c] = -1; b[48 + c] = 1; b[56 + c] = k[c]; } return {b, t: 1, c: [1, 1, 1, 1], ep: -1, hm: 0, n: 0}; }
+function chAtt(b, sq, by) {
+  const r = sq >> 3, c = sq & 7, at = (rr, cc, p) => rr >= 0 && rr < 8 && cc >= 0 && cc < 8 && b[rr * 8 + cc] === p * by;
+  if (at(r + by, c - 1, 1) || at(r + by, c + 1, 1)) return true;
+  for (const [dr, dc] of [[-2, -1], [-2, 1], [-1, -2], [-1, 2], [1, -2], [1, 2], [2, -1], [2, 1]]) if (at(r + dr, c + dc, 2)) return true;
+  for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) if ((dr || dc) && at(r + dr, c + dc, 6)) return true;
+  for (const [dr, dc, a] of [[-1, 0, 4], [1, 0, 4], [0, -1, 4], [0, 1, 4], [-1, -1, 3], [-1, 1, 3], [1, -1, 3], [1, 1, 3]]) {
+    let rr = r + dr, cc = c + dc;
+    while (rr >= 0 && rr < 8 && cc >= 0 && cc < 8) { const v = b[rr * 8 + cc]; if (v) { if (v * by > 0 && (Math.abs(v) === a || Math.abs(v) === 5)) return true; break; } rr += dr; cc += dc; }
+  }
+  return false;
+}
+function chGen(st, caps) {
+  const b = st.b, t = st.t, out = [];
+  for (let f = 0; f < 64; f++) {
+    const v = b[f]; if (!v || v * t < 0) continue; const p = Math.abs(v), r = f >> 3, c = f & 7;
+    const add = (tr, tc) => { if (tr < 0 || tr > 7 || tc < 0 || tc > 7) return false; const to = tr * 8 + tc, x = b[to]; if (x * t > 0) return false; if (!caps || x) out.push([f, to, 0]); return !x; };
+    if (p === 1) {
+      const nr = r - t, pr = nr === 0 || nr === 7 ? 5 : 0;
+      if (nr >= 0 && nr < 8) {
+        if (!b[nr * 8 + c] && !caps) { out.push([f, nr * 8 + c, pr]); if (r === (t === 1 ? 6 : 1) && !b[(r - 2 * t) * 8 + c]) out.push([f, (r - 2 * t) * 8 + c, 0]); }
+        for (const dc of [-1, 1]) { const cc = c + dc; if (cc < 0 || cc > 7) continue; const to = nr * 8 + cc; if ((b[to] * t < 0) || to === st.ep) out.push([f, to, pr]); }
+      }
+    } else if (p === 2) { for (const [dr, dc] of [[-2, -1], [-2, 1], [-1, -2], [-1, 2], [1, -2], [1, 2], [2, -1], [2, 1]]) add(r + dr, c + dc); }
+    else if (p === 6) {
+      for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) if (dr || dc) add(r + dr, c + dc);
+      if (!caps) { const base = t === 1 ? 60 : 4, ix = t === 1 ? 0 : 2;
+        if (f === base && !chAtt(b, f, -t)) {
+          if (st.c[ix] && !b[f + 1] && !b[f + 2] && b[f + 3] === 4 * t && !chAtt(b, f + 1, -t)) out.push([f, f + 2, 0]);
+          if (st.c[ix + 1] && !b[f - 1] && !b[f - 2] && !b[f - 3] && b[f - 4] === 4 * t && !chAtt(b, f - 1, -t)) out.push([f, f - 2, 0]);
+        } }
+    } else {
+      const dirs = p === 3 ? [[-1, -1], [-1, 1], [1, -1], [1, 1]] : p === 4 ? [[-1, 0], [1, 0], [0, -1], [0, 1]] : [[-1, -1], [-1, 1], [1, -1], [1, 1], [-1, 0], [1, 0], [0, -1], [0, 1]];
+      for (const [dr, dc] of dirs) { let rr = r + dr, cc = c + dc; while (add(rr, cc)) { rr += dr; cc += dc; } }
+    }
+  }
+  return out;
+}
+function chApply(st, m) {
+  const b = st.b.slice(), [f, to, pr] = m, v = b[f], p = Math.abs(v), t = st.t, cap = b[to] !== 0 || (p === 1 && to === st.ep);
+  const c = st.c.slice(); let ep = -1;
+  if (p === 1 && to === st.ep && !b[to]) b[to + 8 * t] = 0;
+  b[to] = pr ? 5 * t : v; b[f] = 0;
+  if (p === 1 && Math.abs(to - f) === 16) ep = (f + to) >> 1;
+  if (p === 6) { if (to - f === 2) { b[f + 1] = b[f + 3]; b[f + 3] = 0; } else if (f - to === 2) { b[f - 1] = b[f - 4]; b[f - 4] = 0; } if (t === 1) { c[0] = c[1] = 0; } else { c[2] = c[3] = 0; } }
+  if (f === 63 || to === 63) c[0] = 0; if (f === 56 || to === 56) c[1] = 0; if (f === 7 || to === 7) c[2] = 0; if (f === 0 || to === 0) c[3] = 0;
+  return {b, t: -t, c, ep, hm: p === 1 || cap ? 0 : st.hm + 1, n: st.n + 1};
+}
+const chKing = (b, t) => b.indexOf(6 * t);
+const chCheck = st => chAtt(st.b, chKing(st.b, st.t), -st.t);
+function chLegal(st) { return chGen(st).filter(m => { const s = chApply(st, m), k = chKing(s.b, st.t); return k >= 0 && !chAtt(s.b, k, -st.t); }); }
+function chStatus(st) {
+  if (!chLegal(st).length) return chCheck(st) ? "mate" : "stalemate";
+  if (st.hm >= 100 || st.n >= 240) return "draw";
+  let minor = 0; for (const v of st.b) { const p = Math.abs(v); if (p === 1 || p === 4 || p === 5) return ""; if (p === 2 || p === 3) minor++; }
+  return minor <= 1 ? "draw" : "";
+}
+function chEval(st) {
+  let s = 0; const b = st.b;
+  for (let i = 0; i < 64; i++) { const v = b[i]; if (!v) continue; const p = Math.abs(v), sg = v > 0 ? 1 : -1, r = i >> 3, c = i & 7, cen = 3.5 - Math.max(Math.abs(r - 3.5), Math.abs(c - 3.5)) * .5 - Math.min(Math.abs(r - 3.5), Math.abs(c - 3.5)) * .5;
+    let x = CH_V[p]; if (p === 1) x += (sg > 0 ? 6 - r : r - 1) * 6 + cen * 4; else if (p === 2 || p === 3) x += cen * 9; else if (p === 5) x += cen * 2;
+    s += sg * x; }
+  return s * st.t;
+}
+// ход бота: глубина 2 (его ход + ответ), с отсечением и небольшим случайным шумом
+function chBest(st, rnd) {
+  const moves = chLegal(st); if (!moves.length) return null;
+  const sc = m => (st.b[m[1]] ? CH_V[Math.abs(st.b[m[1]])] * 10 - CH_V[Math.abs(st.b[m[0]])] : 0) + (m[2] ? 800 : 0);
+  moves.sort((a, b) => sc(b) - sc(a));
+  let best = null, bv = -1e9;
+  for (const m of moves) {
+    const s1 = chApply(st, m); let v;
+    if (chCheck(s1)) { if (!chLegal(s1).length) return m; }
+    const rep = chGen(s1).sort((a, b) => sc(b) - sc(a)); let worst = 1e9;
+    for (const r of rep) { const s2 = chApply(s1, r); const val = chEval({b: s2.b, t: st.t}); if (val < worst) { worst = val; if (worst <= bv) break; } }
+    if (!rep.length) worst = 0;
+    v = worst + (chCheck(s1) ? 25 : 0) + (rnd ? rnd() * 14 : 0);
+    if (v > bv) { bv = v; best = m; }
+  }
+  return best;
+}
+
 async function banPurge(db, now) {
   const rows = (await db.prepare("SELECT id FROM users WHERE banned=2 AND banat>0 AND banat<? AND state IS NOT NULL LIMIT 20").bind(now - BAN_DAYS * 86400).all()).results;
   for (const r of rows) {
@@ -221,7 +305,7 @@ async function lbTrack(db, env, now) {
     }
   }
 }
-const RL = new Map(), RL_HEAVY = /^(ns_|bn_|evt_|cz_|dc_|p2_|(offer|accept|cancel)$|chat_send|promo_use|bm_buy|loan_|uc_submit|idea_submit|import|fr_|gift|clan_)/;
+const RL = new Map(), RL_HEAVY = /^(ns_|bn_|evt_|cz_|ch_|dc_|p2_|(offer|accept|cancel)$|chat_send|promo_use|bm_buy|loan_|uc_submit|idea_submit|import|fr_|gift|clan_)/;
 function rateHit(id, path, now) {
   if (id === ADMIN) return false;
   if (RL.size > 5000) RL.clear();
@@ -457,6 +541,40 @@ async function api(path, req, env) {
     const ev = pkEval(hand);
     await casinoPay(db, id, h.bet * ev.m);
     return J({hand, name: ev.n, mult: ev.m, payout: h.bet * ev.m, bet: h.bet});
+  }
+  // ---------- шахматы с ботом, 5 минут на партию; ходы, часы и выплата считаются здесь
+  const chKey = "ch" + id, CH_MS = 300000, CH_PAY = 1.9;
+  const chGet = async () => { const r = await db.prepare("SELECT v FROM kv WHERE k=?").bind(chKey).first(); return r ? JSON.parse(r.v) : null; };
+  const chSave = g => db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES (?,?)").bind(chKey, JSON.stringify(g)).run();
+  const chView = (g, pm) => ({s: g.s, bet: g.bet, pm: Math.max(0, Math.round(pm)), om: g.om, lm: g.lm || null, chk: chCheck(g.s)});
+  const chEnd = async (g, res, why, pm) => {
+    const del = await db.prepare("DELETE FROM kv WHERE k=?").bind(chKey).run(); if (del.meta.changes !== 1) return J({error: "Партия уже закончена"});
+    const pay = res === "win" ? Math.floor(g.bet * CH_PAY) : res === "draw" ? g.bet : 0;
+    await casinoPay(db, id, pay);
+    return J(Object.assign(chView(g, pm), {done: res, why, pay}));
+  };
+  if (path === "ch_state") {
+    const g = await chGet(); if (!g) return J({none: true});
+    const pm = g.pm - (Date.now() - g.last); if (pm <= 0) return chEnd(g, "loss", "time", 0);
+    return J(chView(g, pm));
+  }
+  if (path === "ch_start") {
+    const old = await chGet(); if (old) return J(Object.assign(chView(old, old.pm - (Date.now() - old.last)), {resume: true}));
+    const bet = Math.floor(Number(b.bet)); if (!(bet >= 100) || !isFinite(bet)) return J({error: "Неверная ставка"});
+    const g = {s: chNew(), bet, pm: CH_MS, om: CH_MS, last: Date.now(), lm: null};
+    await chSave(g); return J(chView(g, g.pm));
+  }
+  if (path === "ch_resign") { const g = await chGet(); if (!g) return J({error: "Нет партии"}); return chEnd(g, "loss", "resign", g.pm - (Date.now() - g.last)); }
+  if (path === "ch_move") {
+    const g = await chGet(); if (!g) return J({error: "Нет партии", none: true});
+    const pm = g.pm - (Date.now() - g.last); if (pm <= 0) return chEnd(g, "loss", "time", 0);
+    const f = Math.floor(Number(b.f)), t = Math.floor(Number(b.t));
+    const mv = chLegal(g.s).find(m => m[0] === f && m[1] === t); if (!mv) return J(Object.assign(chView(g, pm), {error: "Так ходить нельзя", bad: true}));
+    let s = chApply(g.s, mv); g.s = s; g.lm = [f, t]; g.pm = pm; g.last = Date.now();
+    let st = chStatus(s); if (st === "mate") return chEnd(g, "win", "mate", pm); if (st) return chEnd(g, "draw", st, pm);
+    const bm = chBest(s, Math.random); s = chApply(s, bm); g.s = s; g.lm = [bm[0], bm[1]]; g.om = Math.max(0, g.om - 800 - Math.floor(Math.random() * 3500));
+    st = chStatus(s); if (st === "mate") return chEnd(g, "loss", "mate", pm); if (st) return chEnd(g, "draw", st, pm);
+    await chSave(g); return J(chView(g, pm));
   }
   // ---------- покер на двоих
   const pkScore = h => {
@@ -1295,7 +1413,7 @@ async function tgcall(env, method, body) {
 async function secret(env) { return hex(await crypto.subtle.digest("SHA-256", enc("md:" + env.BOT_TOKEN))).slice(0, 32); }
 
 const DEMO = "<script>window.__DEV=1;(function(){var f=window.fetch;var seed={pts:1500000,run:1500000,total:3000000,gems:12,taps:1234,b:[12,8,5,3,1,0,0],inv:{\"3\":1,\"10\":1,\"22\":1,\"40\":1,\"64\":1,\"73\":1,\"80\":1,\"63\":1}};var rows=[[1,\"Мурка\",9.5e9],[2,\"Барсик\",4.2e8],[3,\"Демо\",3e6]].map(function(r){return{id:r[0],name:r[1],total:r[2],badges:\"\"}});var m={auth:{id:3,name:\"Демо\",state:seed,rev:1,admin:false,badges:\"\"},save:{ok:true,rev:1},poll:{grants:[],bc:null,maxbc:0,online:5,rev:1,badges:\"\"},top:{rows:rows,rank:3},offers:{offers:[]},chat:{rows:[{id:1,uid:1,name:\"Мурка\",text:\"Привет! Кто трейд?\",ts:0,badges:\"b\"},{id:2,uid:2,name:\"Барсик\",text:\"Выбил Королевского арбуза!\",ts:0,badges:\"\"}]}};window.fetch=function(u,o){u=String(u);if(u.indexOf(\"/api/\")===0){return Promise.resolve(new Response(JSON.stringify(m[u.slice(5)]||{}),{headers:{\"content-type\":\"application/json\"}}))}return f.apply(this,arguments)}})()</script>";
-const ANN = ["6.8.0", ["Мировой арбуз: весь сервер вместе поливает общий арбуз монетами. Созреет: кристаллы участникам и ×1.5 к доходу всем", "Ежедневная награда в боковой панели: серия дней, награда растёт", "Приглашай друзей (раздел «Информация»): +25 кристаллов за каждого, другу +10", "Сезоны в «Лидерах»: месячный рейтинг, топ-3 получают кристаллы", "Кланы: задания недели, приглашения от главы, картинка и градиент названия, значки", "Прогресс коллекции котов с наградами", "Налоги теперь растут вместе с богатством", "Звуки игры и выбор языка (English) в настройках"], "Мировой арбуз и награды"];
+const ANN = ["6.9.0", ["Шахматы в казино: партия против Арбуз-бота, 5 минут на часы, победа ×1.9, ничья возвращает ставку", "Кейсы по цене от содержимого, от дорогих к дешёвым", "Новые полоски прогресса и подробное описание налогов"], "Шахматы"];
 let annBusy = false;
 async function announce(env, origin) {
   if (annBusy || !env.DB || !env.BOT_TOKEN) return;

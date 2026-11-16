@@ -1850,6 +1850,80 @@ tTop = function () {
 function injectSeg(h, seg) { const k = h.indexOf('<div class="card">'); return k < 0 ? h : h.slice(0, k) + seg + h.slice(k); }
 A.lbm = function (e) { lbMode = +e.dataset.i; if (lbMode) { SEAS = null; seasLoad(); } render(); };
 
+// ---------- шахматы в казино: 5 минут, бот, ставка
+/*CHESS*/
+const CHG = ["", "♟", "♞", "♝", "♜", "♛", "♚"], chClk = ms => { const t = Math.ceil(Math.max(0, ms) / 1000); return Math.floor(t / 60) + ":" + String(t % 60).padStart(2, "0"); };
+const chWhy = {mate: "Мат", time: "Время вышло", resign: "Сдача", stalemate: "Пат", draw: "Ничья по правилам"};
+function chAdopt(r) {
+  if (!r) { toast("Нет связи"); return chLoad(); }
+  if (r.none) { cz.ch = {none: true}; return render(); }
+  if (r.error && !r.s) { toast(r.error); return chLoad(); }
+  if (r.error) toast(r.error);
+  const C = Object.assign(cz.ch && !cz.ch.none ? cz.ch : {}, {s: r.s, bet: r.bet, pm: r.pm, om: r.om, lm: r.lm, chk: r.chk, at: Date.now(), sel: null, mv: [], busy: false, tout: 0});
+  cz.ch = C;
+  if (r.done && !C.paid) {
+    C.paid = 1; C.done = r.done; C.why = r.why; C.pay = r.pay; S.pts += r.pay; mark(); if (r.pay > r.bet) save(true);
+    if (r.done === "loss") S.burnC = (S.burnC || 0) + r.bet;
+    if (r.done === "win") { try { fxConfetti(120); hap("ok"); } catch (e) {} }
+  }
+  czUpd(); render();
+}
+async function chLoad() { const r = await api("ch_state", {}); chAdopt(r && !r.error ? r : r && r.error ? null : r); }
+function chBoard(C) {
+  const mvs = new Set((C.mv || []).map(m => m[1])), kq = C.chk ? chKing(C.s.b, C.s.t) : -1; let h = "";
+  for (let i = 0; i < 64; i++) {
+    const v = C.s.b[i], r = i >> 3, c = i & 7, cls = ["chs", (r + c) & 1 ? "d" : "l"];
+    if (C.lm && (C.lm[0] === i || C.lm[1] === i)) cls.push("lm"); if (C.sel === i) cls.push("sel"); if (mvs.has(i)) cls.push(v ? "cap" : "tg"); if (i === kq) cls.push("ck");
+    h += `<div class="${cls.join(" ")}" data-a="chsq" data-i="${i}">${v ? `<span class="chp ${v > 0 ? "w" : "b"}">${CHG[Math.abs(v)]}︎</span>` : ""}</div>`;
+  }
+  return `<div class="chb">${h}</div>`;
+}
+function chScreen() {
+  const back = `<button class="btn t bkb" data-a="czgo" data-k="0">← Казино</button>`, C = cz.ch;
+  const bal = `<div class="card" style="padding:10px 16px"><span class="t2 grow" style="margin:0">Баланс</span><b id="czbal" style="font-size:18px">${fmt(S.pts)}</b></div>`;
+  if (!C) return back + bal + `<div class="card col"><div class="t2" style="margin:0">Загрузка…</div></div>`;
+  if (C.none) return back + bal + `<div class="card col"><div class="t1" style="display:flex;align-items:center;gap:8px;color:var(--pri)">${ic("chess", 20)} Шахматы · 5 минут</div><div class="t2" style="margin:0;font-size:12px;line-height:1.4">Играешь белыми против Арбуз-бота. На партию 5 минут, часы идут только на твоих ходах. Победа: ставка ×1.9. Ничья: ставка возвращается. Время вышло или сдался: ставка проигрывается. Пешка доходит до края и становится ферзём. Партия сохраняется, можно выйти и вернуться.</div></div>${czBetUi()}<button class="btn" data-a="chstart" style="width:100%;height:54px;justify-content:center;font-size:17px;margin-top:10px">Начать партию</button>`;
+  const turn = C.s.t === 1;
+  const st = C.done ? `<div class="card col" style="align-items:center;text-align:center;gap:6px"><div class="t1" style="font-size:20px;color:${C.done === "win" ? "var(--pri)" : C.done === "loss" ? "#ff8a80" : "var(--on)"}">${C.done === "win" ? "Победа!" : C.done === "loss" ? "Поражение" : "Ничья"}</div><div class="t2" style="margin:0">${chWhy[C.why] || ""} · ${C.done === "win" ? "+" + fmt(C.pay - C.bet) : C.done === "loss" ? "−" + fmt(C.bet) : "ставка возвращена"}</div><button class="btn" data-a="chnew" style="width:100%;justify-content:center">Новая партия</button></div>`
+    : `<div class="t2" id="chst" style="margin:6px 4px 0;text-align:center;font-size:13px">${C.busy ? "Арбуз-бот думает…" : C.chk ? "Тебе шах!" : "Твой ход"}</div><button class="btn t" data-a="chres" style="width:100%;justify-content:center;margin-top:8px">Сдаться</button>`;
+  return back + bal + `<div class="chrow"><span class="t1 grow" style="margin:0;font-size:14px">Арбуз-бот</span><span class="chclk" id="chom">${chClk(C.om)}</span></div>${chBoard(C)}<div class="chrow"><span class="t1 grow" style="margin:0;font-size:14px">Ты · ставка ${fmt(C.bet)}</span><span class="chclk${C.done ? "" : " on"}" id="chpm">${chClk(C.done ? C.pm : C.pm - (Date.now() - C.at))}</span></div>${st}`;
+}
+const _tChC = tCasino;
+tCasino = function () {
+  if (cz.sub === 9) return chScreen();
+  const h = _tChC();
+  return cz.sub === 0 ? h + `<button class="mbtn" data-a="czgo" data-k="9">${ic("chess", 28)}<span class="grow">Шахматы · 5 минут<div class="t2" style="margin:0;font-size:12px;font-weight:500">Партия против Арбуз-бота, победа ×1.9</div></span>${ic("arrow", 20)}</button>` : h;
+};
+const _czgoCh = A.czgo;
+A.czgo = function (e) {
+  if (+e.dataset.k === 9) { if (S.pts < 0) return kickOut(); cz.sub = 9; cz.ch = null; render(); chLoad(); $("#view").scrollTop = 0; return; }
+  return _czgoCh.apply(this, arguments);
+};
+A.chstart = async function () {
+  if (cz.busy) return; const bet = czBet(); if (S.pts < bet || bet < 100) return toast("Не хватает монет");
+  cz.busy = true; S.pts -= bet; mark(); czUpd(); const r = await api("ch_start", {bet}); cz.busy = false;
+  if (!r || r.error) { S.pts += bet; mark(); czUpd(); return toast((r && r.error) || "Нет связи"); }
+  if (r.resume) { S.pts += bet; mark(); toast("Продолжаем начатую партию"); }
+  cz.ch = null; chAdopt(r);
+};
+A.chsq = async function (e) {
+  const C = cz.ch; if (!C || C.none || C.done || C.busy || C.s.t !== 1) return; const i = +e.dataset.i, v = C.s.b[i];
+  if (C.sel != null && C.mv.some(m => m[1] === i)) {
+    const f = C.sel, mv = chLegal(C.s).find(m => m[0] === f && m[1] === i); C.sel = null; C.mv = []; C.busy = true; C.pm -= Date.now() - C.at; C.at = Date.now();
+    C.s = chApply(C.s, mv); C.lm = [f, i]; C.chk = false; hap("light"); render();
+    const r = await api("ch_move", {f, t: i}); chAdopt(r); return;
+  }
+  if (v > 0) { C.sel = i; C.mv = chLegal(C.s).filter(m => m[0] === i); } else { C.sel = null; C.mv = []; }
+  render();
+};
+A.chres = function () { if (!confirm("Сдаться? Ставка будет потеряна.")) return; api("ch_resign", {}).then(chAdopt); };
+A.chnew = function () { cz.ch = {none: true}; render(); };
+setInterval(() => {
+  const C = cz.ch; if (tab !== 6 || cz.sub !== 9 || !C || C.none || C.done) return;
+  const left = C.pm - (Date.now() - C.at), el = document.getElementById("chpm"); if (el && !C.busy) el.textContent = chClk(left);
+  if (left <= 0 && !C.tout && !C.busy) { C.tout = 1; chLoad(); }
+}, 250);
+
 // ---------- язык: русский / English (перевод интерфейса на лету)
 const EN = {
 "Игра":"Game","Магазин":"Shop","Кейсы":"Cases","Награды":"Rewards","Топ":"Top","Ещё":"More","Меню":"Menu","Казино":"Casino","Сообщество":"Community","Назад":"Back","← Назад":"← Back","← Казино":"← Casino",

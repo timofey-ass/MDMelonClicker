@@ -478,3 +478,40 @@ test("мировой арбуз: полив, кулдаун, созревани�
   assert.equal((await call(B, "poll", {})).evt.mult, 1.5);
   assert.equal((await call(A, "wm_info", {})).last.r, 1);
 });
+
+test("шахматы: ставка, законность хода, ответ бота, сдача без выплаты, часы", async () => {
+  const { call, sq } = await makeEnv();
+  await call(A, "auth");
+  assert.match((await call(A, "ch_start", { bet: 50 })).error || "", /Неверная/);
+  const r = await call(A, "ch_start", { bet: 100 });
+  assert.equal(r.s.t, 1); assert.equal(r.pm, 300000);
+  assert.equal((await call(A, "ch_start", { bet: 100 })).resume, true, "повторный старт возвращает ту же партию");
+  const bad = await call(A, "ch_move", { f: 52, t: 20 });     // пешка e2 не может прыгнуть на 3 клетки
+  assert.equal(bad.bad, true);
+  const mv = await call(A, "ch_move", { f: 52, t: 36 });      // e2-e4
+  assert.ok(!mv.error); assert.equal(mv.s.t, 1, "бот уже ответил"); assert.equal(mv.s.b[36], 1); assert.ok(mv.lm);
+  assert.equal((await call(A, "ch_move", { f: 8, t: 16 })).bad, true, "чужой фигурой ходить нельзя");
+  const s = await call(A, "ch_resign", {});
+  assert.equal(s.done, "loss"); assert.equal(s.pay, 0);
+  assert.equal((await call(A, "ch_state", {})).none, true);
+  // истечение часов
+  await call(A, "ch_start", { bet: 100 });
+  const g = JSON.parse(sq.prepare("SELECT v FROM kv WHERE k='ch1001'").get().v); g.last -= 301000; sq.prepare("UPDATE kv SET v=? WHERE k='ch1001'").run(JSON.stringify(g));
+  const t = await call(A, "ch_state", {}); assert.equal(t.done, "loss"); assert.equal(t.why, "time");
+});
+
+test("шахматы: детский мат выигрывает ×1.9, пат и ничья возвращают ставку", async () => {
+  const { call, sq } = await makeEnv();
+  await call(A, "auth");
+  await call(A, "ch_start", { bet: 1000 });
+  const put = async fn => { const g = JSON.parse(sq.prepare("SELECT v FROM kv WHERE k='ch1001'").get().v); fn(g); sq.prepare("UPDATE kv SET v=? WHERE k='ch1001'").run(JSON.stringify(g)); };
+  // позиция: чёрный король h8, белые: король f6... мат ферзём g7 (ферзь с g1 -> g7, король f6 защищает)
+  await put(g => { const b = Array(64).fill(0); b[7] = -6; b[21] = 6; b[62] = 5; g.s = { b, t: 1, c: [0, 0, 0, 0], ep: -1, hm: 0, n: 30 }; });
+  const w = await call(A, "ch_move", { f: 62, t: 14 });
+  assert.equal(w.done, "win"); assert.equal(w.pay, 1900);
+  await call(A, "ch_start", { bet: 1000 });
+  // пат: чёрный король a8, белый король c7, ферзь b6 — ход ферзём в b6 ... ставим ферзя на c5 -> b6 даёт пат
+  await put(g => { const b = Array(64).fill(0); b[0] = -6; b[10] = 6; b[41] = 5; g.s = { b, t: 1, c: [0, 0, 0, 0], ep: -1, hm: 0, n: 30 }; });
+  const d = await call(A, "ch_move", { f: 41, t: 17 });
+  assert.equal(d.done, "draw"); assert.equal(d.why, "stalemate"); assert.equal(d.pay, 1000);
+});
