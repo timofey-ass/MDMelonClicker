@@ -514,7 +514,7 @@ const {BUILDS, UPGR, ACH, RARS, ITEMS, CASES, SETS, PERKS, CAT_COST, SELL, UPCH,
 const TECH_IMG = i => `/tech/${i}.jpg`;
 const ADM_IMG = "/admin/0.jpg";
 const JOSKE_IMG = "/joske.jpg";
-const GEM_CASE = 3, FREE_EVERY = 4 * 3600;
+const GEM_CASE = -1, FREE_EVERY = 4 * 3600;
 const EMO = {"👆": "tap", "💥": "crit", "🔥": "fire", "🐱": "cat", "🐾": "paw", "🥛": "milk", "🐟": "fish", "🏭": "factory", "🌀": "portal", "🚀": "rocket", "📦": "cube", "🎁": "box", "👑": "crown", "⚡": "bolt", "💎": "gem", "🧾": "swap", "⭐": "star", "🎟": "ticket"};
 const ic = (k, s, c) => `<svg class="ic" viewBox="0 0 24 24" width="${s || 20}" height="${s || 20}" fill="none" stroke="currentColor" stroke-width="2.04" stroke-linecap="round" stroke-linejoin="round"${c ? ` style="color:${c}"` : ""}>${IC[EMO[k] || k]}</svg>`;
 const noemo = t => String(t).replace(/[\u{1F000}-\u{1FAFF}\u2600-\u27BF\u2B00-\u2BFF\uFE0F]+ ?/gu, "").trim();
@@ -579,6 +579,18 @@ function roll(ci) { if (ci === 4) { const q = Math.random(); if (q < .02) return
 function grant(idx, holo) { const k = idx + ""; const have = S.inv[k] || 0; S.inv[k] = have + 1; if (have === 0) { if (holo) { S.holo.push(idx); return "newholo"; } return "new"; } if (holo && !S.holo.includes(idx)) { S.holo.push(idx); return "holo"; } return "dup"; }
 const dupCount = r => Object.keys(S.inv).reduce((a, k) => a + (ITEMS[+k][2] === r ? Math.max(0, S.inv[k] - 1) : 0), 0);
 function takeDups(r, n) { for (const k of Object.keys(S.inv).sort((a, b) => S.inv[b] - S.inv[a])) { if (ITEMS[+k][2] !== r || n <= 0) continue; const t = Math.min(n, Math.max(0, S.inv[k] - 1)); S.inv[k] -= t; n -= t; } }
+const CFLOOR = [3000, 60000, 1500000, 6000000, 250000000, 101000000];
+function caseEV(ci) {
+  const ev = k => { const w = CASES[k][3], t = w.reduce((a, b) => a + b, 0); return w.reduce((a, x, r) => a + x / t * (SELL[r] || 0), 0); };
+  if (ci === 4) return .93 * ev(2) + .05 * SELL[5] + .02 * 60;
+  return ev(ci);
+}
+function casePrice(ci) {
+  const u = 1000 + cps() * 10;
+  const p = ci === 5 ? u * 90 : u * caseEV(ci) * 40;
+  const v = Math.max(CFLOOR[ci], p), e = Math.pow(10, Math.floor(Math.log10(v)) - 1);
+  return Math.round(v / e) * e;
+}
 const sellVal = r => (1000 + cps() * 10) * SELL[r];
 const SELLGEM = [0, 0, 0, 0, 0, 0, 0];
 
@@ -649,9 +661,10 @@ function tCases() {
   h += `<div class="card col"><div style="display:flex;align-items:center"><div class="t1 grow" style="display:flex;align-items:center;gap:8px">${ic("box", 18)}Кейсы</div><span class="chip p">Ур. ${lv}</span></div><div class="t2">Собрано ${Object.keys(S.inv).filter(k => +k < 70 || +k >= 72).length} из ${ITEMS.length - 2} · бонус +${collBonus()}% ко всему · открыто ${S.opened}</div>${bar(Math.max(.02, xp / need))}<div class="t2" style="color:var(--out);font-size:11px">${xp} / ${need} XP · за уровень бесплатный кейс</div></div>`;
   h += `<div class="card p"><div class="grow"><div class="t1" style="display:flex;align-items:center;gap:8px">${ic("ticket", 18)}Бесплатный кейс</div><div class="t2" id="freeT"></div></div>${btn("Открыть", "free", 'id="freeB"')}</div>`;
   if (S.fc.some(x => x > 0)) h += `<div class="card"><div class="t1 grow" style="display:flex;align-items:center;gap:8px">${ic("ticket", 16)}За уровни:</div>${[0, 1, 2].filter(c => S.fc[c] > 0).map(c => btn(ic(CASES[c][0], 16) + "×" + S.fc[c], "lvcase", `data-i="${c}"`)).join("")}</div>`;
-  CASES.forEach((c, ci) => {
+  CASES.map((c, ci) => ci).sort((a, b) => casePrice(b) - casePrice(a)).forEach(ci => {
+    const c = CASES[ci], pr = casePrice(ci);
     const tot = c[3].reduce((a, b) => a + b, 0); const ch = c[3].map((x, i) => x ? RARS[i][0].slice(0, 5) + ". " + String(+(x / tot * 100).toFixed(1)) + "%" : "").filter(Boolean).join(" · "); const cur = ci === GEM_CASE ? "gems" : "pts";
-    h += `<div class="card${ci === 4 ? " bluecase" : ci === 5 ? " redcase" : ""}">${circ(c[0], 54)}<div class="grow"><div class="t1">${c[1]}</div><div class="t2" style="font-size:11px">${ci === 5 ? "70% — монеты (от 0.4× до 3× цены), 30% — течкот: Google, OnePlus, Vivo, Apple, Xiaomi, Samsung. Каждый даёт +50% ко всему" : ci === 4 ? "Шанс 2% выбить Королевского арбуза (×40 к тапу), 5% — особого кота Джоске (+100% ко всему). Иначе падает как в Золотом: " + ch : ch}</div></div>${btn((ci === GEM_CASE ? ic("gem", 14) : "") + fmt(c[2]), "case", `data-i="${ci}" data-n="1" ${cost(c[2], cur)}`)}${btn("×5", "case", `data-i="${ci}" data-n="5" ${cost(c[2] * 5, cur)}`, "o")}</div>`;
+    h += `<div class="card${ci === 4 ? " bluecase" : ci === 5 ? " redcase" : ""}">${circ(c[0], 54)}<div class="grow"><div class="t1">${c[1]}</div><div class="t2" style="font-size:11px">${ci === 5 ? "70% — монеты (от 0.4× до 3× цены), 30% — течкот: Google, OnePlus, Vivo, Apple, Xiaomi, Samsung. Каждый даёт +50% ко всему" : ci === 4 ? "Шанс 2% выбить Королевского арбуза (×40 к тапу), 5% — особого кота Джоске (+100% ко всему). Иначе падает как в Золотом: " + ch : ch}</div></div>${btn((ci === GEM_CASE ? ic("gem", 14) : "") + fmt(pr), "case", `data-i="${ci}" data-n="1" ${cost(pr, cur)}`)}${btn("×5", "case", `data-i="${ci}" data-n="5" ${cost(pr * 5, cur)}`, "o")}</div>`;
   });
   h += `<div class="t2" style="margin:4px 4px 8px">×5 — пачкой. Каждые 10 открытий без эпика дают гарантированный эпик+. Голограмма: шанс 6% (12% в Золотом и Алмазном), даёт ×2 к бонусу.</div>`;
   if (S.hist.length) h += `<div class="sec">Последние выпадения</div><div class="hs">${S.hist.slice(-10).reverse().map(i => catEl(i, 44)).join("")}</div>`;
@@ -737,7 +750,7 @@ function openCase(ci, mode, n) {
   if (busy) return; n = n || 1; const t = now();
   if (mode === 1) { if (t - S.freecase < freeEvery()) return toast("Бесплатный кейс ещё не готов"); S.freecase = t; }
   else if (mode === 2) { if (S.fc[ci] < 1) return; S.fc[ci]--; n = 1; }
-  else { const c = CASES[ci][2] * n; if (ci === GEM_CASE) { if (S.gems < c) return toast("Не хватает самоцветов"); S.gems -= c; } else { if (S.pts < c) return toast("Не хватает монет"); S.pts -= c; } }
+  else { const c = casePrice(ci) * n; if (ci === GEM_CASE) { if (S.gems < c) return toast("Не хватает самоцветов"); S.gems -= c; } else { if (S.pts < c) return toast("Не хватает монет"); S.pts -= c; } }
   const wins = [];
   for (let k = 0; k < n; k++) { const win = roll(ci), holo = Math.random() < (ci < 2 ? .06 : .12); S.opened++; S.pity = ITEMS[win][2] >= 2 ? 0 : S.pity + 1; const kind = grant(win, holo); S.hist = S.hist.concat([win]).slice(-14); addXp(20 + 15 * ITEMS[win][2]); wins.push([win, kind]); }
   checkAch(); mark(); save(true);
@@ -1092,7 +1105,7 @@ function roulette(ci, wk, mode) {
   const coinRc = a => `<div class="rc" style="box-shadow:inset 0 0 0 2px var(--gold)"><div style="color:var(--gold)">${ic("coin", 52)}</div><span style="color:var(--gold)">+${fmt(a)}</span></div>`;
   for (let n = 0; n < N; n++) {
     if (n === WIN_I && wk[1] === "coins") { h += coinRc(wk[2]); continue; }
-    if (n !== WIN_I && ci === 5 && Math.random() < .65) { h += coinRc(coinPrize(CASES[5][2])); continue; }
+    if (n !== WIN_I && ci === 5 && Math.random() < .65) { h += coinRc(coinPrize(casePrice(5))); continue; }
     let idx; if (n === WIN_I) idx = win; else { let ri = rarR(w); if (Math.abs(n - WIN_I) <= 2 && Math.random() < .6) ri = Math.max(ri, w[3] > 0 ? 3 : 2); idx = pickR(ri); }
     const rc = RC[ITEMS[idx][2]]; h += `<div class="rc" style="box-shadow:inset 0 0 0 2px ${rc}">${catEl(idx, 62)}<span style="color:${rc}">${ITEMS[idx][1]}</span></div>`;
   }
@@ -1207,9 +1220,9 @@ openCase = function (ci, mode, n) {
   if (busy) return; n = n || 1; const t = now();
   if (mode === 1) { if (t - S.freecase < freeEvery()) return toast("Бесплатный кейс ещё не готов"); S.freecase = t; }
   else if (mode === 2) { if (S.fc[ci] < 1) return; S.fc[ci]--; n = 1; }
-  else { const c = CASES[ci][2] * n; if (ci === GEM_CASE) { if (S.gems < c) return toast("Не хватает самоцветов"); S.gems -= c; } else { if (S.pts < c) return toast("Не хватает монет"); S.pts -= c; } }
+  else { const c = casePrice(ci) * n; if (ci === GEM_CASE) { if (S.gems < c) return toast("Не хватает самоцветов"); S.gems -= c; } else { if (S.pts < c) return toast("Не хватает монет"); S.pts -= c; } }
   const wins = [];
-  for (let k = 0; k < n; k++) { if (ci === 5 && Math.random() < .7) { const amt = coinPrize(CASES[5][2]); S.pts += amt; S.run += amt; S.total += amt; S.opened++; addXp(20); wins.push([null, "coins", amt]); continue; } const win = roll(ci), holo = Math.random() < (ci < 2 ? .06 : .12); S.opened++; S.pity = ITEMS[win][2] >= 2 ? 0 : S.pity + 1; const kind = grant(win, holo); S.hist = S.hist.concat([win]).slice(-14); addXp(20 + 15 * ITEMS[win][2]); wins.push([win, kind]); }
+  for (let k = 0; k < n; k++) { if (ci === 5 && Math.random() < .7) { const amt = coinPrize(casePrice(5)); S.pts += amt; S.run += amt; S.total += amt; S.opened++; addXp(20); wins.push([null, "coins", amt]); continue; } const win = roll(ci), holo = Math.random() < (ci < 2 ? .06 : .12); S.opened++; S.pity = ITEMS[win][2] >= 2 ? 0 : S.pity + 1; const kind = grant(win, holo); S.hist = S.hist.concat([win]).slice(-14); addXp(20 + 15 * ITEMS[win][2]); wins.push([win, kind]); }
   checkAch(); mark(); save(true); actx();
   if (n === 1) roulette(ci, wins[0], mode); else showMulti(ci, wins, n);
 };
@@ -1516,7 +1529,7 @@ function lbPrize() {
   const need = lbData.need || 259200, h1 = (lbData.hold || []).find(x => x.rank === 1), row1 = lbData.rows[0], held = h1 ? lbHeld(h1) : 0, f = Math.min(1, held / need), mineLead = h1 && h1.uid === me.id, got = String(myBadges || "").includes("l");
   const img = ADM_IMG.replace("admin/0.jpg", "bc/9.jpg?v=1");
   const st = got ? `<div style="color:var(--good);font-weight:700;font-size:12px">${ic("check", 14)} Награда получена</div>` : mineLead ? `<div style="font-weight:700;font-size:12px;color:var(--gold)">Ты лидер ${lbDur(held)} · осталось ${lbDur(Math.max(0, need - held))}</div>` : h1 && row1 ? `<div class="t2" style="margin:0;font-size:11px">1 место: <b>${esc(row1.name)}</b> · ${lbDur(held)} из 3 д</div>` : `<div class="t2" style="margin:0;font-size:12px">Первое место свободно. Займи его!</div>`;
-  return `<div class="card col lbprize"><i class="lbsp" style="left:46%;top:10px"></i><i class="lbsp" style="left:72%;top:44px;animation-delay:.7s"></i><i class="lbsp" style="left:90%;top:12px;animation-delay:1.3s"></i><i class="lbsp" style="left:30%;top:58px;animation-delay:1.9s"></i><div style="display:flex;gap:10px;align-items:center"><div class="lbpimg" style="background-image:url(${img})"></div><div class="grow"><div class="lbtt">Золотой лидер ${bdg("l", 14)}</div><div class="t2" style="margin:1px 0 3px;font-size:11px;line-height:1.25">3 дня на 1 месте = Золотой кот и значок</div>${st}</div></div><div class="lbb"><i style="width:${Math.max(0, Math.min(1, f)) * 100}%"></i></div></div>`;
+  return `<div class="card col lbprize"><i class="lbsp" style="left:46%;top:10px"></i><i class="lbsp" style="left:72%;top:44px;animation-delay:.7s"></i><i class="lbsp" style="left:90%;top:12px;animation-delay:1.3s"></i><i class="lbsp" style="left:30%;top:58px;animation-delay:1.9s"></i><div style="display:flex;gap:10px;align-items:center"><div class="lbpimg" style="background-image:url(${img})"></div><div class="grow"><div class="lbtt">Золотой лидер ${bdg("l", 14)}</div><div class="t2" style="margin:1px 0 3px;font-size:11px;line-height:1.25">3 дня на 1 месте = Золотой кот и значок</div>${st}</div></div>${bar(Math.max(0, Math.min(1, f)))}</div>`;
 }
 tTop = function () {
   let h = `<div class="seg"><button class="${sub === 0 ? "on" : ""}" data-a="sub" data-i="0">Лидеры</button><button class="${sub === 1 ? "on" : ""}" data-a="sub" data-i="1">Обмен</button><button class="${sub === 2 ? "on" : ""}" data-a="sub" data-i="2">Чат</button><button class="${sub === 3 ? "on" : ""}" data-a="sub" data-i="3">Друзья</button><button class="${sub === 4 ? "on" : ""}" data-a="sub" data-i="4">Кланы</button></div>`;
@@ -2664,7 +2677,7 @@ function drwFill() {
   const it = (icon, label, k) => `<button class="dri" data-a="drwgo" data-k="${k}">${ic(icon, 26)}<span>${label}</span></button>`;
   drwEl.querySelector(".drp").innerHTML = `<div class="drh"><div class="dra">${av}</div><button class="drt" data-a="ltheme" aria-label="Тема">${ic(lt ? "moon" : "sun", 26)}</button></div>
     <div class="drn">${nm(me.name, myBadges)}</div><div class="dru">${u.username ? "@" + esc(u.username) : "ID " + me.id}</div>
-    <div class="drl">$<button class="dri" data-a="dlyopen">${ic("box", 26)}<span>Ежедневная награда</span>${DLY && DLY.can ? '<i class="dtd"></i>' : ""}</button>${it("podium", "Сообщество", "com")}${it("cube", "Мастерская", "ws")}<div class="drd"></div>${it("tune", "Настройки", "set")}${it("check", "Информация", "info")}${isAdm ? it("crown", "Админка", "adm") : ""}</div>
+    <div class="drl"><button class="dri" data-a="dlyopen">${ic("box", 26)}<span>Ежедневная награда</span>${DLY && DLY.can ? '<i class="dtd"></i>' : ""}</button>${it("podium", "Сообщество", "com")}${it("cube", "Мастерская", "ws")}<div class="drd"></div>${it("tune", "Настройки", "set")}${it("check", "Информация", "info")}${isAdm ? it("crown", "Админка", "adm") : ""}</div>
     ${isApp() ? "" : `<button class="adc" data-a="adweb"><div class="adm"></div><div><b>Скачай приложение</b><span>Играй без Telegram, на весь экран</span></div></button>`}
     <div class="drv">MDMelonClicker v${CHANGES[0][0]}</div>`;
 }
@@ -3006,7 +3019,7 @@ const CT_DESC = (t, i) => i === 0 ? "всем кланом внести " + fmt(
 function ctCard(d) {
   if (!d.ct) return "";
   const left = Math.max(0, d.ct.ends - Math.floor(Date.now() / 1000)), dd = Math.floor(left / 86400), hh = Math.floor(left % 86400 / 3600);
-  return `<div class="card col clset"><div class="t1" style="display:flex;align-items:center;gap:8px;color:var(--pri)">${ic("cup", 18)} Задания недели<span class="t2" style="margin:0 0 0 auto;font-size:12px">ещё ${dd} д ${hh} ч</span></div>${d.ct.tasks.map((t, i) => `<div><div style="display:flex;align-items:center;gap:6px"><div class="t1 grow" style="font-size:14px">${CT_NAME[i]}</div><div class="t2" style="margin:0;display:flex;align-items:center;gap:2px">${t.done ? ic("check", 14) : "+" + t.rew + ic("gem", 12)}</div></div><div class="t2" style="margin:0;font-size:12px">${CT_DESC(t, i)} · ${fmt(Math.min(t.cur, t.goal))} / ${fmt(t.goal)}</div><div class="lbb" style="margin-top:5px"><i style="width:${Math.min(1, t.cur / t.goal) * 100}%"></i></div></div>`).join("")}<div class="t2" style="margin:0;font-size:12px">Награда выдаётся каждому участнику клана</div></div>`;
+  return `<div class="card col clset"><div class="t1" style="display:flex;align-items:center;gap:8px;color:var(--pri)">${ic("cup", 18)} Задания недели<span class="t2" style="margin:0 0 0 auto;font-size:12px">ещё ${dd} д ${hh} ч</span></div>${d.ct.tasks.map((t, i) => `<div><div style="display:flex;align-items:center;gap:6px"><div class="t1 grow" style="font-size:14px">${CT_NAME[i]}</div><div class="t2" style="margin:0;display:flex;align-items:center;gap:2px">${t.done ? ic("check", 14) : "+" + t.rew + ic("gem", 12)}</div></div><div class="t2" style="margin:0;font-size:12px">${CT_DESC(t, i)} · ${fmt(Math.min(t.cur, t.goal))} / ${fmt(t.goal)}</div>${bar(Math.min(1, t.cur / t.goal))}</div>`).join("")}<div class="t2" style="margin:0;font-size:12px">Награда выдаётся каждому участнику клана</div></div>`;
 }
 A.clinvite = async function () { const q = (KEEP.clinvq || "").trim(); if (!q) return toast("Введи имя или ID"); const r = await api("clan_invite", {q}); if (r.error) return toast(r.error); KEEP.clinvq = ""; toast("Приглашение отправлено: " + r.name); render(); };
 A.clainv = async function (e) { const q = (KEEP.cinv || "").trim(); if (!q) return toast("Введи имя или ID"); const r = await api("adm_clan_invite", {cid: +e.dataset.i, q}); if (r.error) return toast(r.error); KEEP.cinv = ""; toast("Приглашение отправлено: " + r.name); };
@@ -3092,7 +3105,7 @@ A.refshare = function () { const u = "https://t.me/share/url?url=" + encodeURICo
 A.refcopy = async function () { try { await navigator.clipboard.writeText(REFLINK()); toast("Ссылка скопирована"); } catch (e) { const t = document.createElement("textarea"); t.value = REFLINK(); document.body.appendChild(t); t.select(); try { document.execCommand("copy"); toast("Ссылка скопирована"); } catch (x) { toast(REFLINK()); } t.remove(); } };
 setTimeout(async () => { await dlyLoad(); dlyDot(); }, 2500);
 function dlyDot() { const b = document.querySelector('#nav [data-a="drw"]'); if (b) b.classList.toggle("dd", !!(DLY && DLY.can)); }
-A.dlyopen = async function () { drwOpen(false); await dlyLoad(); dlyDot(); if (!DLY) return toast("Нет связи"); modal(dlyCard() + `<div style="margin-top:10px;text-align:center">${btn("Закрыть", "mclose", "", "t")}</div>`); };
+A.dlyopen = async function () { drwOpen(false); await dlyLoad(); dlyDot(); if (!DLY) return toast("Нет связи"); modal(dlyCard()); };
 
 // ---------- коллекция котов: награды за прогресс
 let COLL = null;
@@ -3100,7 +3113,7 @@ async function collLoad() { try { const r = await api("coll_info", {}); if (r &&
 function collCard() {
   if (!COLL) return "";
   const TOT = 101, mx = COLL.ms[COLL.ms.length - 1][0];
-  return `<div class="card col clset"><div class="t1" style="display:flex;align-items:center;gap:8px;color:var(--pri)">${ic("star", 18)} Прогресс коллекции<span class="t2" style="margin:0 0 0 auto">${COLL.n} / ${TOT}</span></div><div class="lbb"><i style="width:${Math.min(100, COLL.n / TOT * 100)}%"></i></div>${COLL.ms.map((m, i) => { const ok = COLL.n >= m[0], got = COLL.claimed.includes(i); return `<div style="display:flex;align-items:center;gap:8px"><div class="t2 grow" style="margin:0;font-size:13px">${m[0]} котов</div><div class="t2" style="margin:0;display:flex;align-items:center;gap:2px">+${m[1]}${ic("gem", 12)}</div>${got ? `<span class="chip">${ic("check", 12)}</span>` : ok ? btn("Забрать", "collget", `data-i="${i}"`) : `<span class="t2" style="margin:0;font-size:12px;min-width:56px;text-align:right">ещё ${m[0] - COLL.n}</span>`}</div>`; }).join("")}</div>`;
+  return `<div class="card col clset"><div class="t1" style="display:flex;align-items:center;gap:8px;color:var(--pri)">${ic("star", 18)} Прогресс коллекции<span class="t2" style="margin:0 0 0 auto">${COLL.n} / ${TOT}</span></div>${bar(COLL.n / TOT)}${COLL.ms.map((m, i) => { const ok = COLL.n >= m[0], got = COLL.claimed.includes(i); return `<div style="display:flex;align-items:center;gap:8px"><div class="t2 grow" style="margin:0;font-size:13px">${m[0]} котов</div><div class="t2" style="margin:0;display:flex;align-items:center;gap:2px">+${m[1]}${ic("gem", 12)}</div>${got ? `<span class="chip">${ic("check", 12)}</span>` : ok ? btn("Забрать", "collget", `data-i="${i}"`) : `<span class="t2" style="margin:0;font-size:12px;min-width:56px;text-align:right">ещё ${m[0] - COLL.n}</span>`}</div>`; }).join("")}</div>`;
 }
 const _tCases2 = tCases;
 tCases = function () { if (!COLL) collLoad(); const h = _tCases2(); return COLL ? h.replace('<div class="sec">Коллекция ·', collCard() + '<div class="sec">Коллекция ·') : h; };
@@ -3230,7 +3243,7 @@ function wmCard() {
   const cdTxt = WM.cd > 0 ? `Можно полить через ${Math.ceil(WM.cd / 60)} мин` : "Монеты тратятся на рост арбуза";
   return `<div class="card col clset"><div class="t1" style="display:flex;align-items:center;gap:8px;color:var(--pri)">${ic("star", 18)} Мировой арбуз<span class="t2" style="margin:0 0 0 auto;font-size:12px">Раунд ${WM.r}</span></div>
 <div style="display:flex;align-items:center;gap:14px"><div style="width:130px;height:130px;display:flex;align-items:center;justify-content:center">${melon}</div><div class="grow"><div class="t2" style="margin:0">Весь сервер поливает один арбуз. Созреет: каждому участнику кристаллы и ×1.5 к доходу всем на 30 минут.</div><div class="t1" style="font-size:15px;margin-top:6px">${fmt(Math.floor(WM.p))} / ${fmt(WM.goal)} мл</div></div></div>
-<div class="lbb"><i style="width:${f * 100}%"></i></div>
+${bar(f)}
 <div class="t2" style="margin:0;font-size:12px">Твой вклад: <b>${mine} мл</b> · ${cdTxt}</div>
 <div style="display:flex;gap:8px;flex-wrap:wrap">${amts.map(([a, l]) => btn(`Полить ${l} · ${fmt(a)}`, "wmw", `data-i="${a}"${can && S.pts >= a ? "" : " disabled"}`, "o")).join("")}</div>
 ${WM.top.length ? `<div class="t2" style="margin:0;font-weight:700">Лучшие поливальщики</div>${WM.top.map((t, i) => `<div class="t2" style="margin:0;font-size:13px">${i + 1}. ${esc(t.name)} · ${t.ml} мл</div>`).join("")}` : ""}
