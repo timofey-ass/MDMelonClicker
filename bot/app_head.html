@@ -536,6 +536,14 @@ body.evton #mas{bottom:calc(134px + env(safe-area-inset-bottom))!important}
 .czrow{gap:3px!important;margin-bottom:3px!important}
 .czrow .czbk{border-radius:28px 8px 8px 8px!important}.czrow .czjpc{border-radius:8px 28px 8px 8px!important}
 .czrow+.gml{margin-top:0}.czrow+.gml>:first-child{border-radius:8px 8px 8px 8px}
+/* соединённые карточки: подряд идущие карточки склеиваются в один блок */
+#view>.card{margin-bottom:3px}
+#view>.card:not(:has(+ .card)){margin-bottom:8px}
+#view>.card:has(+ .card){border-bottom-left-radius:8px;border-bottom-right-radius:8px}
+#view>.card+.card{border-top-left-radius:8px;border-top-right-radius:8px}
+#view>.mbtn{margin-top:3px;border-radius:8px}
+#view>.mbtn:not(.mbtn+.mbtn){margin-top:8px;border-top-left-radius:24px;border-top-right-radius:24px}
+#view>.mbtn:not(:has(+ .mbtn)){border-bottom-left-radius:24px;border-bottom-right-radius:24px}
 </style></head><body>
 <div id="load"><div class="lw"><div class="lglow"></div><div class="lm" id="lm">🍉</div><div class="lsh"></div></div><div class="lti">MDMelonClicker</div><div id="lt">Подключаюсь…</div><div class="tr"><i id="lbar"></i></div><div id="ltip"></div></div>
 <div id="app"><div id="top"><h1 id="ttl">MDMelonClicker</h1><span id="gemc"></span></div><div id="view"></div><div id="nav"></div></div>
