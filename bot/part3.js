@@ -1850,53 +1850,96 @@ tTop = function () {
 function injectSeg(h, seg) { const k = h.indexOf('<div class="card">'); return k < 0 ? h : h.slice(0, k) + seg + h.slice(k); }
 A.lbm = function (e) { lbMode = +e.dataset.i; if (lbMode) { SEAS = null; seasLoad(); } render(); };
 
-// ---------- шахматы в казино: 5 минут, бот, ставка
+// ---------- шахматы в казино: 5 минут, с ботом (sub 9), лобби (sub 10) и игра вдвоём (sub 11)
 /*CHESS*/
 const CHG = ["", "♟", "♞", "♝", "♜", "♛", "♚"], chClk = ms => { const t = Math.ceil(Math.max(0, ms) / 1000); return Math.floor(t / 60) + ":" + String(t % 60).padStart(2, "0"); };
 const chWhy = {mate: "Мат", time: "Время вышло", resign: "Сдача", stalemate: "Пат", draw: "Ничья по правилам"};
+const chCaps = (b, col) => { const have = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0}, full = {1: 8, 2: 2, 3: 2, 4: 2, 5: 1}; for (const v of b) if (v * col > 0 && Math.abs(v) < 6) have[Math.abs(v)]++; let s = ""; for (const p of [5, 4, 3, 2, 1]) s += CHG[p].repeat(Math.max(0, full[p] - have[p])); return s; };
+function chApplyView(r, pvp) {
+  const old = cz.ch && !cz.ch.none ? cz.ch : {}, mine = r.s && (pvp ? r.s.t === r.me : r.s.t === 1);
+  const C = Object.assign(old, {pvp, id: r.id, status: r.status || "play", s: r.s, bet: r.bet || r.stake, me: pvp ? r.me : 1, opp: pvp ? r.opp : "Арбуз-бот", pm: r.pm, om: r.om, lm: r.lm, chk: r.chk, at: Date.now(), sel: null, mv: [], busy: false, tout: 0, v: r.v});
+  if (old.s && r.s && old.s.n !== r.s.n && mine && pvp) { try { hap("light"); tone(520, 80, .05, "triangle"); } catch (e) {} }
+  cz.ch = C; return C;
+}
+function chPayout(C, done, why, pay, bet) {
+  if (C.paid) return; C.paid = 1; C.done = done; C.why = why; C.pay = pay; S.pts += pay; mark(); if (pay > bet) save(true);
+  if (done === "loss") S.burnC = (S.burnC || 0) + bet;
+  if (done === "win") { try { fxConfetti(120); hap("ok"); } catch (e) {} }
+  czUpd();
+}
 function chAdopt(r) {
   if (!r) { toast("Нет связи"); return chLoad(); }
   if (r.none) { cz.ch = {none: true}; return render(); }
   if (r.error && !r.s) { toast(r.error); return chLoad(); }
   if (r.error) toast(r.error);
-  const C = Object.assign(cz.ch && !cz.ch.none ? cz.ch : {}, {s: r.s, bet: r.bet, pm: r.pm, om: r.om, lm: r.lm, chk: r.chk, at: Date.now(), sel: null, mv: [], busy: false, tout: 0});
-  cz.ch = C;
-  if (r.done && !C.paid) {
-    C.paid = 1; C.done = r.done; C.why = r.why; C.pay = r.pay; S.pts += r.pay; mark(); if (r.pay > r.bet) save(true);
-    if (r.done === "loss") S.burnC = (S.burnC || 0) + r.bet;
-    if (r.done === "win") { try { fxConfetti(120); hap("ok"); } catch (e) {} }
-  }
-  czUpd(); render();
+  const C = chApplyView(r, false); if (r.done) chPayout(C, r.done, r.why, r.pay, r.bet);
+  render();
 }
-async function chLoad() { const r = await api("ch_state", {}); chAdopt(r && !r.error ? r : r && r.error ? null : r); }
+async function chLoad() { const r = await api("ch_state", {}); if (r && r.error) { cz.ch = {none: true}; return render(); } chAdopt(r); }
+async function chgAdopt(r) {
+  if (!r) { toast("Нет связи"); return; }
+  if (r.error && !r.status) { toast(r.error); cz.chid = 0; cz.sub = 10; cz.ch = null; render(); chgLobby(); return; }
+  if (r.error) toast(r.error);
+  if (r.status === "wait") { cz.ch = Object.assign(cz.ch && !cz.ch.none ? cz.ch : {}, {pvp: true, id: r.id, status: "wait", bet: r.stake}); cz.chsig = "wait"; render(); return; }
+  if (r.status === "cancel") { if (!r.claimed) { const c = await api("chg_claim", {id: r.id}); if (c && c.amount > 0) { S.pts += c.amount; mark(); save(true); czUpd(); } } cz.chid = 0; cz.ch = null; cz.sub = 10; render(); chgLobby(); return; }
+  const C = chApplyView(r, true); cz.chsig = r.v + "|" + r.status;
+  if (r.status === "done" && !C.paid) { const c = r.claimed ? {amount: 0} : await api("chg_claim", {id: r.id}); chPayout(C, r.winner === 1 ? "win" : r.winner === 2 ? "loss" : "draw", r.why, c && c.amount || 0, r.stake); }
+  render();
+}
 function chBoard(C) {
-  const mvs = new Set((C.mv || []).map(m => m[1])), kq = C.chk ? chKing(C.s.b, C.s.t) : -1; let h = "";
-  for (let i = 0; i < 64; i++) {
-    const v = C.s.b[i], r = i >> 3, c = i & 7, cls = ["chs", (r + c) & 1 ? "d" : "l"];
+  const mvs = new Set((C.mv || []).map(m => m[1])), kq = C.chk ? chKing(C.s.b, C.s.t) : -1, fl = C.me === -1; let h = "";
+  for (let ri = 0; ri < 8; ri++) for (let ci = 0; ci < 8; ci++) {
+    const i = fl ? (7 - ri) * 8 + (7 - ci) : ri * 8 + ci, v = C.s.b[i], cls = ["chs", (ri + ci) & 1 ? "d" : "l"];
     if (C.lm && (C.lm[0] === i || C.lm[1] === i)) cls.push("lm"); if (C.sel === i) cls.push("sel"); if (mvs.has(i)) cls.push(v ? "cap" : "tg"); if (i === kq) cls.push("ck");
-    h += `<div class="${cls.join(" ")}" data-a="chsq" data-i="${i}">${v ? `<span class="chp ${v > 0 ? "w" : "b"}">${CHG[Math.abs(v)]}︎</span>` : ""}</div>`;
+    const co = (ci === 0 ? `<i class="chr">${fl ? ri + 1 : 8 - ri}</i>` : "") + (ri === 7 ? `<i class="chf">${(fl ? "hgfedcba" : "abcdefgh")[ci]}</i>` : "");
+    h += `<div class="${cls.join(" ")}" data-a="chsq" data-i="${i}">${co}${v ? `<span class="chp ${v > 0 ? "w" : "b"}">${CHG[Math.abs(v)]}︎</span>` : ""}</div>`;
   }
   return `<div class="chb">${h}</div>`;
 }
+function chPanel(C, mineSide) {
+  const live = !C.done && C.status !== "wait", mover = C.s ? (C.s.t === C.me) : false, active = live && (mineSide ? mover : !mover);
+  const ms = mineSide ? (C.done || !mover ? C.pm : C.pm - (Date.now() - C.at)) : (C.done || mover ? C.om : C.om - (Date.now() - C.at));
+  const nm = mineSide ? "Ты" : esc(C.opp || ""), cap = chCaps(C.s.b, mineSide ? -C.me : C.me);
+  return `<div class="chpl"><div class="chav${mineSide ? "" : " o"}">${ic(mineSide ? "user" : C.pvp ? "user" : "bolt", 18)}</div><div class="grow" style="min-width:0"><div class="t1" style="margin:0;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${nm}</div><div class="chcap">${cap || "&nbsp;"}</div></div><span class="chclk${active ? " on" : ""}${active && ms < 30000 ? " low" : ""}" id="${mineSide ? "chpm" : "chom"}">${chClk(ms)}</span></div>`;
+}
+function chGame(C, back) {
+  const mover = C.s.t === C.me;
+  const st = C.done ? `<div class="card col chres ${C.done}"><div class="chic">${ic(C.done === "win" ? "cup" : C.done === "loss" ? "flag" : "swap", 30)}</div><div class="t1" style="font-size:22px;margin:0">${C.done === "win" ? "Победа!" : C.done === "loss" ? "Поражение" : "Ничья"}</div><div class="t2" style="margin:0">${chWhy[C.why] || ""} · ${C.done === "win" ? "+" + fmt(C.pay - C.bet) : C.done === "loss" ? "−" + fmt(C.bet) : "ставка возвращена"}</div><button class="btn" data-a="${C.pvp ? "chgback" : "chnew"}" style="width:100%;height:48px;justify-content:center">${C.pvp ? "К столикам" : "Новая партия"}</button></div>`
+    : `<div class="chst${C.chk && mover ? " chk" : ""}" id="chst"><i></i>${C.busy ? (C.pvp ? "Отправляю ход…" : "Арбуз-бот думает…") : !mover ? "Ход соперника" : C.chk ? "Тебе шах!" : "Твой ход"}</div><button class="btn o" data-a="chres" style="width:100%;height:46px;justify-content:center;margin-top:10px">${ic("flag", 16)} Сдаться</button>`;
+  return back + `<div class="chw">${chPanel(C, false)}${chBoard(C)}${chPanel(C, true)}</div><div class="t2" style="margin:8px 6px 0;font-size:12px;text-align:center">Ставка ${fmt(C.bet)}${C.pvp ? " · банк " + fmt(C.bet * 2) + ", 5% в джекпот" : " · победа ×1.9"}</div>${st}`;
+}
 function chScreen() {
-  const back = `<button class="btn t bkb" data-a="czgo" data-k="0">← Казино</button>`, C = cz.ch;
+  const back = `<button class="btn t bkb" data-a="czgo" data-k="${cz.sub === 11 ? 10 : 0}">← ${cz.sub === 11 ? "К столикам" : "Казино"}</button>`, C = cz.ch;
   const bal = `<div class="card" style="padding:10px 16px"><span class="t2 grow" style="margin:0">Баланс</span><b id="czbal" style="font-size:18px">${fmt(S.pts)}</b></div>`;
+  if (cz.sub === 10) {
+    const L = cz.chlobby;
+    let h = `<button class="btn t bkb" data-a="czgo" data-k="0">← Казино</button>` + bal + `<div class="card col"><div class="t1" style="display:flex;align-items:center;gap:8px;color:var(--pri)">${ic("chess", 20)} Шахматы на двоих</div><div class="t2" style="font-size:12px;margin:0;line-height:1.4">Цвет фигур выпадает случайно. По 5 минут на каждого, часы идут на своём ходу. Победитель забирает банк без 5% (они уходят в джекпот), при ничьей каждый получает свою ставку. Закончилось время или сдался: проигрыш.</div>${czBetUi()}<button class="btn" data-a="chgcreate" style="width:100%;height:50px;justify-content:center">Создать и ждать соперника</button></div><div class="sec">Открытые столики${L ? " · " + L.rows.length : ""}</div>`;
+    if (!L) return h + `<div class="t2" style="text-align:center;margin:20px">Загружаю…</div>`;
+    return h + (L.rows.length ? L.rows.map(x => `<div class="card"><div class="chav">${ic("user", 18)}</div><div class="grow"><div class="t1" style="font-size:15px">${esc(x.n1)}</div><div class="t2" style="margin:0;font-size:12px">Ставка ${fmt(x.stake)}</div></div>${btn("Сесть", "chgjoin", `data-i="${x.id}" data-s="${x.stake}"`, S.pts >= x.stake ? "" : "dis")}</div>`).join("") : `<div class="t2" style="text-align:center;margin:20px">Пока нет столиков. Создай первый и подожди соперника!</div>`);
+  }
+  if (cz.sub === 11) {
+    if (!C || !C.status) return `<div class="card col"><div class="t2" style="margin:0">Загрузка…</div></div>`;
+    if (C.status === "wait") return `<div class="card col" style="align-items:center;text-align:center;gap:10px;padding:28px 16px"><div class="chav" style="width:56px;height:56px">${ic("users", 28)}</div><div class="t1" style="font-size:18px;margin:0">Ждём соперника</div><div class="t2" style="margin:0">Ставка ${fmt(C.bet)}. Когда кто-то сядет за столик, партия начнётся сама.</div><button class="btn o" data-a="chgcancel" style="justify-content:center">Закрыть столик</button></div>`;
+    return chGame(C, C.done ? back : "");
+  }
   if (!C) return back + bal + `<div class="card col"><div class="t2" style="margin:0">Загрузка…</div></div>`;
-  if (C.none) return back + bal + `<div class="card col"><div class="t1" style="display:flex;align-items:center;gap:8px;color:var(--pri)">${ic("chess", 20)} Шахматы · 5 минут</div><div class="t2" style="margin:0;font-size:12px;line-height:1.4">Играешь белыми против Арбуз-бота. На партию 5 минут, часы идут только на твоих ходах. Победа: ставка ×1.9. Ничья: ставка возвращается. Время вышло или сдался: ставка проигрывается. Пешка доходит до края и становится ферзём. Партия сохраняется, можно выйти и вернуться.</div></div>${czBetUi()}<button class="btn" data-a="chstart" style="width:100%;height:54px;justify-content:center;font-size:17px;margin-top:10px">Начать партию</button>`;
-  const turn = C.s.t === 1;
-  const st = C.done ? `<div class="card col" style="align-items:center;text-align:center;gap:6px"><div class="t1" style="font-size:20px;color:${C.done === "win" ? "var(--pri)" : C.done === "loss" ? "#ff8a80" : "var(--on)"}">${C.done === "win" ? "Победа!" : C.done === "loss" ? "Поражение" : "Ничья"}</div><div class="t2" style="margin:0">${chWhy[C.why] || ""} · ${C.done === "win" ? "+" + fmt(C.pay - C.bet) : C.done === "loss" ? "−" + fmt(C.bet) : "ставка возвращена"}</div><button class="btn" data-a="chnew" style="width:100%;justify-content:center">Новая партия</button></div>`
-    : `<div class="t2" id="chst" style="margin:6px 4px 0;text-align:center;font-size:13px">${C.busy ? "Арбуз-бот думает…" : C.chk ? "Тебе шах!" : "Твой ход"}</div><button class="btn t" data-a="chres" style="width:100%;justify-content:center;margin-top:8px">Сдаться</button>`;
-  return back + bal + `<div class="chrow"><span class="t1 grow" style="margin:0;font-size:14px">Арбуз-бот</span><span class="chclk" id="chom">${chClk(C.om)}</span></div>${chBoard(C)}<div class="chrow"><span class="t1 grow" style="margin:0;font-size:14px">Ты · ставка ${fmt(C.bet)}</span><span class="chclk${C.done ? "" : " on"}" id="chpm">${chClk(C.done ? C.pm : C.pm - (Date.now() - C.at))}</span></div>${st}`;
+  if (C.none) return back + bal + `<div class="card col"><div class="t1" style="display:flex;align-items:center;gap:8px;color:var(--pri)">${ic("chess", 20)} Шахматы · 5 минут</div><div class="t2" style="margin:0;font-size:12px;line-height:1.4">Играешь белыми против Арбуз-бота. На партию 5 минут, часы идут только на твоих ходах. Победа: ставка ×1.9. Ничья: ставка возвращается. Время вышло или сдался: ставка проигрывается. Пешка, дошедшая до края, становится ферзём. Партия сохраняется, можно выйти и вернуться.</div></div>${czBetUi()}<button class="btn" data-a="chstart" style="width:100%;height:54px;justify-content:center;font-size:17px;margin-top:10px">Начать партию</button>`;
+  return chGame(C, back);
 }
 const _tChC = tCasino;
 tCasino = function () {
-  if (cz.sub === 9) return chScreen();
-  const h = _tChC();
-  return cz.sub === 0 ? h + `<button class="mbtn" data-a="czgo" data-k="9">${ic("chess", 28)}<span class="grow">Шахматы · 5 минут<div class="t2" style="margin:0;font-size:12px;font-weight:500">Партия против Арбуз-бота, победа ×1.9</div></span>${ic("arrow", 20)}</button>` : h;
+  if (cz.sub >= 9 && cz.sub <= 11) return chScreen();
+  const h = _tChC(); if (cz.sub !== 0) return h;
+  const card = `<div class="gmc"><div class="gmh"><div class="circ">${ic("chess", 26)}</div><span class="grow"><b>Шахматы · 5 минут</b><div class="t2" style="margin:2px 0 0;font-size:12px;font-weight:500">С Арбуз-ботом (победа ×1.9) или с другим игроком на банк</div></span></div><div class="gmb"><button data-a="czgo" data-k="9">${ic("user", 18)} В одиночку</button><button data-a="czgo" data-k="10">${ic("users", 18)} Вдвоём</button></div></div>`;
+  const k = h.indexOf('<div class="t2" style="margin:14px 6px;font-size:12px">Играть можно'); return k < 0 ? h + card : h.slice(0, k) + card + h.slice(k);
 };
 const _czgoCh = A.czgo;
 A.czgo = function (e) {
-  if (+e.dataset.k === 9) { if (S.pts < 0) return kickOut(); cz.sub = 9; cz.ch = null; render(); chLoad(); $("#view").scrollTop = 0; return; }
+  const k = +e.dataset.k;
+  if (cz.sub === 11 && cz.ch && !cz.ch.done && cz.ch.status !== "cancel" && k !== 11) return toast(cz.ch.status === "wait" ? "Сначала закрой свой столик" : "Сначала доиграй партию");
+  if (k === 9) { if (S.pts < 0) return kickOut(); cz.sub = 9; cz.ch = null; render(); chLoad(); $("#view").scrollTop = 0; return; }
+  if (k === 10) { if (S.pts < 0) return kickOut(); cz.sub = 10; cz.ch = null; cz.chid = 0; cz.chlobby = null; render(); chgLobby(); $("#view").scrollTop = 0; return; }
+  if (cz.sub === 11) { cz.ch = null; cz.chid = 0; }
   return _czgoCh.apply(this, arguments);
 };
 A.chstart = async function () {
@@ -1906,22 +1949,55 @@ A.chstart = async function () {
   if (r.resume) { S.pts += bet; mark(); toast("Продолжаем начатую партию"); }
   cz.ch = null; chAdopt(r);
 };
+function chMove(C, i, send) {
+  const f = C.sel, mv = chLegal(C.s).find(m => m[0] === f && m[1] === i); C.sel = null; C.mv = []; C.busy = true; C.pm -= Date.now() - C.at; C.at = Date.now();
+  C.s = chApply(C.s, mv); C.lm = [f, i]; C.chk = false; hap("light"); render(); return send(f, i);
+}
 A.chsq = async function (e) {
-  const C = cz.ch; if (!C || C.none || C.done || C.busy || C.s.t !== 1) return; const i = +e.dataset.i, v = C.s.b[i];
+  const C = cz.ch; if (!C || C.none || C.done || C.busy || C.status === "wait" || !C.s || C.s.t !== C.me) return; const i = +e.dataset.i, v = C.s.b[i];
   if (C.sel != null && C.mv.some(m => m[1] === i)) {
-    const f = C.sel, mv = chLegal(C.s).find(m => m[0] === f && m[1] === i); C.sel = null; C.mv = []; C.busy = true; C.pm -= Date.now() - C.at; C.at = Date.now();
-    C.s = chApply(C.s, mv); C.lm = [f, i]; C.chk = false; hap("light"); render();
-    const r = await api("ch_move", {f, t: i}); chAdopt(r); return;
+    if (C.pvp) return chMove(C, i, async (f, t) => chgAdopt(await api("chg_move", {id: C.id, f, t})));
+    return chMove(C, i, async (f, t) => chAdopt(await api("ch_move", {f, t})));
   }
-  if (v > 0) { C.sel = i; C.mv = chLegal(C.s).filter(m => m[0] === i); } else { C.sel = null; C.mv = []; }
+  if (v * C.me > 0) { C.sel = i; C.mv = chLegal(C.s).filter(m => m[0] === i); } else { C.sel = null; C.mv = []; }
   render();
 };
-A.chres = function () { if (!confirm("Сдаться? Ставка будет потеряна.")) return; api("ch_resign", {}).then(chAdopt); };
+A.chres = function () { if (!confirm("Сдаться? Ставка будет потеряна.")) return; const C = cz.ch; if (C && C.pvp) api("chg_resign", {id: C.id}).then(chgAdopt); else api("ch_resign", {}).then(chAdopt); };
 A.chnew = function () { cz.ch = {none: true}; render(); };
+A.chgback = function () { cz.ch = null; cz.chid = 0; cz.sub = 10; render(); chgLobby(); };
+async function chgLobby() {
+  const r = await api("chg_list", {}); if (!r || r.error) return; cz.chlobby = r;
+  for (const id of r.claims || []) { const c = await api("chg_claim", {id}); if (c && c.amount > 0) { S.pts += c.amount; mark(); save(true); toast("Шахматы: +" + fmt(c.amount)); czUpd(); } }
+  if (r.mine && cz.sub === 10 && !cz.chid) { cz.chid = r.mine; cz.sub = 11; cz.ch = null; render(); chgPoll(); return; }
+  if (cz.sub === 10 && !cz.busy) render();
+}
+A.chgcreate = async function () {
+  if (cz.busy) return; const bet = czBet(); if (S.pts < bet || bet < 100) return toast("Не хватает монет");
+  cz.busy = true; S.pts -= bet; mark(); czUpd(); const r = await api("chg_create", {stake: bet}); cz.busy = false;
+  if (!r || r.error) { S.pts += bet; mark(); czUpd(); return toast((r && r.error) || "Нет связи"); }
+  cz.chid = r.id; cz.sub = 11; cz.ch = {pvp: true, id: r.id, status: "wait", bet}; render(); chgPoll();
+};
+A.chgjoin = async function (e) {
+  if (cz.busy) return; const id = +e.dataset.i, stake = +e.dataset.s; if (S.pts < stake) return toast("Не хватает монет");
+  cz.busy = true; const r = await api("chg_join", {id}); cz.busy = false;
+  if (!r || r.error) { toast((r && r.error) || "Нет связи"); chgLobby(); return; }
+  S.pts -= r.stake; mark(); cz.chid = id; cz.sub = 11; cz.ch = null; render(); chgPoll();
+};
+A.chgcancel = async function () { const r = await api("chg_cancel", {id: cz.chid}); if (r && r.error) toast(r.error); chgPoll(); };
+let chgBusy = false;
+async function chgPoll() {
+  if (chgBusy || cz.sub !== 11 || !cz.chid) return; chgBusy = true;
+  try { const C = cz.ch, r = await api("chg_state", {id: cz.chid}); if (r && cz.sub === 11) { const sig = r.status === "wait" ? "wait" : r.v + "|" + r.status; if (!C || sig !== cz.chsig || r.error || (C && !C.s && r.s)) await chgAdopt(r); } } catch (e) {}
+  chgBusy = false;
+}
+setInterval(() => { if (tab === 6 && !document.hidden && cz.sub === 11 && cz.ch && !cz.ch.busy && !cz.ch.done) chgPoll(); }, 1500);
+setInterval(() => { if (tab === 6 && !document.hidden && cz.sub === 10 && !cz.busy) chgLobby(); }, 3500);
 setInterval(() => {
-  const C = cz.ch; if (tab !== 6 || cz.sub !== 9 || !C || C.none || C.done) return;
-  const left = C.pm - (Date.now() - C.at), el = document.getElementById("chpm"); if (el && !C.busy) el.textContent = chClk(left);
-  if (left <= 0 && !C.tout && !C.busy) { C.tout = 1; chLoad(); }
+  const C = cz.ch; if (tab !== 6 || (cz.sub !== 9 && cz.sub !== 11) || !C || C.none || C.done || !C.s || C.status === "wait") return;
+  const mover = C.s.t === C.me, set = (id, ms, on) => { const el = document.getElementById(id); if (el) { el.textContent = chClk(ms); el.classList.toggle("low", on && ms < 30000); } };
+  const left = C.pm - (Date.now() - C.at), oleft = C.om - (Date.now() - C.at);
+  if (mover && !C.busy) set("chpm", left, true); else if (!mover && C.pvp) set("chom", oleft, true);
+  if (((mover && left <= 0) || (!mover && C.pvp && oleft <= 0)) && !C.tout && !C.busy) { C.tout = 1; if (C.pvp) chgPoll(); else chLoad(); }
 }, 250);
 
 // ---------- язык: русский / English (перевод интерфейса на лету)

@@ -515,3 +515,35 @@ test("шахматы: детский мат выигрывает ×1.9, пат �
   const d = await call(A, "ch_move", { f: 41, t: 17 });
   assert.equal(d.done, "draw"); assert.equal(d.why, "stalemate"); assert.equal(d.pay, 1000);
 });
+
+test("шахматы вдвоём: столик, очерёдность, часы, сдача, банк −5%, возврат при отмене", async () => {
+  const { call, sq } = await makeEnv();
+  await call(A, "auth"); await call(B, "auth");
+  assert.match((await call(A, "chg_create", { stake: 5 })).error || "", /Неверная/);
+  const c = await call(A, "chg_create", { stake: 1000 }); assert.ok(c.id);
+  assert.match((await call(A, "chg_create", { stake: 1000 })).error || "", /активный/);
+  assert.match((await call(A, "chg_join", { id: c.id })).error || "", /твой/);
+  assert.equal((await call(B, "chg_list", {})).rows.length, 1);
+  const j = await call(B, "chg_join", { id: c.id }); assert.equal(j.stake, 1000);
+  const va = await call(A, "chg_state", { id: c.id }), vb = await call(B, "chg_state", { id: c.id });
+  assert.equal(va.me, -vb.me); assert.ok(va.pm > 295000 && va.pm <= 300000);
+  const [W, Bl, wid, bid] = va.me === 1 ? [A, B, "A", "B"] : [B, A, "B", "A"];
+  assert.match((await call(Bl, "chg_move", { id: c.id, f: 12, t: 28 })).error || "", /не твой/);
+  assert.match((await call(W, "chg_move", { id: c.id, f: 52, t: 20 })).error || "", /нельзя/);
+  const m1 = await call(W, "chg_move", { id: c.id, f: 52, t: 36 }); assert.ok(!m1.error); assert.equal(m1.s.t, -1);
+  const m2 = await call(Bl, "chg_move", { id: c.id, f: 12, t: 28 }); assert.ok(!m2.error); assert.equal(m2.s.t, 1);
+  // сдаётся белый: чёрный получает 1900
+  const rs = await call(W, "chg_resign", { id: c.id }); assert.equal(rs.status, "done"); assert.equal(rs.winner, 2);
+  assert.equal((await call(Bl, "chg_state", { id: c.id })).pay, 1900);
+  assert.equal((await call(Bl, "chg_claim", { id: c.id })).amount, 1900);
+  assert.equal((await call(Bl, "chg_claim", { id: c.id })).amount, 0, "второй раз не платит");
+  assert.equal((await call(W, "chg_claim", { id: c.id })).amount, 0);
+  // флажок: у игрока на ходу кончилось время
+  const c2 = await call(A, "chg_create", { stake: 500 }); await call(B, "chg_join", { id: c2.id });
+  const g = sq.prepare("SELECT * FROM chg WHERE id=?").get(c2.id); sq.prepare("UPDATE chg SET last=? WHERE id=?").run(Date.now() - 301000, c2.id);
+  const t = await call(A, "chg_state", { id: c2.id }); assert.equal(t.status, "done"); assert.equal(t.why, "time");
+  assert.equal(t.winner, g.w === 1 ? 2 : 1, "выигрывает тот, чей ход не на часах");
+  // отмена своего столика возвращает ставку
+  const c3 = await call(A, "chg_create", { stake: 300 }); assert.equal((await call(A, "chg_cancel", { id: c3.id })).ok, true);
+  assert.equal((await call(A, "chg_claim", { id: c3.id })).amount, 300);
+});
