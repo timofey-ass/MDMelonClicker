@@ -1371,7 +1371,7 @@ setTheme = function (i) {
   try { tg && (tg.setHeaderColor(m["--surf"]), tg.setBackgroundColor(m["--surf"])); } catch (e) {}
 };
 A.ltheme = function () { LSset("lt", LS("lt", 0) ? 0 : 1); setTheme(LS("th", 0)); drwFill(); render(); };
-buildNav = function () { $("#nav").innerHTML = NAVT.map(i => NAV[i]).map((n, k) => k === NAVT.length - 1 ? `<button data-a="drw"><span class="pill">${ic("menu", 24)}</span>Меню</button>` : `<button data-a="tab" data-i="${NAVT[k]}"><span class="pill">${ic(n[1], 24)}</span>${n[0]}</button>`).join(""); };
+buildNav = function () { $("#nav").innerHTML = NAVT.map(i => NAV[i]).map((n, k) => k === NAVT.length - 1 ? `<button data-a="drw"><span class="pill">${ic("menu", 24)}</span><span class="nl">Меню</span></button>` : `<button data-a="tab" data-i="${NAVT[k]}"><span class="pill">${ic(n[1], 24)}</span><span class="nl">${n[0]}</span></button>`).join(""); };
 buildNav();
 // боковая панель
 let drwEl = null;
@@ -1395,7 +1395,7 @@ A.drw = function () { drwOpen(!(drwEl && drwEl.classList.contains("o"))); };
 A.drwgo = function (e) { drwOpen(false); A.mnu(e); };
 function navBackSync() {
   const nv = $("#nav"), vw = $("#view"), has = !!vw.querySelector(".bkb"), cur = nv.querySelector(".nbk");
-  if (has && !cur) nv.insertAdjacentHTML("afterbegin", `<button class="nbk" data-a="navback"><span class="pill"><span style="display:flex;transform:rotate(180deg)">${ic("arrow", 24)}</span></span>Назад</button>`);
+  if (has && !cur) nv.insertAdjacentHTML("afterbegin", `<button class="nbk" data-a="navback"><span class="pill"><span style="display:flex;transform:rotate(180deg)">${ic("arrow", 24)}</span></span><span class="nl">Назад</span></button>`);
   else if (!has && cur) cur.remove();
   nv.classList.toggle("bk", has);
 }

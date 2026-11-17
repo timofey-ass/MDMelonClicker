@@ -592,6 +592,14 @@ body.evton #view{padding-bottom:calc(140px + env(safe-area-inset-bottom))}
 #nav.bk .nbk .pill{height:auto!important;background:none!important}
 #nav button:active{transform:scale(.94)}
 #toast{bottom:100px}
+/* плавное раскрытие выбранной вкладки */
+#nav button{flex:0 0 44px;width:auto;font-size:13px!important;font-weight:700;gap:0;transition:flex-grow .42s cubic-bezier(.2,.9,.25,1),background-color .3s,color .3s,transform .15s}
+#nav button.on{flex:1 1 44px;padding:0;gap:0;font-size:13px!important}
+#nav .nl{display:block;max-width:0;opacity:0;overflow:hidden;white-space:nowrap;transform:translateX(-6px);transition:max-width .42s cubic-bezier(.2,.9,.25,1),opacity .25s,margin .42s,transform .42s cubic-bezier(.2,.9,.25,1)}
+#nav button.on .nl{max-width:96px;opacity:1;margin-left:7px;transform:none;transition-delay:0s,.08s,0s,0s}
+#nav button.on .pill{animation:navpop .45s cubic-bezier(.2,.9,.25,1)}
+@keyframes navpop{0%{transform:scale(.7)}60%{transform:scale(1.14)}100%{transform:scale(1)}}
+#nav.bk .nbk{flex:1 1 auto}#nav.bk .nbk .nl{max-width:none;opacity:1;margin-left:8px;transform:none}
 </style></head><body>
 <div id="load"><div class="lw"><div class="lglow"></div><div class="lm" id="lm">🍉</div><div class="lsh"></div></div><div class="lti">MDMelonClicker</div><div id="lt">Подключаюсь…</div><div class="tr"><i id="lbar"></i></div><div id="ltip"></div></div>
 <div id="app"><div id="top"><h1 id="ttl">MDMelonClicker</h1><span id="gemc"></span></div><div id="view"></div><div id="nav"></div></div>
@@ -2758,7 +2766,7 @@ setTheme = function (i) {
   try { tg && (tg.setHeaderColor(m["--surf"]), tg.setBackgroundColor(m["--surf"])); } catch (e) {}
 };
 A.ltheme = function () { LSset("lt", LS("lt", 0) ? 0 : 1); setTheme(LS("th", 0)); drwFill(); render(); };
-buildNav = function () { $("#nav").innerHTML = NAVT.map(i => NAV[i]).map((n, k) => k === NAVT.length - 1 ? `<button data-a="drw"><span class="pill">${ic("menu", 24)}</span>Меню</button>` : `<button data-a="tab" data-i="${NAVT[k]}"><span class="pill">${ic(n[1], 24)}</span>${n[0]}</button>`).join(""); };
+buildNav = function () { $("#nav").innerHTML = NAVT.map(i => NAV[i]).map((n, k) => k === NAVT.length - 1 ? `<button data-a="drw"><span class="pill">${ic("menu", 24)}</span><span class="nl">Меню</span></button>` : `<button data-a="tab" data-i="${NAVT[k]}"><span class="pill">${ic(n[1], 24)}</span><span class="nl">${n[0]}</span></button>`).join(""); };
 buildNav();
 // боковая панель
 let drwEl = null;
@@ -2782,7 +2790,7 @@ A.drw = function () { drwOpen(!(drwEl && drwEl.classList.contains("o"))); };
 A.drwgo = function (e) { drwOpen(false); A.mnu(e); };
 function navBackSync() {
   const nv = $("#nav"), vw = $("#view"), has = !!vw.querySelector(".bkb"), cur = nv.querySelector(".nbk");
-  if (has && !cur) nv.insertAdjacentHTML("afterbegin", `<button class="nbk" data-a="navback"><span class="pill"><span style="display:flex;transform:rotate(180deg)">${ic("arrow", 24)}</span></span>Назад</button>`);
+  if (has && !cur) nv.insertAdjacentHTML("afterbegin", `<button class="nbk" data-a="navback"><span class="pill"><span style="display:flex;transform:rotate(180deg)">${ic("arrow", 24)}</span></span><span class="nl">Назад</span></button>`);
   else if (!has && cur) cur.remove();
   nv.classList.toggle("bk", has);
 }

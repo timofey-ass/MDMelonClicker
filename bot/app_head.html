@@ -592,6 +592,14 @@ body.evton #view{padding-bottom:calc(140px + env(safe-area-inset-bottom))}
 #nav.bk .nbk .pill{height:auto!important;background:none!important}
 #nav button:active{transform:scale(.94)}
 #toast{bottom:100px}
+/* плавное раскрытие выбранной вкладки */
+#nav button{flex:0 0 44px;width:auto;font-size:13px!important;font-weight:700;gap:0;transition:flex-grow .42s cubic-bezier(.2,.9,.25,1),background-color .3s,color .3s,transform .15s}
+#nav button.on{flex:1 1 44px;padding:0;gap:0;font-size:13px!important}
+#nav .nl{display:block;max-width:0;opacity:0;overflow:hidden;white-space:nowrap;transform:translateX(-6px);transition:max-width .42s cubic-bezier(.2,.9,.25,1),opacity .25s,margin .42s,transform .42s cubic-bezier(.2,.9,.25,1)}
+#nav button.on .nl{max-width:96px;opacity:1;margin-left:7px;transform:none;transition-delay:0s,.08s,0s,0s}
+#nav button.on .pill{animation:navpop .45s cubic-bezier(.2,.9,.25,1)}
+@keyframes navpop{0%{transform:scale(.7)}60%{transform:scale(1.14)}100%{transform:scale(1)}}
+#nav.bk .nbk{flex:1 1 auto}#nav.bk .nbk .nl{max-width:none;opacity:1;margin-left:8px;transform:none}
 </style></head><body>
 <div id="load"><div class="lw"><div class="lglow"></div><div class="lm" id="lm">🍉</div><div class="lsh"></div></div><div class="lti">MDMelonClicker</div><div id="lt">Подключаюсь…</div><div class="tr"><i id="lbar"></i></div><div id="ltip"></div></div>
 <div id="app"><div id="top"><h1 id="ttl">MDMelonClicker</h1><span id="gemc"></span></div><div id="view"></div><div id="nav"></div></div>
