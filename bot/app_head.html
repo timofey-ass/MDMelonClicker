@@ -600,6 +600,13 @@ body.evton #view{padding-bottom:calc(140px + env(safe-area-inset-bottom))}
 #nav button.on .pill{animation:navpop .45s cubic-bezier(.2,.9,.25,1)}
 @keyframes navpop{0%{transform:scale(.7)}60%{transform:scale(1.14)}100%{transform:scale(1)}}
 #nav.bk .nbk{flex:1 1 auto}#nav.bk .nbk .nl{max-width:none;opacity:1;margin-left:8px;transform:none}
+#tut{position:fixed;inset:0;z-index:9000}
+#tut .tr{position:absolute;box-shadow:0 0 0 9999px rgba(0,0,0,.7);border:2px solid var(--pri);transition:all .35s cubic-bezier(.2,.8,.2,1);pointer-events:none}
+#tut .tc{position:absolute;left:14px;right:14px;background:var(--sch);border-radius:24px;padding:16px;box-shadow:0 8px 30px rgba(0,0,0,.5);transition:top .35s,bottom .35s}
+#tut .td{display:flex;gap:6px;justify-content:center;margin:12px 0}
+#tut .td i{width:7px;height:7px;border-radius:4px;background:var(--out);opacity:.5;transition:all .25s}
+#tut .td i.on{width:20px;background:var(--pri);opacity:1}
+#tut .tb{display:flex;gap:8px;justify-content:flex-end}
 </style></head><body>
 <div id="load"><div class="lw"><div class="lglow"></div><div class="lm" id="lm">🍉</div><div class="lsh"></div></div><div class="lti">MDMelonClicker</div><div id="lt">Подключаюсь…</div><div class="tr"><i id="lbar"></i></div><div id="ltip"></div></div>
 <div id="app"><div id="top"><h1 id="ttl">MDMelonClicker</h1><span id="gemc"></span></div><div id="view"></div><div id="nav"></div></div>

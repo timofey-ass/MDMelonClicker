@@ -539,7 +539,7 @@ tMore = function () {
   if (moreSub === 2) {
     const st = [["Всего тапов", fmt(S.taps)], ["Накоплено за всё время", fmt(S.total)], ["За текущий забег", fmt(S.run)], ["Генераторов", owned()], ["Самоцветов", S.gems], ["Перерождений", S.prest], ["Звёзд поймано", S.stars], ["Лихорадок", S.fevers], ["Общий множитель", "x" + baseMult().toFixed(2)]];
     return mback + `<div class="card col" style="gap:0">${st.map(r => `<div style="display:flex;padding:3px 0"><span class="t2 grow" style="font-size:14px;margin:0">${r[0]}</span><span style="font-size:14px;font-weight:700">${r[1]}</span></div>`).join("")}</div>` +
-      refCard() + burnCard() + `<div class="card col"><div class="t1" style="color:var(--pri)">Как играть</div><div class="t2" style="font-size:13px">${TIPS}</div></div>` +
+      refCard() + burnCard() + `<div class="card col"><div class="t1" style="color:var(--pri)">Как играть</div><div class="t2" style="font-size:13px">${TIPS}</div><button class="btn o" data-a="tutstart">Пройти обучение</button></div>` +
       `<div class="card col"><div class="t1" style="color:var(--pri)">Что нового</div>${CHANGES.map(c => `<div style="font-size:13px;font-weight:700;margin-top:8px">v${c[0]}</div>${c[1].map(x => `<div class="t2" style="font-size:12px;margin-top:2px">• ${x}</div>`).join("")}`).join("")}</div>`;
   }
   const fn = ["Нет", "Снежинки", "Тыквы"], fv = [0, 1, 2]; SETS.forEach((x, i) => { if (S.sets.includes(x[0])) { fn.push(x[1]); fv.push(3 + i); } });
@@ -2031,6 +2031,7 @@ pnBlobs(); pnApply();
 { const _opt = A.opt; A.opt = function (e) { const sc = [...document.querySelectorAll(".sgr")].map(x => x.scrollLeft); const r = _opt.apply(this, arguments); requestAnimationFrame(() => document.querySelectorAll(".sgr").forEach((x, i) => { if (sc[i]) x.scrollLeft = sc[i]; })); return r; }; }
 // ---------- язык: русский / English (перевод интерфейса на лету)
 const EN = {
+"Пройти обучение":"Take the tutorial","Тапай по коту":"Tap the cat","Каждый тап даёт очки. Чем больше очков — тем быстрее растёт доход.":"Every tap gives points. The more points, the faster your income grows.","Покупай генераторы и улучшения: они приносят очки сами, даже когда ты не играешь.":"Buy generators and upgrades: they earn points even while you are away.","Открывай кейсы за очки и гемы — в них выпадают коты разной редкости.":"Open cases for points and gems to get cats of different rarities.","Достижения, задания и мировой арбуз — награды за прогресс.":"Achievements, quests and the world watermelon: rewards for progress.","Рулетка, карты, кубики и шахматы на 5 минут — в одиночку или вдвоём.":"Roulette, cards, dice and 5-minute chess, solo or head to head.","Тут ежедневная награда, друзья, кланы и настройки. Удачи!":"Daily reward, friends, clans and settings live here. Good luck!","Пропустить":"Skip","Далее":"Next","Начать играть":"Start playing",
 "Игра":"Game","Магазин":"Shop","Кейсы":"Cases","Награды":"Rewards","Топ":"Top","Ещё":"More","Меню":"Menu","Казино":"Casino","Сообщество":"Community","Назад":"Back","← Назад":"← Back","← Казино":"← Casino",
 "Лидеры":"Leaders","Обмен":"Trade","Чат":"Chat","Друзья":"Friends","Кланы":"Clans","Сейчас":"Now","Сезон":"Season","Участники":"Members","Заявки":"Requests","Клан":"Clan","Все кланы":"All clans",
 "Улучшения":"Upgrades","Генераторы":"Generators","Настройки":"Settings","Информация":"Info","Оформление":"Appearance","Тема":"Theme","Цвет":"Color","Шрифт":"Font","Вибрация":"Vibration","Звуки кейсов":"Case sounds","Звуки игры (клики, покупки)":"Game sounds (taps, purchases)",
@@ -2137,3 +2138,35 @@ A.wmw = async function (e) {
   adopt(r); WM = r.info; WM.at = Date.now(); gsfx("buy"); hap("ok");
   toast(r.harvest ? "Арбуз созрел! Награды уже в пути, доход ×1.5 для всех" : "Арбуз вырос на " + r.ml + " мл"); render();
 };
+
+// ---------- Обучение
+const TUT = [
+  ["#coin", "Тапай по коту", "Каждый тап даёт очки. Чем больше очков — тем быстрее растёт доход.", 0],
+  ['#nav [data-i="1"]', "Магазин", "Покупай генераторы и улучшения: они приносят очки сами, даже когда ты не играешь.", 0],
+  ['#nav [data-i="2"]', "Кейсы", "Открывай кейсы за очки и гемы — в них выпадают коты разной редкости.", 0],
+  ['#nav [data-i="3"]', "Награды", "Достижения, задания и мировой арбуз — награды за прогресс.", 0],
+  ['#nav [data-i="6"]', "Казино", "Рулетка, карты, кубики и шахматы на 5 минут — в одиночку или вдвоём.", 0],
+  ['#nav [data-a="drw"]', "Меню", "Тут ежедневная награда, друзья, кланы и настройки. Удачи!", 0],
+];
+let tutI = -1;
+function tutEnd(done) { LSset("tut", 1); const o = document.getElementById("tut"); if (o) o.remove(); tutI = -1; try { tab = 0; render(); } catch (e) {} }
+function tutShow(i) {
+  if (i >= TUT.length) return tutEnd();
+  tutI = i; const [sel, t, d] = TUT[i];
+  if (i === 0 && tab !== 0) { try { tab = 0; render(); } catch (e) {} }
+  let o = document.getElementById("tut");
+  if (!o) { o = document.createElement("div"); o.id = "tut"; o.innerHTML = `<div class="tr"></div><div class="tc"></div>`; document.body.appendChild(o); }
+  const el = document.querySelector(sel), r = el ? el.getBoundingClientRect() : {left: innerWidth / 2 - 40, top: innerHeight / 2 - 40, width: 80, height: 80};
+  const p = 8, tr = o.querySelector(".tr"), tc = o.querySelector(".tc");
+  tr.style.cssText = `left:${r.left - p}px;top:${r.top - p}px;width:${r.width + p * 2}px;height:${r.height + p * 2}px;border-radius:${Math.min(28, (r.width + p * 2) / 2)}px`;
+  const last = i === TUT.length - 1;
+  tc.innerHTML = `<div class="t1" style="color:var(--pri)">${t}</div><div class="t2" style="margin-top:6px;font-size:14px">${d}</div><div class="td">${TUT.map((_, k) => `<i class="${k === i ? "on" : ""}"></i>`).join("")}</div><div class="tb">${last ? "" : `<button class="btn o" data-a="tutskip">Пропустить</button>`}<button class="btn" data-a="tutnext">${last ? "Начать играть" : "Далее"}</button></div>`;
+  const below = r.top + r.height / 2 < innerHeight / 2;
+  tc.style.top = below ? Math.min(innerHeight - 200, r.bottom + p + 14) + "px" : "auto";
+  tc.style.bottom = below ? "auto" : Math.max(10, innerHeight - r.top + p + 14) + "px";
+}
+A.tutstart = function () { closeModal(); tutShow(0); };
+A.tutnext = function () { tutShow(tutI + 1); };
+A.tutskip = function () { tutEnd(); };
+addEventListener("resize", () => { if (tutI >= 0) tutShow(tutI); });
+setTimeout(() => { if (LS("tut", null) === null && LS("lang", null) !== null && (S.taps || 0) < 30 && !document.querySelector(".modal,#mdl")) tutShow(0); }, 2500);
