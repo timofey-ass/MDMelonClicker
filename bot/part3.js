@@ -324,7 +324,7 @@ function evtBar() {
   let el = document.getElementById("evtbar");
   if (!EVT || now() >= EVT.until) { if (el) el.remove(); document.body.classList.remove("evton"); return; }
   if (!el) { el = document.createElement("div"); el.id = "evtbar"; el.style.cssText = "position:fixed;left:12px;right:12px;z-index:60;background:linear-gradient(90deg,#ffb300,#ff7043);color:#2b1400;font-weight:800;font-size:14px;padding:9px 14px;border-radius:18px;display:flex;gap:10px;align-items:center;justify-content:center;box-shadow:0 2px 12px #0007"; document.body.appendChild(el); }
-  const nv = document.getElementById("nav"); el.style.bottom = ((nv ? nv.offsetHeight : 76) + 8) + "px"; document.body.classList.add("evton");
+  const nv = document.getElementById("nav"); el.style.bottom = (nv ? Math.round(innerHeight - nv.getBoundingClientRect().top) + 8 : 84) + "px"; document.body.classList.add("evton");
   const m = Math.max(0, Math.ceil((EVT.until - now()) / 60)), gift = EVT.cat !== undefined && !EVT.auto ? `<span data-a="evtc" style="background:#2b1400;color:#ffd54f;padding:2px 8px;border-radius:10px">🎁 забрать</span>` : "";
   el.innerHTML = `⚡ ${esc(EVT.name)} ×${EVT.mult} · ${m >= 60 ? Math.floor(m / 60) + " ч " + (m % 60) + " м" : m + " мин"}${gift}`;
 }
