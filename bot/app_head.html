@@ -537,13 +537,44 @@ body.evton #mas{bottom:calc(134px + env(safe-area-inset-bottom))!important}
 .czrow .czbk{border-radius:28px 8px 8px 8px!important}.czrow .czjpc{border-radius:8px 28px 8px 8px!important}
 .czrow+.gml{margin-top:0}.czrow+.gml>:first-child{border-radius:8px 8px 8px 8px}
 /* соединённые карточки: подряд идущие карточки склеиваются в один блок */
-#view>.card{margin-bottom:3px}
-#view>.card:not(:has(+ .card)){margin-bottom:8px}
-#view>.card:has(+ .card){border-bottom-left-radius:8px;border-bottom-right-radius:8px}
-#view>.card+.card{border-top-left-radius:8px;border-top-right-radius:8px}
+#view .card{margin-bottom:3px}
+#view .card:not(:has(+ .card)){margin-bottom:8px}
+#view .card:has(+ .card){border-bottom-left-radius:8px;border-bottom-right-radius:8px}
+#view .card+.card{border-top-left-radius:8px;border-top-right-radius:8px}
 #view>.mbtn{margin-top:3px;border-radius:8px}
 #view>.mbtn:not(.mbtn+.mbtn){margin-top:8px;border-top-left-radius:24px;border-top-right-radius:24px}
 #view>.mbtn:not(:has(+ .mbtn)){border-bottom-left-radius:24px;border-bottom-right-radius:24px}
+
+/* соединённые группы кнопок */
+.jb,.jb3,.jg,.buyrow.jb{display:flex;gap:3px;flex:none}
+.jb .btn,.jb3 .btn{border-radius:8px}
+.jb .btn:first-child,.jb3 .btn:first-child{border-radius:26px 8px 8px 26px}.jb .btn:last-child,.jb3 .btn:last-child{border-radius:8px 26px 26px 8px}
+.jb .btn.o{border-color:transparent;background:rgba(255,255,255,.09)}
+.buyrow.jb .btn{flex:1;justify-content:center}
+.jb3{width:100%;margin-top:8px}.jb3 .btn{flex:1;flex-direction:column;height:58px;gap:1px;background:var(--prc);color:var(--onprc);border:0;line-height:1.15}.jb3 .btn b{font-size:14px}.jb3 .btn small{font-size:12px;opacity:.85}.jb3 .btn[disabled]{opacity:.4}
+.czbet.jg{gap:3px}.czbet.jg .btn{border-radius:8px}.czbet.jg .btn:first-child{border-radius:26px 8px 8px 26px;height:56px}.czbet.jg .btn:last-child{border-radius:8px 26px 26px 8px;height:56px}.czbet.jg .czbv{border-radius:8px}
+.czchips.jg{gap:3px;flex-wrap:nowrap}.czchips.jg .chip{flex:1;justify-content:center;border-radius:8px;padding:10px 4px}.czchips.jg .chip:first-child{border-radius:20px 8px 8px 20px}.czchips.jg .chip:last-child{border-radius:8px 20px 20px 8px}
+.rpicks{gap:3px}.rpick{border-radius:8px}.rpick:first-child{border-radius:23px 8px 8px 23px}.rpick:last-child{border-radius:8px 23px 23px 8px}.rpick.on{transform:none;border-color:#fff}
+/* панели: настраиваемые размытие и плотность */
+:root{--pa:88;--pb:14px}
+#bgb{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.card,.gmc,.mbtn,.chw,.anc{background:color-mix(in srgb,var(--sc) calc(var(--pa)*1%),transparent)}
+.gml>*{background:color-mix(in srgb,var(--sc) calc(var(--pa)*1%),transparent)}
+#nav{background:color-mix(in srgb,var(--sc) calc(var(--pa)*1%),transparent)}
+.drp{background:color-mix(in srgb,var(--surf) calc(var(--pa)*1%),transparent)}
+body.pbl .card,body.pbl .gmc,body.pbl .mbtn,body.pbl .chw,body.pbl .anc,body.pbl #nav,body.pbl .drp,body.pbl .gml>*{-webkit-backdrop-filter:blur(var(--pb));backdrop-filter:blur(var(--pb))}
+/* ползунок в стиле MD3 expressive */
+.slrow{display:flex;align-items:center;gap:12px;margin-top:6px}
+.sld{position:relative;display:flex;align-items:center;gap:6px;height:56px}
+.sl-l,.sl-r{height:48px;background-image:radial-gradient(circle,rgba(0,0,0,.5) 3px,transparent 3.5px);background-size:30px 100%;background-position:center}
+.sl-l{flex:0 0 max(14px,calc((100% - 17px)*var(--p)));background-color:var(--pri);border-radius:24px 8px 8px 24px}
+.sl-r{flex:1;background-color:var(--sch);border-radius:8px 24px 24px 8px;background-image:radial-gradient(circle,var(--out) 3px,transparent 3.5px)}
+.sl-th{width:5px;height:56px;border-radius:3px;background:var(--pri);flex:none}
+.sli{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer}
+.pvw{position:relative;height:120px;border-radius:22px;overflow:hidden;background:var(--surf)}
+.pvw i{position:absolute;display:block}.pv1{width:150px;height:150px;border-radius:50%;background:var(--prc);left:-20px;top:-30px}.pv2{width:90px;height:90px;border-radius:50%;background:var(--pri);opacity:.7;left:40%;top:30px}.pv3{width:70px;height:70px;border-radius:20px;background:var(--onprc);opacity:.6;right:12px;top:10px}
+.pvp{position:absolute;left:12px;right:12px;bottom:10px;height:50px;border-radius:18px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;background:color-mix(in srgb,var(--sc) calc(var(--pa)*1%),transparent)}
+body.pbl .pvp{-webkit-backdrop-filter:blur(var(--pb));backdrop-filter:blur(var(--pb))}
 </style></head><body>
 <div id="load"><div class="lw"><div class="lglow"></div><div class="lm" id="lm">🍉</div><div class="lsh"></div></div><div class="lti">MDMelonClicker</div><div id="lt">Подключаюсь…</div><div class="tr"><i id="lbar"></i></div><div id="ltip"></div></div>
 <div id="app"><div id="top"><h1 id="ttl">MDMelonClicker</h1><span id="gemc"></span></div><div id="view"></div><div id="nav"></div></div>

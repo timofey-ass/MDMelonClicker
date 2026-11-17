@@ -544,7 +544,7 @@ tMore = function () {
   }
   const fn = ["Нет", "Снежинки", "Тыквы"], fv = [0, 1, 2]; SETS.forEach((x, i) => { if (S.sets.includes(x[0])) { fn.push(x[1]); fv.push(3 + i); } });
   return mback + `<div class="card col"><div class="t1" style="color:var(--pri)">Оформление</div><div class="card click" style="margin:4px 0 0;padding:8px 0;background:none;border:0" data-a="ltheme"><div class="t1 grow" style="font-size:14px">Светлая тема</div><div class="sw ${LS("lt", 0) ? "on" : ""}"></div></div>${optRow("Цвет", THEMES.map(t => t[0]), "th", THEMES.map((_, i) => i), LS("th", 0))}${optRow("Падающий фон", fn, "fall", fv, LS("fall", 0))}</div>` +
-    langCard() + `<div class="card col"><div class="t1" style="color:var(--pri)">Игра</div>${tog("Вибрация", "hap", LS("hap", 1))}${tog("Звуки кейсов", "snd", LS("snd", 1))}${tog("Звуки игры (клики, покупки)", "sgm", LS("sgm", 1))}${tog("Анимации клика", "fxt", LS("fxt", 1))}${tog("Анимации открытия кейсов", "fxc", LS("fxc", 1))}<div class="card click" style="margin:4px 0 0;padding:8px 0;background:none;border:0" data-a="rfl"><div class="t1 grow" style="font-size:14px">Меньше вспышек</div><div class="sw ${LS("rfl", 0) ? "on" : ""}"></div></div></div>` +
+    panelCard() + langCard() + `<div class="card col"><div class="t1" style="color:var(--pri)">Игра</div>${tog("Вибрация", "hap", LS("hap", 1))}${tog("Звуки кейсов", "snd", LS("snd", 1))}${tog("Звуки игры (клики, покупки)", "sgm", LS("sgm", 1))}${tog("Анимации клика", "fxt", LS("fxt", 1))}${tog("Анимации открытия кейсов", "fxc", LS("fxc", 1))}<div class="card click" style="margin:4px 0 0;padding:8px 0;background:none;border:0" data-a="rfl"><div class="t1 grow" style="font-size:14px">Меньше вспышек</div><div class="sw ${LS("rfl", 0) ? "on" : ""}"></div></div></div>` +
     `<div class="card col"><div class="t1" style="color:var(--pri)">Промокод</div><div style="display:flex;gap:8px"><input data-keep="promo" placeholder="Введи промокод" style="text-transform:uppercase">${btn("Ок", "promo")}</div></div>` +
     `<button class="btn t" data-a="reset" style="width:100%;justify-content:center;margin-top:4px">Сбросить весь прогресс</button>`;
 };
@@ -783,7 +783,7 @@ function czUpd() {
 }
 async function czInfo() { try { const r = await api("cz_info", {}); if (r && !r.error) { cz.jp = r.jp; cz.last = r.last; cz.jpAt = Date.now(); czUpd(); } } catch (e) {} }
 setInterval(() => { if (tab === 6 && !document.hidden && !cz.busy) czInfo(); }, 6000);
-const czBetUi = () => `<div class="czbet"><button class="btn t" data-a="czbet" data-v="half">÷2</button><div class="czbv"><div class="t2" style="margin:0;font-size:11px">СТАВКА</div><div id="czbetv" style="font-size:20px;font-weight:800">${fmt(czBet())}</div></div><button class="btn t" data-a="czbet" data-v="dbl">×2</button></div><div class="czchips">${[["Мин", "min"], ["1%", "1"], ["10%", "10"], ["25%", "25"], ["50%", "50"], ["Всё", "all"]].map(c => `<button class="chip" style="border:0;font-family:inherit" data-a="czbet" data-v="${c[1]}">${c[0]}</button>`).join("")}</div>`;
+const czBetUi = () => `<div class="czbet jg"><button class="btn t" data-a="czbet" data-v="half">÷2</button><div class="czbv"><div class="t2" style="margin:0;font-size:11px">СТАВКА</div><div id="czbetv" style="font-size:20px;font-weight:800">${fmt(czBet())}</div></div><button class="btn t" data-a="czbet" data-v="dbl">×2</button></div><div class="czchips jg">${[["Мин", "min"], ["1%", "1"], ["10%", "10"], ["25%", "25"], ["50%", "50"], ["Всё", "all"]].map(c => `<button class="chip" style="border:0;font-family:inherit" data-a="czbet" data-v="${c[1]}">${c[0]}</button>`).join("")}</div>`;
 A.czbet = function (e) {
   if (cz.busy) return; const v = e.dataset.v, mx = Math.floor(S.pts);
   if (v === "half") cz.bet = Math.floor(cz.bet / 2); else if (v === "dbl") cz.bet = cz.bet * 2; else if (v === "min") cz.bet = 100; else if (v === "all") cz.bet = mx; else cz.bet = Math.floor(mx * (+v) / 100);
@@ -1141,9 +1141,9 @@ function bcRoll() {
 function bcCase() {
   const pool = bcPool().sort((a, b) => ITEMS[b][2] - ITEMS[a][2] || a - b), ok = pool.length > 0;
   const th = pool.map(i => `<div class="bcth" style="box-shadow:0 0 0 2px ${RC[ITEMS[i][2]]}">${catEl(i, 40, {})}</div>`).join("");
-  const ch = `<span style="color:#9a8cff">80% · 💎 ${BC_G1}–${BC_G2}</span><br>20% · кот: ` + [4, 3, 2].map(r => `<span class="rar${r}">${RARS[r][0].slice(0, 5)}. ${BC_W[r]}%</span>`).join(" · ");
-  return `<div class="card col bmcase"><div style="display:flex;align-items:center;gap:12px"><div class="bmcat" style="display:flex;align-items:center;justify-content:center;font-size:34px;background:#0c0508">📦</div><div class="grow"><div class="t1" style="font-size:17px">Чёрный кейс</div><div class="t2" style="margin:2px 0 0;font-size:12px">Эксклюзивные коты, которых нет больше нигде. Только за кристаллы.</div></div></div>` +
-    (ok ? `<div class="bcths">${th}</div><div class="t2" style="font-size:11px;text-align:center;margin:0">${ch}</div><div class="buyrow">${btn("💎 " + BC_PRICE, "bcopen", 'data-n="1"', S.gems >= BC_PRICE ? "" : "dis")}${btn("×5 · 💎 " + BC_PRICE * 5, "bcopen", 'data-n="5"', S.gems >= BC_PRICE * 5 ? "o" : "o dis")}</div>` : `<div class="t2" style="text-align:center;margin:6px">Загружаю котов…</div>`) + `</div>`;
+  const ch = `<span style="color:#9a8cff">80% · ${ic("gem", 12)} ${BC_G1}–${BC_G2}</span><br>20% · кот: ` + [4, 3, 2].map(r => `<span class="rar${r}">${RARS[r][0].slice(0, 5)}. ${BC_W[r]}%</span>`).join(" · ");
+  return `<div class="card col bmcase"><div style="display:flex;align-items:center;gap:12px"><div class="bmcat" style="display:flex;align-items:center;justify-content:center;background:#0c0508;color:var(--pri)">${ic("box", 32)}</div><div class="grow"><div class="t1" style="font-size:17px">Чёрный кейс</div><div class="t2" style="margin:2px 0 0;font-size:12px">Эксклюзивные коты, которых нет больше нигде. Только за кристаллы.</div></div></div>` +
+    (ok ? `<div class="bcths">${th}</div><div class="t2" style="font-size:11px;text-align:center;margin:0">${ch}</div><div class="buyrow jb">${btn(ic("gem", 14) + BC_PRICE, "bcopen", 'data-n="1"', S.gems >= BC_PRICE ? "" : "dis")}${btn("×5 · " + ic("gem", 14) + BC_PRICE * 5, "bcopen", 'data-n="5"', S.gems >= BC_PRICE * 5 ? "o" : "o dis")}</div>` : `<div class="t2" style="text-align:center;margin:6px">Загружаю котов…</div>`) + `</div>`;
 }
 const BC_GEM_P = 0.8, BC_G1 = 4, BC_G2 = 15;
 A.bcopen = function (e) {
@@ -1181,8 +1181,8 @@ tCasino = function () {
   const B = cz.bm, back = `<button class="btn t bkb" data-a="czgo" data-k="0">← Казино</button>`;
   let h = `<div class="bmpage${cz.bmFx ? " bmfx" : ""}">${back}${bmLogo}<div class="bmtalk"><div class="bmeyes2"><b></b><b></b></div>Псст… Кристаллы есть? Товар редкий, берут быстро. Завтра будет другой.</div>`;
   if (!B) return h + `<div class="t2" style="text-align:center;margin:30px">Спускаюсь…</div></div>`;
-  h += `<div class="card" style="padding:10px 16px;background:#1a0d12"><span class="t2 grow" style="margin:0">Баланс</span><b style="font-size:18px">💎 ${fmt(S.gems)}</b></div>`;
-  h += B.offers.map(o => { const got = B.bought.includes(o.slot), can = S.gems >= o.price; return `<div class="card bmoffer"><div class="bmcat">${catEl(o.idx, 64, {})}</div><div class="grow"><div class="t1" style="font-size:16px">${ITEMS[o.idx][1]}</div><div class="rar${o.rar}" style="font-size:12px;font-weight:700">${RARS[o.rar][0]}</div><div class="t2" style="margin:2px 0 0;font-size:12px">${got ? "Продано" : "Цена 💎 " + o.price}</div></div>${got ? `<div class="bmsold">✓</div>` : btn("Купить", "bmbuy", `data-s="${o.slot}"`, can ? "" : "dis")}</div>`; }).join("");
+  h += `<div class="card" style="padding:10px 16px;background:#1a0d12"><span class="t2 grow" style="margin:0">Баланс</span><b style="font-size:18px;display:flex;align-items:center;gap:6px">${ic("gem", 20)}${fmt(S.gems)}</b></div>`;
+  h += B.offers.map(o => { const got = B.bought.includes(o.slot), can = S.gems >= o.price; return `<div class="card bmoffer"><div class="bmcat">${catEl(o.idx, 64, {})}</div><div class="grow"><div class="t1" style="font-size:16px">${ITEMS[o.idx][1]}</div><div class="rar${o.rar}" style="font-size:12px;font-weight:700">${RARS[o.rar][0]}</div><div class="t2" style="margin:2px 0 0;font-size:12px">${got ? "Продано" : "Цена " + ic("gem", 13) + " " + o.price}</div></div>${got ? `<div class="bmsold">✓</div>` : btn("Купить", "bmbuy", `data-s="${o.slot}"`, can ? "" : "dis")}</div>`; }).join("");
   h += `<div class="t2" style="text-align:center;margin:12px;font-size:12px">Обновление через <b id="bmleft">${fmtT2(B.left - Math.floor((Date.now() - B.at) / 1000))}</b>. Платить надо кристаллами.</div>${bcCase()}</div>`;
   return h;
 };
@@ -2000,6 +2000,34 @@ setInterval(() => {
   if (((mover && left <= 0) || (!mover && C.pvp && oleft <= 0)) && !C.tout && !C.busy) { C.tout = 1; if (C.pvp) chgPoll(); else chLoad(); }
 }, 250);
 
+// ---------- панели: размытие, плотность, цветные пятна на фоне
+function pnApply() {
+  const r = document.documentElement.style, b = LS("pb", 14), p = LS("pa", 88);
+  r.setProperty("--pb", b + "px"); r.setProperty("--pa", p); document.body.classList.toggle("pbl", b > 0);
+  const e = document.getElementById("bgb"); if (e) e.style.display = LS("bgb", 1) ? "" : "none";
+}
+function pnBlobs() {
+  if (document.getElementById("bgb")) return;
+  const blob = (R, k, a, seed) => { let d = ""; for (let i = 0; i <= 90; i++) { const t = i / 90 * Math.PI * 2, r = R * (1 + a * Math.cos(k * t + seed) + .05 * Math.cos(3 * t + seed * 2)); d += (i ? "L" : "M") + (r * Math.cos(t)).toFixed(1) + " " + (r * Math.sin(t)).toFixed(1); } return d + "Z"; };
+  const el = document.createElement("div"); el.id = "bgb";
+  el.innerHTML = `<svg viewBox="0 0 400 800" preserveAspectRatio="xMidYMid slice" width="100%" height="100%"><g transform="translate(40 110)"><path d="${blob(190, 8, .07, 0)}" fill="var(--prc)" opacity=".38"/></g><g transform="translate(390 270)"><path d="${blob(110, 5, .1, 1)}" fill="var(--pri)" opacity=".2"/></g><g transform="translate(60 640)"><path d="${blob(130, 7, .08, 2)}" fill="var(--prc)" opacity=".28"/></g><g transform="translate(370 760)"><path d="${blob(150, 9, .06, 3)}" fill="var(--pri)" opacity=".16"/></g></svg>`;
+  document.body.insertBefore(el, document.body.firstChild);
+}
+function sldHtml(key, label, icon, val, min, max, unit) {
+  return `<div class="slrow"><div class="chav">${ic(icon, 18)}</div><div class="grow"><div class="t1" style="margin:0;font-size:15px">${label}</div><div class="t2" id="sv_${key}" style="margin:0">${val}${unit}</div></div></div><div class="sld" style="--p:${(val - min) / (max - min)}"><div class="sl-l"></div><div class="sl-th"></div><div class="sl-r"></div><input class="sli" type="range" data-k="${key}" data-u="${unit}" data-mn="${min}" data-mx="${max}" min="${min}" max="${max}" step="1" value="${val}"></div>`;
+}
+function panelCard() {
+  return `<div class="card col" data-nt="1"><div class="t1" style="color:var(--pri)">Панели</div><div class="pvw"><i class="pv1"></i><i class="pv2"></i><i class="pv3"></i><div class="pvp">Так выглядит панель</div></div>${sldHtml("pb", "Размытие", "blur", LS("pb", 14), 0, 30, " px")}${sldHtml("pa", "Плотность панелей", "layers", LS("pa", 88), 35, 100, "%")}${tog("Цветные пятна на фоне", "bgb", LS("bgb", 1))}<button class="btn o" data-a="pnreset" style="justify-content:center">Сбросить</button></div>`;
+}
+document.addEventListener("input", e => {
+  const t = e.target; if (!t.classList || !t.classList.contains("sli")) return;
+  const k = t.dataset.k, v = +t.value, mn = +t.dataset.mn, mx = +t.dataset.mx; LSset(k, v); pnApply();
+  t.parentNode.style.setProperty("--p", (v - mn) / (mx - mn)); const sv = document.getElementById("sv_" + k); if (sv) sv.textContent = v + t.dataset.u;
+});
+A.pnreset = function () { LSset("pb", 14); LSset("pa", 88); LSset("bgb", 1); pnApply(); render(); };
+{ const _tg = A.tgl; A.tgl = function (e) { const r = _tg.apply(this, arguments); if (e.dataset.k === "bgb") pnApply(); return r; }; }
+pnBlobs(); pnApply();
+
 // ---------- язык: русский / English (перевод интерфейса на лету)
 const EN = {
 "Игра":"Game","Магазин":"Shop","Кейсы":"Cases","Награды":"Rewards","Топ":"Top","Ещё":"More","Меню":"Menu","Казино":"Casino","Сообщество":"Community","Назад":"Back","← Назад":"← Back","← Казино":"← Casino",
@@ -2099,7 +2127,7 @@ function wmCard() {
 <div style="display:flex;align-items:center;gap:14px"><div style="width:130px;height:130px;display:flex;align-items:center;justify-content:center">${melon}</div><div class="grow"><div class="t2" style="margin:0">Весь сервер поливает один арбуз. Созреет: каждому участнику кристаллы и ×1.5 к доходу всем на 30 минут.</div><div class="t1" style="font-size:15px;margin-top:6px">${fmt(Math.floor(WM.p))} / ${fmt(WM.goal)} мл</div></div></div>
 ${bar(f)}
 <div class="t2" style="margin:0;font-size:12px">Твой вклад: <b>${mine} мл</b> · ${cdTxt}</div>
-<div style="display:flex;gap:8px;flex-wrap:wrap">${amts.map(([a, l]) => btn(`Полить ${l} · ${fmt(a)}`, "wmw", `data-i="${a}"${can && S.pts >= a ? "" : " disabled"}`, "o")).join("")}</div>
+<div class="jb3">${amts.map(([a, l]) => btn(`<b>Полить ${l}</b><small>${fmt(a)}</small>`, "wmw", `data-i="${a}"${can && S.pts >= a ? "" : " disabled"}`, "")).join("")}</div>
 ${WM.top.length ? `<div class="t2" style="margin:0;font-weight:700">Лучшие поливальщики</div>${WM.top.map((t, i) => `<div class="t2" style="margin:0;font-size:13px">${i + 1}. ${esc(t.name)} · ${t.ml} мл</div>`).join("")}` : ""}
 ${WM.last ? `<div class="t2" style="margin:0;font-size:12px">Прошлый арбуз (раунд ${WM.last.r}) созрел: участников ${WM.last.n}${WM.last.top[0] ? ", лучший: " + esc(WM.last.top[0].name) : ""}</div>` : ""}</div>`;
 }
