@@ -748,7 +748,7 @@ const _render0 = render;
 render = function () { _render0(); if (tab === 0) bindCoin(); bindCards(); if (OVL === null) { const v = $("#view"); } };
 
 // ---------- «Награды»: сеты с карточками, «Ещё»: настройки как в плагине
-const optRow = (title, names, key, vals, cur) => `<div class="t2" style="font-weight:700;margin-top:6px">${title}</div><div class="hs" style="margin-top:6px">${names.map((n, i) => { const on = vals[i] === cur; return `<button class="chip ${on ? "p" : ""}" style="border:0;font-family:inherit;display:inline-flex;gap:6px" data-a="opt" data-k="${key}" data-v="${vals[i]}">${on ? ic("check", 14) : ""}${n}</button>`; }).join("")}</div>`;
+const optRow = (title, names, key, vals, cur) => `<div class="t2" style="font-weight:700;margin-top:6px">${title}</div><div class="sgr">${names.map((n, i) => `<button class="${vals[i] === cur ? "on" : ""}" data-a="opt" data-k="${key}" data-v="${vals[i]}">${n}</button>`).join("")}</div>`;
 const tog = (label, key, on) => `<div class="card click" style="margin:4px 0 0;padding:8px 0;background:none;border:0" data-a="tgl" data-k="${key}"><div class="t1 grow" style="font-size:14px">${label}</div><div class="sw ${on ? "on" : ""}"></div></div>`;
 tMore = function () {
   let h = `<div class="card"><div class="grow"><div class="t1">${esc(me.name || "Игрок")}</div><div class="t2">ID ${me.id}</div></div></div>`;

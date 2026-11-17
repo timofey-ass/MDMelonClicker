@@ -2014,7 +2014,7 @@ function pnBlobs() {
   document.body.insertBefore(el, document.body.firstChild);
 }
 function sldHtml(key, label, icon, val, min, max, unit) {
-  return `<div class="slrow"><div class="chav">${ic(icon, 18)}</div><div class="grow"><div class="t1" style="margin:0;font-size:15px">${label}</div><div class="t2" id="sv_${key}" style="margin:0">${val}${unit}</div></div></div><div class="sld" style="--p:${(val - min) / (max - min)}"><div class="sl-l"></div><div class="sl-th"></div><div class="sl-r"></div><input class="sli" type="range" data-k="${key}" data-u="${unit}" data-mn="${min}" data-mx="${max}" min="${min}" max="${max}" step="1" value="${val}"></div>`;
+  return `<div class="slrow"><div class="chav">${ic(icon, 18)}</div><div class="grow"><div class="t1" style="margin:0;font-size:15px">${label}</div><div class="t2" id="sv_${key}" style="margin:0">${val}${unit}</div></div></div><div class="sld" style="--p:${(val - min) / (max - min)}"><div class="sl-r"></div><div class="sl-l"></div><div class="sl-th"></div><input class="sli" type="range" data-k="${key}" data-u="${unit}" data-mn="${min}" data-mx="${max}" min="${min}" max="${max}" step="1" value="${val}"></div>`;
 }
 function panelCard() {
   return `<div class="card col" data-nt="1"><div class="t1" style="color:var(--pri)">Панели</div><div class="pvw"><i class="pv1"></i><i class="pv2"></i><i class="pv3"></i><div class="pvp">Так выглядит панель</div></div>${sldHtml("pb", "Размытие", "blur", LS("pb", 14), 0, 30, " px")}${sldHtml("pa", "Плотность панелей", "layers", LS("pa", 88), 35, 100, "%")}${tog("Цветные пятна на фоне", "bgb", LS("bgb", 1))}<button class="btn o" data-a="pnreset" style="justify-content:center">Сбросить</button></div>`;
@@ -2028,6 +2028,7 @@ A.pnreset = function () { LSset("pb", 14); LSset("pa", 88); LSset("bgb", 1); pnA
 { const _tg = A.tgl; A.tgl = function (e) { const r = _tg.apply(this, arguments); if (e.dataset.k === "bgb") pnApply(); return r; }; }
 pnBlobs(); pnApply();
 
+{ const _opt = A.opt; A.opt = function (e) { const sc = [...document.querySelectorAll(".sgr")].map(x => x.scrollLeft); const r = _opt.apply(this, arguments); requestAnimationFrame(() => document.querySelectorAll(".sgr").forEach((x, i) => { if (sc[i]) x.scrollLeft = sc[i]; })); return r; }; }
 // ---------- язык: русский / English (перевод интерфейса на лету)
 const EN = {
 "Игра":"Game","Магазин":"Shop","Кейсы":"Cases","Награды":"Rewards","Топ":"Top","Ещё":"More","Меню":"Menu","Казино":"Casino","Сообщество":"Community","Назад":"Back","← Назад":"← Back","← Казино":"← Casino",

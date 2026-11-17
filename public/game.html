@@ -565,16 +565,21 @@ body.evton #mas{bottom:calc(134px + env(safe-area-inset-bottom))!important}
 body.pbl .card,body.pbl .gmc,body.pbl .mbtn,body.pbl .chw,body.pbl .anc,body.pbl #nav,body.pbl .drp,body.pbl .gml>*{-webkit-backdrop-filter:blur(var(--pb));backdrop-filter:blur(var(--pb))}
 /* ползунок в стиле MD3 expressive */
 .slrow{display:flex;align-items:center;gap:12px;margin-top:6px}
-.sld{position:relative;display:flex;align-items:center;gap:6px;height:56px}
-.sl-l,.sl-r{height:48px;background-image:radial-gradient(circle,rgba(0,0,0,.5) 3px,transparent 3.5px);background-size:30px 100%;background-position:center}
-.sl-l{flex:0 0 max(14px,calc((100% - 17px)*var(--p)));background-color:var(--pri);border-radius:24px 8px 8px 24px}
-.sl-r{flex:1;background-color:var(--sch);border-radius:8px 24px 24px 8px;background-image:radial-gradient(circle,var(--out) 3px,transparent 3.5px)}
-.sl-th{width:5px;height:56px;border-radius:3px;background:var(--pri);flex:none}
+.sld{position:relative;height:44px;margin:2px 2px 0}
+.sl-l,.sl-r{position:absolute;left:0;right:0;top:11px;height:22px;background-size:11.1111% 100%;background-repeat:repeat-x}
+.sl-r{background-color:var(--sch);background-image:radial-gradient(circle,var(--out) 2.4px,transparent 3px);clip-path:inset(0 0 0 calc(var(--p)*100% + 7px) round 4px 11px 11px 4px)}
+.sl-l{background-color:var(--pri);background-image:radial-gradient(circle,rgba(0,0,0,.5) 2.4px,transparent 3px);clip-path:inset(0 calc((1 - var(--p))*100% + 7px) 0 0 round 11px 4px 4px 11px)}
+.sl-th{position:absolute;top:5px;left:calc(var(--p)*100%);width:4px;height:34px;margin-left:-2px;border-radius:2px;background:var(--pri)}
 .sli{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer}
 .pvw{position:relative;height:120px;border-radius:22px;overflow:hidden;background:var(--surf)}
 .pvw i{position:absolute;display:block}.pv1{width:150px;height:150px;border-radius:50%;background:var(--prc);left:-20px;top:-30px}.pv2{width:90px;height:90px;border-radius:50%;background:var(--pri);opacity:.7;left:40%;top:30px}.pv3{width:70px;height:70px;border-radius:20px;background:var(--onprc);opacity:.6;right:12px;top:10px}
 .pvp{position:absolute;left:12px;right:12px;bottom:10px;height:50px;border-radius:18px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;background:color-mix(in srgb,var(--sc) calc(var(--pa)*1%),transparent)}
 body.pbl .pvp{-webkit-backdrop-filter:blur(var(--pb));backdrop-filter:blur(var(--pb))}
+.sgr{display:flex;gap:3px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;background:var(--sch);border-radius:26px;padding:4px;margin-top:6px}
+.sgr::-webkit-scrollbar{display:none}
+.sgr button{flex:0 0 auto;height:44px;padding:0 20px;border:0;border-radius:8px;background:rgba(255,255,255,.05);color:var(--onv);font:600 14px inherit;font-family:inherit;white-space:nowrap}
+.sgr button:first-child{border-radius:22px 8px 8px 22px}.sgr button:last-child{border-radius:8px 22px 22px 8px}
+.sgr button.on{background:var(--pri);color:var(--onpri)}
 </style></head><body>
 <div id="load"><div class="lw"><div class="lglow"></div><div class="lm" id="lm">🍉</div><div class="lsh"></div></div><div class="lti">MDMelonClicker</div><div id="lt">Подключаюсь…</div><div class="tr"><i id="lbar"></i></div><div id="ltip"></div></div>
 <div id="app"><div id="top"><h1 id="ttl">MDMelonClicker</h1><span id="gemc"></span></div><div id="view"></div><div id="nav"></div></div>
@@ -1331,7 +1336,7 @@ const _render0 = render;
 render = function () { _render0(); if (tab === 0) bindCoin(); bindCards(); if (OVL === null) { const v = $("#view"); } };
 
 // ---------- «Награды»: сеты с карточками, «Ещё»: настройки как в плагине
-const optRow = (title, names, key, vals, cur) => `<div class="t2" style="font-weight:700;margin-top:6px">${title}</div><div class="hs" style="margin-top:6px">${names.map((n, i) => { const on = vals[i] === cur; return `<button class="chip ${on ? "p" : ""}" style="border:0;font-family:inherit;display:inline-flex;gap:6px" data-a="opt" data-k="${key}" data-v="${vals[i]}">${on ? ic("check", 14) : ""}${n}</button>`; }).join("")}</div>`;
+const optRow = (title, names, key, vals, cur) => `<div class="t2" style="font-weight:700;margin-top:6px">${title}</div><div class="sgr">${names.map((n, i) => `<button class="${vals[i] === cur ? "on" : ""}" data-a="opt" data-k="${key}" data-v="${vals[i]}">${n}</button>`).join("")}</div>`;
 const tog = (label, key, on) => `<div class="card click" style="margin:4px 0 0;padding:8px 0;background:none;border:0" data-a="tgl" data-k="${key}"><div class="t1 grow" style="font-size:14px">${label}</div><div class="sw ${on ? "on" : ""}"></div></div>`;
 tMore = function () {
   let h = `<div class="card"><div class="grow"><div class="t1">${esc(me.name || "Игрок")}</div><div class="t2">ID ${me.id}</div></div></div>`;
@@ -3467,7 +3472,7 @@ function pnBlobs() {
   document.body.insertBefore(el, document.body.firstChild);
 }
 function sldHtml(key, label, icon, val, min, max, unit) {
-  return `<div class="slrow"><div class="chav">${ic(icon, 18)}</div><div class="grow"><div class="t1" style="margin:0;font-size:15px">${label}</div><div class="t2" id="sv_${key}" style="margin:0">${val}${unit}</div></div></div><div class="sld" style="--p:${(val - min) / (max - min)}"><div class="sl-l"></div><div class="sl-th"></div><div class="sl-r"></div><input class="sli" type="range" data-k="${key}" data-u="${unit}" data-mn="${min}" data-mx="${max}" min="${min}" max="${max}" step="1" value="${val}"></div>`;
+  return `<div class="slrow"><div class="chav">${ic(icon, 18)}</div><div class="grow"><div class="t1" style="margin:0;font-size:15px">${label}</div><div class="t2" id="sv_${key}" style="margin:0">${val}${unit}</div></div></div><div class="sld" style="--p:${(val - min) / (max - min)}"><div class="sl-r"></div><div class="sl-l"></div><div class="sl-th"></div><input class="sli" type="range" data-k="${key}" data-u="${unit}" data-mn="${min}" data-mx="${max}" min="${min}" max="${max}" step="1" value="${val}"></div>`;
 }
 function panelCard() {
   return `<div class="card col" data-nt="1"><div class="t1" style="color:var(--pri)">Панели</div><div class="pvw"><i class="pv1"></i><i class="pv2"></i><i class="pv3"></i><div class="pvp">Так выглядит панель</div></div>${sldHtml("pb", "Размытие", "blur", LS("pb", 14), 0, 30, " px")}${sldHtml("pa", "Плотность панелей", "layers", LS("pa", 88), 35, 100, "%")}${tog("Цветные пятна на фоне", "bgb", LS("bgb", 1))}<button class="btn o" data-a="pnreset" style="justify-content:center">Сбросить</button></div>`;
@@ -3481,6 +3486,7 @@ A.pnreset = function () { LSset("pb", 14); LSset("pa", 88); LSset("bgb", 1); pnA
 { const _tg = A.tgl; A.tgl = function (e) { const r = _tg.apply(this, arguments); if (e.dataset.k === "bgb") pnApply(); return r; }; }
 pnBlobs(); pnApply();
 
+{ const _opt = A.opt; A.opt = function (e) { const sc = [...document.querySelectorAll(".sgr")].map(x => x.scrollLeft); const r = _opt.apply(this, arguments); requestAnimationFrame(() => document.querySelectorAll(".sgr").forEach((x, i) => { if (sc[i]) x.scrollLeft = sc[i]; })); return r; }; }
 // ---------- язык: русский / English (перевод интерфейса на лету)
 const EN = {
 "Игра":"Game","Магазин":"Shop","Кейсы":"Cases","Награды":"Rewards","Топ":"Top","Ещё":"More","Меню":"Menu","Казино":"Casino","Сообщество":"Community","Назад":"Back","← Назад":"← Back","← Казино":"← Casino",
