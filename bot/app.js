@@ -326,7 +326,7 @@ function tap() {
   hap(crit ? "medium" : "light"); gsfx(crit ? "crit" : "tap"); floatTxt((crit ? "КРИТ +" : "+") + fmt(g), crit ? "#ffd54f" : "var(--on)", crit ? 26 : 20); mark();
 }
 function spawnStar() {
-  const f = $("#field"); if (!f) return; const s = document.createElement("div"); s.className = "star"; s.innerHTML = ic("star", 44, "#ffd54f"); s.style.left = (20 + Math.random() * 60) + "%"; s.style.top = (10 + Math.random() * 70) + "%";
+  const f = $("#field"); if (!f) return; const s = document.createElement("div"); s.className = "star"; s.innerHTML = ic("star", 30, "var(--onprc)"); s.style.left = (20 + Math.random() * 60) + "%"; s.style.top = (10 + Math.random() * 70) + "%";
   s.onpointerdown = ev => { ev.stopPropagation(); S.stars++; if (Math.random() < .5) { const b = Math.max(100, cps() * 30, tapValue() * 50); S.pts += b; S.run += b; S.total += b; floatTxt("+" + fmt(b), "#ffd54f", 24, 0, 0); } else { frenzy = now() + 15; floatTxt("x3 на 15 с!", "#ffd54f", 24, 0, 0); } hap("ok"); checkAch(); mark(); s.remove(); };
   f.appendChild(s); setTimeout(() => s.remove(), 6000);
 }
