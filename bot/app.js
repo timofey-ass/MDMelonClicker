@@ -42,13 +42,13 @@ const mark = () => { dirty = true; };
 const perk = k => +(S.perks[k] || 0);
 const owned = () => S.b.reduce((a, b) => a + b, 0);
 function collBonus() { let t = 0; for (const k in S.inv) { const i = +k; if (i < ITEMS.length) { const b = RARS[ITEMS[i][2]][2]; t += S.holo.includes(i) ? b * 1.5 : b; } } return Math.min(t, 900); }
-function baseMult() { return 1 + .10 * Math.floor(S.gt / 25) + .02 * S.ach.length + collBonus() / 100 + SETS.filter(x => S.sets.includes(x[0])).reduce((a, x) => a + x[3], 0) / 100; }
+function baseMult() { return 1 + .10 * Math.floor(S.gt / 25) + .02 * S.ach.length + .25 * (S.pl || 0) + collBonus() / 100 + SETS.filter(x => S.sets.includes(x[0])).reduce((a, x) => a + x[3], 0) / 100; }
 let EVT = null, CLB = 0;
-function factor() { const t = now(); let f = baseMult(); if (EVT && t < EVT.until) f *= EVT.mult; if (CLB) f *= 1 + CLB / 100; if (t < S.boost) f *= 2; if (t < fever) f *= 2; if (t < frenzy) f *= 3; return f; }
+function factor() { const t = now(); let f = baseMult(); if (EVT && t < EVT.until) f *= EVT.mult; if (CLB) f *= 1 + CLB / 100; if (t < S.boost) f *= 2; if (t < fever || reqOn()) f *= 2; if (t < frenzy) f *= 3; return f; }
 const nerf = x => x <= 1e3 ? x : 1e3 * Math.pow(x / 1e3, .7);
 function cpsRaw() { return BUILDS.reduce((a, b, i) => a + b[3] * S.b[i], 0) * factor() * (1 + .1 * perk("cps")); }
 function cps() { return nerf(cpsRaw()); }
-function tapValue() { return nerf((1 + S.click + .02 * cpsRaw() / Math.max(factor(), 1)) * factor() * (1 + .1 * perk("tap"))) * (("70" in S.inv) ? 1e21 : 1) * (("72" in S.inv) ? 40 : 1); }
+function tapValue() { return nerf((1 + S.click + .02 * cpsRaw() / Math.max(factor(), 1)) * factor() * (1 + .1 * perk("tap"))) * (("70" in S.inv) ? 1e21 : 1) * (("72" in S.inv) ? 40 : 1) * reqMul(); }
 const BGR = [1.15, 1.15, 1.15, 1.16, 1.17, 1.18, 1.18];
 function bCost(i, n) { const g = BGR[i] || 1.15; return BUILDS[i][2] * Math.pow(g, S.b[i]) * (Math.pow(g, n) - 1) / (g - 1); }
 function bCount(i) { if (qty === 1) return 1; if (qty === 10) return 10; let n = 0; while (n < 500 && bCost(i, n + 1) <= S.pts) n++; return Math.max(1, n); }
@@ -59,10 +59,10 @@ const pendingGems = () => { const x = S.run / 1e6; if (!(x >= 1)) return 0; cons
 function level() { let xp = S.xp, lv = 1, need = 100; while (xp >= need && lv < 99) { xp -= need; lv++; need = 100 + 60 * lv; } return [lv, xp, need]; }
 function addXp(n) { const b = level()[0]; S.xp += n; for (let lv = b + 1; lv <= level()[0]; lv++) { S.fc[0]++; if (lv % 5 === 0) S.fc[1]++; if (lv % 10 === 0) S.fc[2]++; toast("⭐ Уровень " + lv + "! Бесплатный кейс ждёт"); } }
 const setIdx = key => { const s = SETS.find(x => x[0] === key); return ITEMS.map((it, i) => s[2].includes(it[1]) ? i : -1).filter(i => i >= 0); };
-function stat(k) { if (k === "owned") return owned(); if (k === "items") return Object.keys(S.inv).length; return S[k] || 0; }
+function stat(k) { if (k.slice(0, 3) === "hx:") return hxStat(k); if (k === "owned") return owned(); if (k === "items") return Object.keys(S.inv).length; return S[k] || 0; }
 function checkAch() {
   for (const [key, nm, , bn] of SETS) if (!S.sets.includes(key) && setIdx(key).every(i => (i + "") in S.inv)) { S.sets.push(key); toast("Сет «" + nm + "» собран: +" + bn + "% ко всему"); hap("ok"); gsfx("win"); if (key === "tech") { LSset("fall", 3 + SETS.length - 1); toast("Течкоты собраны! Включён фон из нулей и единиц"); } try { fxConfetti(80); } catch (e) {} }
-  for (const [id, title, , key, goal] of ACH) if (!S.ach.includes(id) && stat(key) >= goal) { S.ach.push(id); toast("🏆 " + title + ": +2% ко всему"); hap("ok"); gsfx("win"); }
+  for (const [id, title, , key, goal] of ACH.concat(HACH)) if (!S.ach.includes(id) && stat(key) >= goal) { S.ach.push(id); toast("🏆 " + title + ": +2% ко всему"); hap("ok"); gsfx("win"); }
 }
 const pickR = ri => { const l = ITEMS.map((it, i) => it[2] === ri && !it[6] && !it[7] ? i : -1).filter(i => i >= 0); return l[Math.floor(Math.random() * l.length)]; };
 function rarR(w) { let r = Math.random() * w.reduce((a, b) => a + b, 0); for (let i = 0; i < w.length; i++) { r -= w[i]; if (r <= 0) return i; } return 0; }
@@ -77,6 +77,7 @@ function caseEV(ci) {
   return ev(ci);
 }
 function casePrice(ci) {
+  if (ci === 99) return solPrice();
   const u = 1000 + cps() * 10;
   const p = ci === 5 ? u * 90 : u * caseEV(ci) * 40;
   const v = Math.max(CFLOOR[ci], p), e = Math.pow(10, Math.floor(Math.log10(v)) - 1);
@@ -116,7 +117,7 @@ function refresh(full) {
   if (tab === 0) {
     const set = (id, h) => { const e = $("#" + id); if (e) e.textContent = h; };
     set("c-cps", fmt(cps()) + "/с"); const ct = $("#c-tap"); if (ct) ct.innerHTML = ic("tap", 14) + fmt(tapValue()); set("c-pts", fmt(S.pts));
-    const b = []; if (t < S.boost) b.push("x2 " + Math.ceil(S.boost - t) + "с"); if (t < fever) b.push("🔥 " + Math.ceil(fever - t) + "с"); if (t < frenzy) b.push("x3 " + Math.ceil(frenzy - t) + "с");
+    const b = []; if (t < S.boost) b.push("x2 " + Math.ceil(S.boost - t) + "с"); if (reqOn()) b.push("∞ Реквием"); else if (t < fever) b.push("🔥 " + Math.ceil(fever - t) + "с"); if (t < frenzy) b.push("x3 " + Math.ceil(frenzy - t) + "с");
     const e = $("#c-buff"); if (e) { e.innerHTML = b.join(" · ").replace("🔥", ic("fire", 14)); e.style.display = b.length ? "" : "none"; }
     const f = $("#combo"); if (f) f.style.width = (t < fever ? 100 : combo) + "%";
     const d = $("#daily"); if (d) d.style.display = t - S.daily >= 20 * 3600 ? "" : "none";
@@ -130,7 +131,7 @@ function tGame() {
   const eq = +S.eq; const coin = eq >= 0 && (eq + "") in S.inv ? eq : 63;
   return `<div class="chips"><span class="chip" id="c-cps">0/с</span><span class="chip" id="c-tap"></span><span class="chip" id="c-mult"></span><span class="chip p" id="c-buff" style="display:none"></span></div>
   <div style="text-align:center;font-size:44px;font-weight:800;margin:6px 0 0;color:var(--on)" id="c-pts">0</div>
-  <div id="field"><div id="ring"></div><div id="coin" data-coin>${catEl(coin, 240, {})}</div></div>
+  <div id="field"><div id="ring"></div><div id="coin" data-coin class="${reqOn() ? "rqa" : ""}">${catEl(coin, 240, {})}</div></div>
   <div style="display:flex;align-items:center;gap:10px;margin:0 4px 10px"><span class="t2" style="font-weight:700;display:flex;align-items:center;gap:6px">${ic("fire", 14)}Комбо</span><div class="wb grow"><div class="tr"></div><div class="ac" id="combo" style="width:0%"><i></i></div></div></div>
   <div class="card p" id="daily" style="display:none"><div class="grow t1" style="display:flex;align-items:center;gap:8px">${ic("box", 18)}Ежедневный бонус готов</div>${btn("Забрать", "daily")}</div>`;
 }
@@ -139,6 +140,7 @@ function tShop() {
   const bc = Math.max(5000, cps() * 300);
   h += row("bolt", "Ускорение x2 на 60 с", "Удваивает весь доход и тапы", btn(fmt(bc), "boost", cost(bc)));
   h += row("gem", "Перерождение", "Сброс прогресса за самоцветы. Каждые 25 самоцветов дают +10% ко всему навсегда", btn("", "prest", 'id="pres"', "o"));
+  h += ascCard();
   h += `<div style="display:flex;align-items:center" class="sec"><span class="grow" style="margin:0">Самоцветы</span><span class="chip p">${ic("gem", 14)}${S.gems}</span></div>`;
   for (const [k, icon, name, desc, base, cap] of PERKS) { const lv = perk(k), c = base * (lv + 1); h += row(icon, `${name} · ур. ${lv}/${cap}`, desc, lv >= cap ? `<span class="chip p">МАКС</span>` : btn(ic("gem", 14) + c, "perk", `data-i="${k}" ${cost(c, "gems")}`, "o")); }
   h += `<div class="sec">Улучшения</div>`;
@@ -152,7 +154,8 @@ function tCases() {
   h += `<div class="card col"><div style="display:flex;align-items:center"><div class="t1 grow" style="display:flex;align-items:center;gap:8px">${ic("box", 18)}Кейсы</div><span class="chip p">Ур. ${lv}</span></div><div class="t2">Собрано ${Object.keys(S.inv).filter(k => +k < 70 || +k >= 72).length} из ${ITEMS.length - 2} · бонус +${collBonus()}% ко всему · открыто ${S.opened}</div>${bar(Math.max(.02, xp / need))}<div class="t2" style="color:var(--out);font-size:11px">${xp} / ${need} XP · за уровень бесплатный кейс</div></div>`;
   h += `<div class="card p"><div class="grow"><div class="t1" style="display:flex;align-items:center;gap:8px">${ic("ticket", 18)}Бесплатный кейс</div><div class="t2" id="freeT"></div></div>${btn("Открыть", "free", 'id="freeB"')}</div>`;
   if (S.fc.some(x => x > 0)) h += `<div class="card"><div class="t1 grow" style="display:flex;align-items:center;gap:8px">${ic("ticket", 16)}За уровни:</div>${[0, 1, 2].filter(c => S.fc[c] > 0).map(c => btn(ic(CASES[c][0], 16) + "×" + S.fc[c], "lvcase", `data-i="${c}"`)).join("")}</div>`;
-  CASES.map((c, ci) => ci).sort((a, b) => casePrice(b) - casePrice(a)).forEach(ci => {
+  CASES.map((c, ci) => ci).concat([99]).sort((a, b) => casePrice(b) - casePrice(a)).forEach(ci => {
+    if (ci === 99) { h += solCard(); return; }
     const c = CASES[ci], pr = casePrice(ci);
     const tot = c[3].reduce((a, b) => a + b, 0); const ch = c[3].map((x, i) => x ? RARS[i][0].slice(0, 5) + ". " + String(+(x / tot * 100).toFixed(1)) + "%" : "").filter(Boolean).join(" · "); const cur = ci === GEM_CASE ? "gems" : "pts";
     h += `<div class="card${ci === 4 ? " bluecase" : ci === 5 ? " redcase" : ""}">${circ(c[0], 54)}<div class="grow"><div class="t1">${c[1]}</div><div class="t2" style="font-size:11px">${ci === 5 ? "70% — монеты (от 0.4× до 3× цены), 30% — течкот: Google, OnePlus, Vivo, Apple, Xiaomi, Samsung. Каждый даёт +50% ко всему" : ci === 4 ? "Шанс 2% выбить Королевского арбуза (×40 к тапу), 5% — особого кота Джоске (+100% ко всему). Иначе падает как в Золотом: " + ch : ch}</div></div><div class="jb">${btn((ci === GEM_CASE ? ic("gem", 14) : "") + fmt(pr), "case", `data-i="${ci}" data-n="1" ${cost(pr, cur)}`)}${btn("×5", "case", `data-i="${ci}" data-n="5" ${cost(pr * 5, cur)}`, "o")}</div></div>`;
@@ -161,12 +164,12 @@ function tCases() {
   if (S.hist.length) h += `<div class="sec">Последние выпадения</div><div class="hs">${S.hist.slice(-10).reverse().map(i => catEl(i, 44)).join("")}</div>`;
   { const sl = RARS.map((R, r) => [r, dupCount(r)]).filter(([r, n]) => r <= 6 && n >= 1);
     if (sl.length) h += `<div class="sec">Продать дубликаты</div><div class="gml" style="margin:0 0 8px">` + sl.map(([r, n]) => `<div class="card" style="padding:10px 14px"><div class="t1 grow" style="font-size:14px;color:${RC[r]}">${RARS[r][0]} ×${n}</div><button class="chip" style="border:0;font-family:inherit;color:var(--gold)" data-a="sell" data-i="${r}">${ic("coin", 14)}${fmt(n * sellVal(r))}${SELLGEM[r] ? " +" + n * SELLGEM[r] + ic("gem", 12) : ""}</button></div>`).join("") + `</div>`; }
-  h += `<div class="sec">Коллекция · нажми на кота, чтобы посмотреть инфо</div>`;
+  h += `<div class="sec" style="display:flex;align-items:center"><span class="grow" style="margin:0">Коллекция · нажми на кота</span><button class="chip" style="border:0;font-family:inherit;color:var(--pri)" data-a="mnu" data-k="enc">Энциклопедия</button></div>`;
   for (let ri = RARS.length - 1; ri >= 0; ri--) {
     const ids = ITEMS.map((it, i) => it[2] === ri && (i < 70 || i >= 72 || (i + "") in S.inv) && !it[7] ? i : -1).filter(i => i >= 0); if (!ids.length) continue;
     h += `<div style="font-size:11px;font-weight:700;color:${RC[ri]};margin:8px 4px 4px">${RARS[ri][0]} · ${ri === 8 ? "×40 к тапу" : ri === 7 ? "×1 секстилион к одному тапу" : "+" + RARS[ri][2] + "% за предмет"}</div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">`;
     for (const idx of ids) { const o = S.inv[idx + ""] || 0, ho = S.holo.includes(idx), isq = +S.eq === idx;
-      h += `<div class="cell${o ? " fxc" : ""}" ${o ? `data-a="catinfo" data-i="${idx}"` : ""} style="${isq || ho ? `box-shadow:inset 0 0 0 2px ${ho ? "#fff" : RC[ri]}` : ""}">${o ? catEl(idx, 52, {holo: ho, fx: true}) : `<div class="q">?</div>`}<span style="color:${o ? RC[ri] : "var(--out)"}">${o ? (ho ? "★ " : "") + ITEMS[idx][1] : "???"}</span>${o > 1 ? `<span style="color:var(--onv);font-weight:500">×${o}</span>` : ""}</div>`; }
+      h += `<div class="cell${o ? " fxc" : ""}${o ? reqCls(idx) : ""}" ${o ? `data-a="catinfo" data-i="${idx}"` : ""} style="${isq || ho ? `box-shadow:inset 0 0 0 2px ${ho ? "#fff" : RC[ri]}` : ""}">${o ? catEl(idx, 52, {holo: ho, fx: true}) : `<div class="q">?</div>`}<span style="color:${o ? RC[ri] : "var(--out)"}">${o ? (ho ? "★ " : "") + ITEMS[idx][1] : "???"}</span>${o > 1 ? `<span style="color:var(--onv);font-weight:500">×${o}</span>` : ""}${o ? reqTag(idx) : ""}</div>`; }
     h += `</div>`;
   }
   return h;
@@ -180,8 +183,9 @@ function wkHtml() {
   return h;
 }
 function tAch() {
-  let h = `<div class="t2" style="margin:0 4px 8px">Открыто ${S.ach.length} из ${ACH.length} · бонус +${2 * S.ach.length}% ко всему</div>`;
+  let h = `<div class="t2" style="margin:0 4px 8px">Открыто ${S.ach.length} из ${ACH.length + HACH.length} · бонус +${2 * S.ach.length}% ко всему</div>`;
   for (const [id, title, desc, key, goal] of ACH) { const dn = S.ach.includes(id), n = Math.min(stat(key), goal); h += `<div class="card ${dn ? "p" : ""}"><div class="circ" style="${dn ? "background:var(--pri);color:var(--onpri)" : ""}">${ic(dn ? "check" : "lock", 26)}</div><div class="grow"><div class="t1">${title}</div><div class="t2">${desc} · ${fmt(n)}/${fmt(goal)}</div>${dn ? "" : `<div style="margin-top:6px">${bar(n / goal)}</div>`}</div></div>`; }
+  h += hachHtml();
   h += wkHtml();
   h += `<div class="sec">Сеты котов · нажми, чтобы посмотреть</div>`;
   for (const [key, nm, , bn] of SETS) { const ids = setIdx(key), have = ids.filter(i => (i + "") in S.inv).length, dn = S.sets.includes(key); h += `<div class="card click ${dn ? "p" : ""}" data-a="set" data-i="${key}"><div class="grow"><div class="t1">${nm} · ${have}/${ids.length}</div><div class="t2">+${bn}% ко всему</div><div style="margin-top:6px">${bar(have / ids.length)}</div></div>${dn ? ic("check", 22) : ""}</div>`; }
@@ -322,8 +326,8 @@ function tap() {
   const t = now(); let g = tapValue(); const crit = Math.random() < Math.min(.65, .05 + .03 * S.crit); if (crit) g *= 5;
   g *= 1 - taxTap(S.pts);
   S.pts += g; S.run += g; S.total += g; S.taps++;
-  if (t >= fever) { combo = Math.min(100, combo + 7); if (combo >= 100) { fever = t + 6 + S.fev; S.fevers++; toast("🔥 Лихорадка! x2"); hap("heavy"); } }
-  hap(crit ? "medium" : "light"); gsfx(crit ? "crit" : "tap"); floatTxt((crit ? "КРИТ +" : "+") + fmt(g), crit ? "#ffd54f" : "var(--on)", crit ? 26 : 20); mark();
+  if (reqOn()) combo = 100; else if (t >= fever) { combo = Math.min(100, combo + 7); if (combo >= 100) { fever = t + 6 + S.fev; S.fevers++; toast("🔥 Лихорадка! x2"); hap("heavy"); } }
+  hap(crit ? "medium" : "light"); gsfx(crit ? "crit" : "tap"); floatTxt((crit ? "КРИТ +" : "+") + fmt(g), crit ? "#ffd54f" : reqOn() ? "#d0a8ff" : "var(--on)", crit ? 26 : 20); try { reqTick(); reqTap(crit); hxTap(t); } catch (e) {} mark();
 }
 function spawnStar() {
   const f = $("#field"); if (!f) return; const s = document.createElement("div"); s.className = "star"; s.innerHTML = ic("star", 30, "var(--onprc)"); s.style.left = (20 + Math.random() * 60) + "%"; s.style.top = (10 + Math.random() * 70) + "%";
@@ -725,7 +729,7 @@ tGame = function () {
   const eq = +S.eq, cat = eq >= 0 && (eq + "") in S.inv ? eq : "coin", rr = cat === "coin" ? "" : `<i class="rr" style="border-color:${RC[ITEMS[cat][2]]}"></i>`;
   return `<div class="gcol"><div id="g-pts" style="text-align:center;font-size:46px;font-weight:700;color:var(--pri);line-height:1.15">0</div><div class="t2" style="text-align:center;margin:-2px 0 8px;font-size:13px">монет</div>
   <div class="chips"><span class="chip" id="g-cps"></span><span class="chip" id="g-tap"></span><span class="chip" id="g-gem"></span><span class="chip p" id="g-buff" style="display:none"></span></div>
-  <div id="field"><div id="ring"></div><div id="coin" data-coin><div class="wv" style="clip-path:${cat === "coin" ? WAVY : "none"};border-radius:${cat === "coin" ? 0 : "50%"}">${catEl(cat, 240, {})}${rr}<i class="gl"></i></div></div></div>
+  <div id="field"><div id="ring"></div><div id="coin" data-coin class="${reqOn() ? "rqa" : ""}"><div class="wv" style="clip-path:${cat === "coin" ? WAVY : "none"};border-radius:${cat === "coin" ? 0 : "50%"}">${catEl(cat, 240, {})}${rr}<i class="gl"></i></div></div></div>
   <div style="display:flex;align-items:center;gap:10px;margin:0 4px 8px"><span class="t2" style="font-weight:700;display:flex;align-items:center;gap:6px;margin:0;min-width:96px">${ic("fire", 14)}<span id="clt">Комбо</span></span><div class="wb grow"><div class="tr"></div><div class="ac" id="combo" style="width:0%"><i></i></div></div></div>
   <div class="card p" id="daily" style="display:none;margin-bottom:0"><div class="grow t1" style="display:flex;align-items:center;gap:8px">${ic("box", 18)}Ежедневный бонус готов</div>${btn("Забрать", "daily")}</div></div>`;
 };

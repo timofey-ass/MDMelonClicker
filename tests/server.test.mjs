@@ -547,3 +547,57 @@ test("шахматы вдвоём: столик, очерёдность, час�
   const c3 = await call(A, "chg_create", { stake: 300 }); assert.equal((await call(A, "chg_cancel", { id: c3.id })).ok, true);
   assert.equal((await call(A, "chg_claim", { id: c3.id })).amount, 300);
 });
+
+test("шахматы: рейтинг Elo растёт у победителя, таблица лидеров, статистика против бота", async () => {
+  const { call, sq } = await makeEnv();
+  await call(A, "auth"); await call(B, "auth");
+  const c = await call(A, "chg_create", { stake: 100 }); await call(B, "chg_join", { id: c.id });
+  const va = await call(A, "chg_state", { id: c.id });
+  const [W, Bl] = va.me === 1 ? [A, B] : [B, A];
+  await call(Bl, "chg_resign", { id: c.id });
+  const t = await call(A, "chg_top", {});
+  assert.equal(t.top.length, 2);
+  const win = t.top[0], lose = t.top[1];
+  assert.equal(win.elo, 1020); assert.equal(lose.elo, 980);   // K=40, равные рейтинги: ±20
+  assert.equal(win.w, 1); assert.equal(lose.l, 1);
+  const me = (await call(W, "chg_top", {})).me; assert.equal(me.rank, 1); assert.equal(me.elo, 1020);
+  assert.equal((await call(Bl, "chg_top", {})).me.rank, 2);
+  // второй вызов сдачи не меняет рейтинг
+  await call(Bl, "chg_resign", { id: c.id });
+  assert.equal((await call(A, "chg_top", {})).top.find(x => x.uid === 1001).elo + (await call(A, "chg_top", {})).top.find(x => x.uid === 1002).elo, 2000);
+  // против бота: считается отдельно, Elo не трогает
+  await call(A, "ch_start", { bet: 1000 }); await call(A, "ch_resign", {});
+  const m2 = (await call(A, "chg_top", {})).me; assert.equal(m2.bl, 1);
+  assert.ok(m2.elo === 1020 || m2.elo === 980);
+});
+
+test("кот-призрак: отправка, возвращение через 6 часов, табличка у хозяина живёт неделю", async () => {
+  const { call, sq } = await makeEnv();
+  await call(A, "auth"); await call(B, "auth");
+  await call(A, "save", { rev: 0, state: baseState({ pts: 500, total: 1e9, inv: { "5": 1 } }) });
+  await call(B, "save", { rev: 0, state: baseState({ pts: 500, total: 100, inv: { "7": 1 } }) });
+  sq.prepare("UPDATE users SET seen=?").run(Math.floor(Date.now() / 1000));
+  assert.match((await call(A, "gh_send", { cat: 9, rar: 3 })).error || "", /нет такого/);
+  const s = await call(A, "gh_send", { cat: 5, rar: 3 }); assert.equal(s.ok, true); assert.equal(s.tname.length > 0, true);
+  assert.match((await call(A, "gh_send", { cat: 5, rar: 3 })).error || "", /уже в пути/);
+  assert.match((await call(A, "gh_claim", {})).error || "", /в пути/);
+  const tr = await call(B, "gh_state", {}); assert.equal(tr.traces.length, 1); assert.ok(tr.traces[0].left > 6 * 86400);
+  const tk = await call(B, "gh_take", { id: tr.traces[0].id }); assert.equal(tk.gems, 1);
+  assert.match((await call(B, "gh_take", { id: tr.traces[0].id })).error || "", /забран/);
+  // кот возвращается
+  sq.prepare("UPDATE ghost SET ret=?").run(Math.floor(Date.now() / 1000) - 5);
+  const cl = await call(A, "gh_claim", {}); assert.ok(cl.pts >= 5000); assert.equal(cl.gems, 2);
+  assert.match((await call(A, "gh_claim", {})).error || "", /никуда/);
+  // табличка исчезает через неделю
+  sq.prepare("UPDATE ghost SET ts=?").run(Math.floor(Date.now() / 1000) - 8 * 86400);
+  assert.equal((await call(B, "gh_state", {})).traces.length, 0);
+});
+
+test("Вознесение: сервер не даёт уровень выше, чем позволяет накопленное", async () => {
+  const { call } = await makeEnv();
+  await call(A, "auth");
+  await call(A, "save", { rev: 0, state: baseState({ pts: 10, total: 10 }) });
+  const r = await call(A, "save", { rev: 1, state: baseState({ pts: 10, total: 10, pl: 5 }) });
+  assert.ok(!r.error);
+  const st = (await call(A, "profile", { uid: 1001 })); assert.equal(st.pl, 0);
+});

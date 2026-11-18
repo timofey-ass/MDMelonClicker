@@ -609,8 +609,31 @@ body.evton #view{padding-bottom:calc(140px + env(safe-area-inset-bottom))}
 #tut .td i{width:7px;height:7px;border-radius:4px;background:var(--out);opacity:.5;transition:all .25s}
 #tut .td i.on{width:20px;background:var(--pri);opacity:1}
 #tut .tb{display:flex;gap:8px;justify-content:flex-end}
+
+/* реквием */
+#coin.rqa{position:relative}
+#coin.rqa::before{content:"";position:absolute;inset:-18px;border-radius:50%;background:conic-gradient(#ff5252,#ffd54f,#69f0ae,#40c4ff,#b388ff,#ff5252);filter:blur(12px);opacity:.8;animation:rqs 3s linear infinite;z-index:-1}
+#coin.rqa::after{content:"";position:absolute;inset:-6px;border-radius:50%;border:3px solid #d0a8ff;box-shadow:0 0 22px #b388ff,inset 0 0 18px rgba(179,136,255,.6);animation:rqp 1.4s ease-in-out infinite;pointer-events:none;z-index:4}
+@keyframes rqs{to{transform:rotate(360deg)}}
+@keyframes rqp{50%{opacity:.45;transform:scale(1.04)}}
+.cell.rq{background:linear-gradient(135deg,rgba(179,136,255,.35),rgba(255,213,79,.28))!important;box-shadow:0 0 0 2px #b388ff,0 0 16px rgba(179,136,255,.7)!important;animation:rqg 2.2s ease-in-out infinite}
+@keyframes rqg{50%{box-shadow:0 0 0 2px #ffd54f,0 0 22px rgba(255,213,79,.7)}}
+.cell.rqp{box-shadow:inset 0 0 0 1px rgba(179,136,255,.5)}
+.rqt{font-size:9px;font-weight:700;padding:1px 6px;border-radius:8px;background:var(--sch);color:var(--onv);display:inline-flex;align-items:center;gap:2px}
+.rqt.on{background:#b388ff;color:#1d0b3a}
+/* вознесение и профиль */
+.ascc{border:1px solid color-mix(in srgb,#9a8cff 45%,transparent)}
+.plchip{display:inline-flex;align-items:center;gap:5px;margin:4px auto 0;padding:3px 12px;border-radius:12px;font-size:12px;font-weight:700;background:color-mix(in srgb,#9a8cff 25%,var(--sch));color:#cfc6ff}
+.plchip.pl3,.plchip.pl4{background:linear-gradient(90deg,#7b5cff,#40c4ff);color:#fff}
+.plchip.pl5,.plchip.pl6{background:linear-gradient(90deg,#ffd54f,#ff8a65,#ff4081);color:#2a1300}
+.plw::before{content:"";position:absolute;inset:-6px;border-radius:50%;pointer-events:none}
+.plw.pl1::before{border:3px solid #9a8cff}
+.plw.pl2::before{border:3px solid #9a8cff;box-shadow:0 0 16px #9a8cff}
+.plw.pl3::before,.plw.pl4::before,.plw.pl5::before,.plw.pl6::before{background:conic-gradient(#7b5cff,#40c4ff,#69f0ae,#ffd54f,#ff4081,#7b5cff);-webkit-mask:radial-gradient(circle,transparent 58%,#000 60%);mask:radial-gradient(circle,transparent 58%,#000 60%);animation:rqs 4s linear infinite;inset:-8px}
+.plw.pl4::after,.plw.pl5::after,.plw.pl6::after{content:"";position:absolute;inset:-14px;border-radius:50%;box-shadow:0 0 28px rgba(154,140,255,.8);pointer-events:none}
+.plw.pl5::after,.plw.pl6::after{box-shadow:0 0 34px rgba(255,213,79,.9)}
+.rar7{color:#e040fb}
 </style></head><body>
 <div id="load"><div class="lw"><div class="lglow"></div><div class="lm" id="lm">🍉</div><div class="lsh"></div></div><div class="lti">MDMelonClicker</div><div id="lt">Подключаюсь…</div><div class="tr"><i id="lbar"></i></div><div id="ltip"></div></div>
 <div id="app"><div id="top"><h1 id="ttl">MDMelonClicker</h1><span id="gemc"></span></div><div id="view"></div><div id="nav"></div></div>
 <div id="fall"></div><div id="toast"></div>
-.rar7{color:#e040fb}

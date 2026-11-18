@@ -9,7 +9,7 @@ async function getHtml(env) {
 const ATLAS = "https://raw.githubusercontent.com/timofey-ass/MDMelonClicker/HEAD/mdcats2.jpg";
 const BOT_USER = "mdmelonbot";
 const N_ITEMS = 103;
-const BC_CATS = [["Киллер в плаще", 3], ["Кот-дон", 3], ["Вор-домушник", 2], ["Торговец с рынка", 3], ["Контрабандный ящик", 2], ["Кот-алхимик", 3], ["Кот-чемодан", 2], ["Призрак рынка", 4], ["Золотой слиток", 4], ["Золотой арбуз-лидер", 9]];
+const BC_CATS = [["Киллер в плаще", 3], ["Кот-дон", 3], ["Вор-домушник", 2], ["Торговец с рынка", 3], ["Контрабандный ящик", 2], ["Кот-алхимик", 3], ["Кот-чемодан", 2], ["Призрак рынка", 4], ["Золотой слиток", 4], ["Золотой арбуз-лидер", 9], ["Луна", 1], ["Марс", 2], ["Земля", 3], ["Венера", 2], ["Юпитер", 4], ["Сатурн", 4], ["Солнечная система", 5], ["Уран", 3], ["Нептун", 3]];
 const LB_HOLD = 72 * 3600, BC_LEADER = 10;
 let ADMIN = 1796286471; // по умолчанию; в Cloudflare задай переменную ADMIN_ID, она важнее
 const BAN_DAYS = 7;
@@ -68,6 +68,8 @@ async function init(db) {
   for (const c of ["ask INTEGER DEFAULT 0", "reward INTEGER DEFAULT 0"]) { try { await db.prepare("ALTER TABLE ucats ADD COLUMN " + c).run(); } catch (e) {} }
   try { await db.prepare("CREATE TABLE IF NOT EXISTS wslikes (k TEXT, cid INTEGER, uid INTEGER, PRIMARY KEY (k, cid, uid))").run(); } catch (e) {}
   try { await db.prepare("CREATE UNIQUE INDEX IF NOT EXISTS ucats_bc ON ucats(bc) WHERE bc > 0").run(); } catch (e) {}
+  try { await db.prepare("CREATE TABLE IF NOT EXISTS chr (uid INTEGER PRIMARY KEY, name TEXT, elo INTEGER DEFAULT 1000, w INTEGER DEFAULT 0, l INTEGER DEFAULT 0, d INTEGER DEFAULT 0, bw INTEGER DEFAULT 0, bl INTEGER DEFAULT 0, bd INTEGER DEFAULT 0, ts INTEGER DEFAULT 0)").run(); } catch (e) {}
+  try { await db.prepare("CREATE TABLE IF NOT EXISTS ghost (id INTEGER PRIMARY KEY AUTOINCREMENT, frm INTEGER, fname TEXT, tou INTEGER, tname TEXT, cat INTEGER, rar INTEGER, ts INTEGER, ret INTEGER, claimed INTEGER DEFAULT 0, taken INTEGER DEFAULT 0)").run(); } catch (e) {}
   try { await db.prepare("CREATE TABLE IF NOT EXISTS friends (a INTEGER, b INTEGER, st INTEGER DEFAULT 0, ts INTEGER, PRIMARY KEY (a, b))").run(); } catch (e) {}
   try { await db.prepare("CREATE TABLE IF NOT EXISTS clans (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE, owner INTEGER, ts INTEGER)").run(); } catch (e) {}
   try { await db.prepare("CREATE TABLE IF NOT EXISTS clan_m (uid INTEGER PRIMARY KEY, cid INTEGER, ts INTEGER)").run(); } catch (e) {}
@@ -130,6 +132,7 @@ function clean(s, prev, dt, al) {
   for (const k of ["click", "crit", "fev", "pity", "cv"]) if (s[k] !== undefined) s[k] = Math.floor(fin(s[k], 2000));
   if (s.perks !== undefined) { const np = {}; if (s.perks && typeof s.perks === "object" && !Array.isArray(s.perks)) for (const k of Object.keys(s.perks).slice(0, 60)) np[String(k).slice(0, 30)] = Math.floor(fin(s.perks[k], 2000)); s.perks = np; }
   for (const k of ["taps", "stars", "fevers", "prest", "opened", "xp", "gt"]) if (s[k] !== undefined) s[k] = Math.floor(fin(s[k], 1e15));
+  if (s.pl !== undefined) { let mx = 0; while (mx < 30 && fin(s.total, ABS_MAX) >= 5e12 * Math.pow(4, mx)) mx++; s.pl = Math.min(Math.floor(fin(s.pl, 30)), mx); if (prev) s.pl = Math.min(s.pl, Math.floor(num(prev.pl)) + 1); }
   for (const k of ["run", "total"]) s[k] = fin(s[k], ABS_MAX);
   s.gems = Math.floor(fin(s.gems, GEM_MAX));
   const pts = Number(s.pts); s.pts = Number.isFinite(pts) ? Math.min(ABS_MAX, Math.max(-1e15, pts)) : 0;
@@ -307,7 +310,7 @@ async function lbTrack(db, env, now) {
     }
   }
 }
-const RL = new Map(), RL_HEAVY = /^(ns_|bn_|evt_|cz_|ch_|chg_(?!state|list)|cg_(?!state|list)|dc_|p2_|(offer|accept|cancel)$|chat_send|promo_use|bm_buy|loan_|uc_submit|idea_submit|import|fr_|gift|clan_)/;
+const RL = new Map(), RL_HEAVY = /^(ns_|bn_|evt_|cz_|ch_|chg_(?!state|list|top)|gh_(?!state)|cg_(?!state|list)|dc_|p2_|(offer|accept|cancel)$|chat_send|promo_use|bm_buy|loan_|uc_submit|idea_submit|import|fr_|gift|clan_)/;
 function rateHit(id, path, now) {
   if (id === ADMIN) return false;
   if (RL.size > 5000) RL.clear();
@@ -549,10 +552,22 @@ async function api(path, req, env) {
   const chGet = async () => { const r = await db.prepare("SELECT v FROM kv WHERE k=?").bind(chKey).first(); return r ? JSON.parse(r.v) : null; };
   const chSave = g => db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES (?,?)").bind(chKey, JSON.stringify(g)).run();
   const chView = (g, pm) => ({s: g.s, bet: g.bet, pm: Math.max(0, Math.round(pm)), om: g.om, lm: g.lm || null, chk: chCheck(g.s)});
+  const chrGet = async (uid, nm) => { await db.prepare("INSERT OR IGNORE INTO chr (uid,name,ts) VALUES (?,?,?)").bind(uid, String(nm || "Игрок").slice(0, 40), Math.floor(Date.now() / 1000)).run(); return await db.prepare("SELECT * FROM chr WHERE uid=?").bind(uid).first(); };
+  const chrPvp = async (tb, winner) => {
+    const a = await chrGet(tb.p1, tb.n1), c = await chrGet(tb.p2, tb.n2), n1 = a.w + a.l + a.d, n2 = c.w + c.l + c.d;
+    const sa = winner === 1 ? 1 : winner === 2 ? 0 : .5, ea = 1 / (1 + Math.pow(10, (c.elo - a.elo) / 400));
+    const k1 = n1 < 10 ? 40 : 24, k2 = n2 < 10 ? 40 : 24, da = Math.round(k1 * (sa - ea)), dc = Math.round(k2 * ((1 - sa) - (1 - ea)));
+    const col = winner === 1 ? ["w", "l"] : winner === 2 ? ["l", "w"] : ["d", "d"], t0 = Math.floor(Date.now() / 1000);
+    await db.batch([
+      db.prepare("UPDATE chr SET elo=MAX(100,elo+?), " + col[0] + "=" + col[0] + "+1, name=?, ts=? WHERE uid=?").bind(da, String(tb.n1 || "Игрок").slice(0, 40), t0, tb.p1),
+      db.prepare("UPDATE chr SET elo=MAX(100,elo+?), " + col[1] + "=" + col[1] + "+1, name=?, ts=? WHERE uid=?").bind(dc, String(tb.n2 || "Игрок").slice(0, 40), t0, tb.p2),
+    ]);
+  };
+  const chrBot = async res => { try { const col = res === "win" ? "bw" : res === "draw" ? "bd" : "bl"; await chrGet(id, name); await db.prepare("UPDATE chr SET " + col + "=" + col + "+1 WHERE uid=?").bind(id).run(); } catch (e) {} };
   const chEnd = async (g, res, why, pm) => {
     const del = await db.prepare("DELETE FROM kv WHERE k=?").bind(chKey).run(); if (del.meta.changes !== 1) return J({error: "Партия уже закончена"});
     const pay = res === "win" ? Math.floor(g.bet * CH_PAY) : res === "draw" ? g.bet : 0;
-    await casinoPay(db, id, pay);
+    await casinoPay(db, id, pay); await chrBot(res);
     return J(Object.assign(chView(g, pm), {done: res, why, pay}));
   };
   if (path === "ch_state") {
@@ -583,6 +598,7 @@ async function api(path, req, env) {
     const pot = g.stake * 2, fee = winner ? pot * 0.05 : 0, res = {winner, why, pay1: winner === 1 ? pot - fee : winner === 0 ? g.stake : 0, pay2: winner === 2 ? pot - fee : winner === 0 ? g.stake : 0};
     const r = await db.prepare("UPDATE chg SET status='done', res=? WHERE id=? AND status='play'").bind(JSON.stringify(res), g.id).run();
     if (r.meta.changes === 1 && fee) { await jpGet(); await db.prepare("UPDATE kv SET v=CAST(CAST(v AS REAL)+? AS TEXT) WHERE k='jp'").bind(fee).run(); }
+    if (r.meta.changes === 1) { try { await chrPvp(g, winner); } catch (e) {} }
   };
   const cgClock = g => { const el = Date.now() - g.last, s = JSON.parse(g.s), run = g.status === "play"; return {t1: Math.max(0, g.t1 - (run && s.t === 1 ? el : 0)), t2: Math.max(0, g.t2 - (run && s.t === -1 ? el : 0))}; };
   const cgTick = async g => {
@@ -660,6 +676,7 @@ async function api(path, req, env) {
     const pot = tb.stake * 2, fee = winner ? pot * 0.05 : 0, res = {winner, why, pay1: winner === 1 ? pot - fee : winner === 0 ? tb.stake : 0, pay2: winner === 2 ? pot - fee : winner === 0 ? tb.stake : 0};
     const r = await db.prepare("UPDATE chg SET status='done', res=? WHERE id=? AND status='play'").bind(JSON.stringify(res), tb.id).run();
     if (r.meta.changes === 1 && fee) { await jpGet(); await db.prepare("UPDATE kv SET v=CAST(CAST(v AS REAL)+? AS TEXT) WHERE k='jp'").bind(fee).run(); }
+    if (r.meta.changes === 1) { try { await chrPvp(tb, winner); } catch (e) {} }
   };
   const chgTick = async tb => {
     if (tb.status !== "play") return tb;
@@ -732,6 +749,49 @@ async function api(path, req, env) {
     let amount = tb.stake; if (tb.status === "done") { const res = JSON.parse(tb.res); amount = seat === 1 ? res.pay1 : res.pay2; }
     await casinoPay(db, id, amount);
     return J({amount});
+  }
+  if (path === "chg_top") {
+    const top = (await db.prepare("SELECT uid,name,elo,w,l,d FROM chr WHERE w+l+d>0 ORDER BY elo DESC, w DESC LIMIT 20").all()).results;
+    const me = await chrGet(id, name), rank = me.w + me.l + me.d > 0 ? (await db.prepare("SELECT COUNT(*) AS c FROM chr WHERE w+l+d>0 AND elo>?").bind(me.elo).first()).c + 1 : 0;
+    return J({top, me: {elo: me.elo, w: me.w, l: me.l, d: me.d, bw: me.bw, bl: me.bl, bd: me.bd, rank}, id});
+  }
+  // ---------- кот-призрак: странник ходит в гости, табличка у хозяина живёт неделю
+  const GH_T = 6 * 3600, GH_KEEP = 7 * 86400;
+  if (path === "gh_state") {
+    await db.prepare("DELETE FROM ghost WHERE ts<?").bind(now - GH_KEEP - 86400).run();
+    const mine = await db.prepare("SELECT id,tname,cat,rar,ts,ret,claimed FROM ghost WHERE frm=? AND claimed=0 ORDER BY id DESC LIMIT 1").bind(id).first();
+    const traces = (await db.prepare("SELECT id,fname,cat,rar,ts,taken FROM ghost WHERE tou=? AND ts>? ORDER BY id DESC LIMIT 20").bind(id, now - GH_KEEP).all()).results.map(r => ({...r, left: r.ts + GH_KEEP - now}));
+    const sent = (await db.prepare("SELECT COUNT(*) AS c FROM ghost WHERE frm=? AND claimed=1").bind(id).first()).c;
+    return J({mine, traces, now, sent});
+  }
+  if (path === "gh_send") {
+    const cat = Math.floor(Number(b.cat)), rar = Math.max(0, Math.min(9, Math.floor(Number(b.rar)) || 0));
+    if (!Number.isInteger(cat) || cat < 0) return J({error: "Выбери кота"});
+    const u = await getUser(db, id); if (!u || !u.state) return J({error: "Игрок не найден"});
+    const s = JSON.parse(u.state); if (!s.inv || !(s.inv[String(cat)] > 0)) return J({error: "У тебя нет такого кота"});
+    if (await db.prepare("SELECT id FROM ghost WHERE frm=? AND claimed=0").bind(id).first()) return J({error: "Твой кот уже в пути"});
+    let t = null;
+    if (Math.random() < .5) t = await db.prepare("SELECT u.id,u.name FROM friends f JOIN users u ON u.id=CASE WHEN f.a=? THEN f.b ELSE f.a END WHERE f.st=1 AND (f.a=? OR f.b=?) AND u.state IS NOT NULL AND u.banned=0 ORDER BY RANDOM() LIMIT 1").bind(id, id, id).first();
+    if (!t) t = await db.prepare("SELECT id,name FROM users WHERE id<>? AND state IS NOT NULL AND banned=0 AND seen>? ORDER BY RANDOM() LIMIT 1").bind(id, now - 14 * 86400).first();
+    if (!t) return J({error: "Пока некуда идти: в игре мало людей"});
+    await db.prepare("INSERT INTO ghost (frm,fname,tou,tname,cat,rar,ts,ret) VALUES (?,?,?,?,?,?,?,?)").bind(id, name, t.id, String(t.name || "Игрок").slice(0, 24), cat, rar, now, now + GH_T).run();
+    return J({ok: true, tname: t.name, ret: now + GH_T});
+  }
+  if (path === "gh_claim") {
+    const g = await db.prepare("SELECT * FROM ghost WHERE frm=? AND claimed=0 ORDER BY id DESC LIMIT 1").bind(id).first(); if (!g) return J({error: "Кот никуда не ходил"});
+    if (g.ret > now) return J({error: "Кот ещё в пути", left: g.ret - now});
+    const r = await db.prepare("UPDATE ghost SET claimed=1 WHERE id=? AND claimed=0").bind(g.id).run(); if (r.meta.changes !== 1) return J({error: "Уже забрано"});
+    const u = await getUser(db, id), tot = Math.max(0, num(u && u.total));
+    const gems = 1 + Math.floor(g.rar / 2), pts = Math.round(Math.min(1e13, Math.max(5000, tot * .0008 * (1 + g.rar * .5))));
+    await allowAdd(db, id, pts, gems);
+    return J({pts, gems, tname: g.tname});
+  }
+  if (path === "gh_take") {
+    const r = await db.prepare("UPDATE ghost SET taken=1 WHERE id=? AND tou=? AND taken=0 AND ts>?").bind(Number(b.id), id, now - GH_KEEP).run();
+    if (r.meta.changes !== 1) return J({error: "Подарок уже забран"});
+    const g = await db.prepare("SELECT rar FROM ghost WHERE id=?").bind(Number(b.id)).first(), gems = 1 + (g && g.rar >= 4 ? 1 : 0);
+    await allowAdd(db, id, 0, gems);
+    return J({gems});
   }
   // ---------- покер на двоих
   const pkScore = h => {
@@ -1416,7 +1476,7 @@ async function api(path, req, env) {
     const uid = Number(b.uid); const u = await getUser(db, uid); if (!u) return J({error: "Игрок не найден"});
     const s = u.state ? JSON.parse(u.state) : {};
     const cats = Object.keys(s.inv || {}).length;
-    return J({id: u.id, name: u.name, un: id === ADMIN ? (u.un || "") : undefined, badges: bd(u.id, u.badges), banned: !!u.banned, ban: u.banned | 0, banat: u.banat || 0, online: (u.seen || 0) > now - 40, total: u.total, taps: s.taps || 0, cats, holo: (s.holo || []).length, prest: s.prest || 0, ach: (s.ach || []).length, eq: s.eq === undefined ? -1 : s.eq, bnimg: await (async () => { try { const x = await db.prepare("SELECT v FROM kv WHERE k=?").bind("bn" + uid).first(); return x ? x.v : ""; } catch (e) { return ""; } })(), photo: await (async () => { try { const x = await db.prepare("SELECT v FROM kv WHERE k=?").bind("ph" + uid).first(); return x ? x.v : ""; } catch (e) { return ""; } })(), pf: await (async () => { try { const x = await db.prepare("SELECT v FROM kv WHERE k=?").bind("pf" + uid).first(); return x ? JSON.parse(x.v) : {}; } catch (e) { return {}; } })(), seen: u.seen || 0, achs: s.ach || [], inv: s.inv || {}, stars: s.stars || 0, fevers: s.fevers || 0, gt: s.gt || 0, run: s.run || 0, fr: await (async () => { if (uid === id) return 0; const f = await db.prepare("SELECT a,st FROM friends WHERE (a=? AND b=?) OR (a=? AND b=?)").bind(id, uid, uid, id).first(); return !f ? 0 : f.st === 1 ? 1 : f.a === id ? 2 : 3; })(), ...(await (async () => { const c = await db.prepare("SELECT c.id,c.name,c.icon,c.badges,c.style FROM clan_m m JOIN clans c ON c.id=m.cid WHERE m.uid=?").bind(uid).first(); return c ? {clan: (c.icon || "🛡") + " " + c.name, clanb: c.badges || "", clanid: c.id, clanst: c.style || ""} : {clan: ""}; })()), opened: s.opened || 0, bn: Number.isInteger(s.bn) ? s.bn : 0, offers: (await db.prepare("SELECT id,give,want FROM offers WHERE seller=? AND status='open' ORDER BY id DESC LIMIT 5").bind(u.id).all()).results});
+    return J({id: u.id, name: u.name, un: id === ADMIN ? (u.un || "") : undefined, badges: bd(u.id, u.badges), banned: !!u.banned, ban: u.banned | 0, banat: u.banat || 0, online: (u.seen || 0) > now - 40, total: u.total, taps: s.taps || 0, cats, holo: (s.holo || []).length, prest: s.prest || 0, pl: s.pl || 0, ach: (s.ach || []).length, eq: s.eq === undefined ? -1 : s.eq, bnimg: await (async () => { try { const x = await db.prepare("SELECT v FROM kv WHERE k=?").bind("bn" + uid).first(); return x ? x.v : ""; } catch (e) { return ""; } })(), photo: await (async () => { try { const x = await db.prepare("SELECT v FROM kv WHERE k=?").bind("ph" + uid).first(); return x ? x.v : ""; } catch (e) { return ""; } })(), pf: await (async () => { try { const x = await db.prepare("SELECT v FROM kv WHERE k=?").bind("pf" + uid).first(); return x ? JSON.parse(x.v) : {}; } catch (e) { return {}; } })(), seen: u.seen || 0, achs: s.ach || [], inv: s.inv || {}, stars: s.stars || 0, fevers: s.fevers || 0, gt: s.gt || 0, run: s.run || 0, fr: await (async () => { if (uid === id) return 0; const f = await db.prepare("SELECT a,st FROM friends WHERE (a=? AND b=?) OR (a=? AND b=?)").bind(id, uid, uid, id).first(); return !f ? 0 : f.st === 1 ? 1 : f.a === id ? 2 : 3; })(), ...(await (async () => { const c = await db.prepare("SELECT c.id,c.name,c.icon,c.badges,c.style FROM clan_m m JOIN clans c ON c.id=m.cid WHERE m.uid=?").bind(uid).first(); return c ? {clan: (c.icon || "🛡") + " " + c.name, clanb: c.badges || "", clanid: c.id, clanst: c.style || ""} : {clan: ""}; })()), opened: s.opened || 0, bn: Number.isInteger(s.bn) ? s.bn : 0, offers: (await db.prepare("SELECT id,give,want FROM offers WHERE seller=? AND status='open' ORDER BY id DESC LIMIT 5").bind(u.id).all()).results});
   }
   if (path === "promo_use") {
     const code = String(b.code || "").trim().toUpperCase().slice(0, 32); if (!code) return J({error: "Введи промокод"});
@@ -1570,7 +1630,7 @@ async function tgcall(env, method, body) {
 async function secret(env) { return hex(await crypto.subtle.digest("SHA-256", enc("md:" + env.BOT_TOKEN))).slice(0, 32); }
 
 const DEMO = "<script>window.__DEV=1;(function(){var f=window.fetch;var seed={pts:1500000,run:1500000,total:3000000,gems:12,taps:1234,b:[12,8,5,3,1,0,0],inv:{\"3\":1,\"10\":1,\"22\":1,\"40\":1,\"64\":1,\"73\":1,\"80\":1,\"63\":1}};var rows=[[1,\"Мурка\",9.5e9],[2,\"Барсик\",4.2e8],[3,\"Демо\",3e6]].map(function(r){return{id:r[0],name:r[1],total:r[2],badges:\"\"}});var m={auth:{id:3,name:\"Демо\",state:seed,rev:1,admin:false,badges:\"\"},save:{ok:true,rev:1},poll:{grants:[],bc:null,maxbc:0,online:5,rev:1,badges:\"\"},top:{rows:rows,rank:3},offers:{offers:[]},chat:{rows:[{id:1,uid:1,name:\"Мурка\",text:\"Привет! Кто трейд?\",ts:0,badges:\"b\"},{id:2,uid:2,name:\"Барсик\",text:\"Выбил Королевского арбуза!\",ts:0,badges:\"\"}]}};window.fetch=function(u,o){u=String(u);if(u.indexOf(\"/api/\")===0){return Promise.resolve(new Response(JSON.stringify(m[u.slice(5)]||{}),{headers:{\"content-type\":\"application/json\"}}))}return f.apply(this,arguments)}})()</script>";
-const ANN = ["6.11.0", ["Небольшое обучение для новых игроков: подсветка кота и вкладок с подсказками", "Повторить можно в Ещё → Информация → «Пройти обучение»", "Звёзды в стиле MD3"], "Обучение"];
+const ANN = ["6.12.0", ["Новая коллекция «Солнечная система»: кейс, где в половине случаев выпадают монеты, иначе кот-планета", "Реквием: кот копит уровни, пока лежит на монете, и пробуждает бесконечную лихорадку с аурой", "Вознесение: полный сброс ради +25% ко всему и кристальных эффектов в профиле", "Шахматы: рейтинг Elo и таблица лидеров", "Энциклопедия котов, кот-призрак и секретные достижения"], "Космос и Реквием"];
 let annBusy = false;
 async function announce(env, origin) {
   if (annBusy || !env.DB || !env.BOT_TOKEN) return;
