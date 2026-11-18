@@ -48,7 +48,7 @@ test("каждая картинка, которую клиент собирае�
   for (const f of need) assert.ok(existsSync(join(root, "public", f)), "нет public/" + f);
   // число файлов в каталогах совпадает с оригиналами в корне репозитория
   const { readdirSync } = await_import_fs();
-  for (const d of ["bc", "new", "new2", "tech", "admin"]) assert.equal(readdirSync(join(root, "public", d)).length, readdirSync(join(root, d)).length, d);
+  for (const d of ["bc", "new", "new2", "tech", "admin", "rq"]) assert.equal(readdirSync(join(root, "public", d)).length, readdirSync(join(root, d)).length, d);
 });
 function await_import_fs() { return { readdirSync: (p) => process.getBuiltinModule("node:fs").readdirSync(p) }; }
 

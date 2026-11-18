@@ -128,7 +128,7 @@ A.prof = async function (e) {
   const photo = own ? (tgp || r.photo) : r.photo;
   const bg = r.bnimg ? `url(${r.bnimg}) center/cover` : BNR[bn % BNR.length];
   const bnr = `<div style="height:120px;margin:-20px -18px 0;background:${bg};border-radius:28px 28px 0 0"></div>`;
-  const avh = `<div class="plw pl${Math.min(r.pl | 0, 6)}" style="position:relative;width:96px;margin:-48px auto 8px"><div class="pfav" style="margin:0">${eq}${photo ? `<img src="${esc(photo)}" style="position:absolute;inset:0" onerror="this.remove()">` : ""}</div>${photo && r.eq >= 0 ? `<div title="Текущий кот" style="position:absolute;right:-8px;bottom:-4px;width:46px;height:46px;border-radius:50%;overflow:hidden;border:3px solid var(--surf);background:#222;box-shadow:0 2px 8px #0008">${catEl(r.eq, 46, {})}</div>` : ""}</div>`;
+  const avh = `<div class="plw pl${Math.min(r.pl | 0, 6)} pw${own ? wdCur() : Math.min(r.wd | 0, r.pl | 0, 6)}" style="position:relative;width:96px;margin:-48px auto 8px">${wAvFx(own ? wdCur() : Math.min(r.wd | 0, r.pl | 0, 6), 1)}<div class="pfav" style="margin:0">${eq}${photo ? `<img src="${esc(photo)}" style="position:absolute;inset:0" onerror="this.remove()">` : ""}</div>${photo && r.eq >= 0 ? `<div title="Текущий кот" style="position:absolute;right:-8px;bottom:-4px;width:46px;height:46px;border-radius:50%;overflow:hidden;border:3px solid var(--surf);background:#222;box-shadow:0 2px 8px #0008">${catEl(r.eq, 46, {})}</div>` : ""}${wAvFx(own ? wdCur() : Math.min(r.wd | 0, r.pl | 0, 6), 0)}</div>`;
   const bnc = own ? `<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;align-items:center;margin:4px 0 10px">${BNR.map((g, k) => `<div data-a="setbn" data-k="${k}" style="width:30px;height:22px;border-radius:8px;background:${g};cursor:pointer;${!r.bnimg && k === bn ? "outline:2px solid var(--pri);outline-offset:2px" : ""}"></div>`).join("")}<button class="chip" style="border:0;font-family:inherit" data-a="bnup">${ic("image", 16)} Своё фото</button>${r.bnimg ? `<button class="chip" style="border:0;font-family:inherit" data-a="bndel">${ic("close", 14)}</button>` : ""}</div>` : "";
   const bch = String(r.badges || "").split("~")[0].split("").filter(c => BADGES[c]).map(c => `<span class="chip" style="display:inline-flex;gap:5px;align-items:center;font-size:12px">${bdg(c, 16)}${BADGES[c][0]}</span>`).join("");
   const tr = (r.offers || []).length ? `<div class="sec" style="margin:16px 0 6px;text-align:center">Активные обмены</div>${r.offers.map(o => `<div style="display:flex;align-items:center;justify-content:center;gap:8px;padding:3px 0">${catEl(o.give, 36, {})}<span style="color:var(--onv)">${ic("arrow", 18)}</span>${catEl(o.want, 36, {})}<span class="t2" style="font-size:12px;margin:0"><span class="rar${ITEMS[o.give][2]}">${ITEMS[o.give][1]}</span> за <span class="rar${ITEMS[o.want][2]}">${ITEMS[o.want][1]}</span></span></div>`).join("")}` : "";
@@ -140,7 +140,7 @@ A.prof = async function (e) {
   const ex = (pf.bio ? `<div class="t2" style="margin:10px 8px 0;font-style:italic;color:var(--on)">«${esc(pf.bio)}»</div>` : "") + (fav.length ? `<div class="sec" style="margin:16px 0 8px;text-align:center">Витрина</div><div style="display:flex;gap:12px;justify-content:center">${fav.map(k => catEl(+k, 68, {})).join("")}</div>` : "") + ((r.achs || []).length ? `<div class="sec" style="margin:16px 0 8px;text-align:center">Достижения · ${r.achs.length}</div><div style="display:flex;flex-wrap:wrap;gap:5px;justify-content:center">${r.achs.map(id => { const a = ACH.find(x => x[0] === id); return a ? `<span style="font-size:11px;background:var(--sch);border-radius:10px;padding:3px 8px" title="${esc(a[2])}">${ic("cup", 12)} ${esc(a[1])}</span>` : ""; }).join("")}</div>` : "");
   const grid = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px">${rows.map(x => `<div style="background:var(--sch);border-radius:16px;padding:10px 6px;text-align:center"><div style="font-size:16px;font-weight:800">${x[1]}</div><div class="t2" style="font-size:11px;margin:2px 0 0">${x[0]}</div></div>`).join("")}</div>`;
   const adm2 = isAdm && r.bnimg ? `<div style="margin-top:8px">${btn("Убрать баннер игрока", "admbn", `data-i="${uid}"`, "o")}</div>` : "";
-  modal(bnr + `<div class="pfc">${avh}<div class="t1" style="font-size:22px">${nm(r.name, r.badges)}</div>${plChip(r.pl)}<div class="t2" style="margin:2px 0 0">ID ${r.id}${isAdm ? " · " + (r.un ? `<a href="https://t.me/${r.un}" target="_blank" style="color:var(--pri)">@${esc(r.un)}</a>` : "без юзернейма") : ""}${r.clan ? ` · <span ${r.clanid ? `data-a="clview" data-i="${r.clanid}" style="cursor:pointer;color:var(--pri)"` : ""}><span style="${nsCss("~" + (r.clanst || ""))}">${esc(r.clan)}</span>${cbdg(r.clanb, 13)}</span>` : ""}</div>${stt}${r.eq >= 0 ? `<div class="t2" style="margin:6px 0 0;font-size:12px">Сейчас с котом: <span class="rar${ITEMS[r.eq][2]}">${esc(ITEMS[r.eq][1])}</span></div>` : ""}${bnc}<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:8px">${bch}</div>${ex}${tr}${frb}${invh}${grid}${adm2}${adm}<div style="margin-top:16px;text-align:center">${btn("Закрыть", "mclose", "", "t")}</div></div>`);
+  modal(bnr + `<div class="pfc">${avh}<div class="t1" style="font-size:22px">${nm(r.name, r.badges)}</div>${plChip(r.pl)}<div class="t2" style="margin:2px 0 0">ID ${r.id}${isAdm ? " · " + (r.un ? `<a href="https://t.me/${r.un}" target="_blank" style="color:var(--pri)">@${esc(r.un)}</a>` : "без юзернейма") : ""}${r.clan ? ` · <span ${r.clanid ? `data-a="clview" data-i="${r.clanid}" style="cursor:pointer;color:var(--pri)"` : ""}><span style="${nsCss("~" + (r.clanst || ""))}">${esc(r.clan)}</span>${cbdg(r.clanb, 13)}</span>` : ""}</div>${stt}${r.eq >= 0 ? `<div class="t2" style="margin:6px 0 0;font-size:12px">Сейчас с котом: <span class="rar${ITEMS[r.eq][2]}">${esc(ITEMS[r.eq][1])}</span></div>` : ""}${bnc}<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:8px">${bch}</div>${ex}${tr}${frb}${own ? wSel() : ""}${invh}${grid}${adm2}${adm}<div style="margin-top:16px;text-align:center">${btn("Закрыть", "mclose", "", "t")}</div></div>`);
 };
 const BNR = ["linear-gradient(135deg,#ff9a3c,#ff3d6e)", "linear-gradient(135deg,#43e97b,#38f9d7)", "linear-gradient(135deg,#4facfe,#7b5cff)", "linear-gradient(135deg,#f6d365,#fda085)", "linear-gradient(135deg,#a18cd1,#fbc2eb)", "linear-gradient(135deg,#232526,#5a5f66)", "linear-gradient(135deg,#00c6ff,#0072ff)", "linear-gradient(135deg,#f953c6,#b91d73)"];
 A.setbn = async function (e) { S.bn = +e.dataset.k; mark(); save(true); await api("bn_set", {img: ""}); A.prof({dataset: {i: me.id}}); };
@@ -1184,22 +1184,6 @@ const solPool = () => ITEMS.map((it, i) => it[6] >= 11 && SOL_W[it[6]] ? [i, SOL
 function solEV() { const p = solPool(), t = p.reduce((a, x) => a + x[1], 0) || 1; return .5 * 1 + .5 * p.reduce((a, x) => a + x[1] / t * (SELL[ITEMS[x[0]][2]] || 0), 0); }
 function solPrice() { const u = 1000 + cps() * 10, v = Math.max(12000000, u * solEV() * 40), e = Math.pow(10, Math.floor(Math.log10(v)) - 1); return Math.round(v / e) * e; }
 function solRoll() { const p = solPool(); let q = Math.random() * p.reduce((a, x) => a + x[1], 0); for (const x of p) { q -= x[1]; if (q <= 0) return x[0]; } return p[0][0]; }
-function solCard() {
-  const p = solPool().sort((a, b) => ITEMS[b[0]][2] - ITEMS[a[0]][2] || a[0] - b[0]), pr = solPrice(), t = p.reduce((a, x) => a + x[1], 0) || 1;
-  const th = p.map(([i, w]) => `<div class="bcth" style="box-shadow:0 0 0 2px ${RC[ITEMS[i][2]]}">${catEl(i, 40, {})}</div>`).join("");
-  return `<div class="card col solcase"><div style="display:flex;align-items:center;gap:12px">${circ("planet", 54)}<div class="grow"><div class="t1">Солнечная система</div><div class="t2" style="font-size:11px">50% — монеты (от 0.5× до 1.5× u), 50% — кот-планета. Редкость падает от Луны до самой Солнечной системы (${+(.5 * (p.length ? p[p.length - 1][1] / t : 0) * 100).toFixed(2)}%)</div></div></div>` +
-    (p.length ? `<div class="bcths">${th}</div><div class="buyrow jb">${btn(ic("coin", 14) + fmt(pr), "solopen", 'data-n="1"', S.pts >= pr ? "" : "dis")}${btn("×5 · " + fmt(pr * 5), "solopen", 'data-n="5"', S.pts >= pr * 5 ? "o" : "o dis")}</div>` : `<div class="t2" style="text-align:center;margin:6px">Загружаю котов…</div>`) + `</div>`;
-}
-A.solopen = function (e) {
-  if (cz.busy || busy) return; const n = +e.dataset.n === 5 ? 5 : 1, c = solPrice() * n;
-  if (!solPool().length) return toast("Коты ещё грузятся"); if (S.pts < c) return toast("Не хватает монет");
-  S.pts -= c; const wins = [], u = 1000 + cps() * 10;
-  for (let k = 0; k < n; k++) {
-    if (Math.random() < .5) { const g = Math.round(u * (.5 + Math.random())); S.pts += g; S.run += g; S.total += g; wins.push({c: g}); }
-    else { const w = solRoll(), kd = grant(w, Math.random() < .1); S.opened++; try { afterCraft(w); } catch (x) {} wins.push({w, kd}); }
-  }
-  mark(); save(true); bxShow(wins, n, "Солнечная система");
-};
 tCasino = function () {
   if (cz.sub !== 5) return _tCas3();
   const B = cz.bm, back = `<button class="btn t bkb" data-a="czgo" data-k="0">← Казино</button>`;
@@ -2196,37 +2180,46 @@ addEventListener("resize", () => { if (tutI >= 0) tutShow(tutI); });
 setTimeout(() => { if (LS("tut", null) === null && LS("lang", null) !== null && (S.taps || 0) < 30 && !document.querySelector(".modal,#mdl")) tutShow(0); }, 2500);
 
 // ================= Реквием, Вознесение, секреты, рейтинг шахмат, энциклопедия, кот-призрак
-const REQ_IDS = [58, 61, 62, 63], REQ_NEED = 16000, REQ_LV = 4000;
-const reqOk = i => REQ_IDS.includes(+i) || !!(ITEMS[i] && ITEMS[i][6] === 17);
-const RQ = () => (S.rq && typeof S.rq === "object" && S.rq.xp ? S.rq : (S.rq = {xp: {}, on: -1}));
-function reqOn() { return !!(S && S.rq && S.rq.on >= 0 && +S.eq === S.rq.on && (S.rq.on + "") in S.inv); }
-function reqLv(i) { const r = RQ(); return r.on === +i ? 5 : Math.min(4, 1 + Math.floor((r.xp[i] || 0) / REQ_LV)); }
-function reqMul() { if (!S) return 1; const i = +S.eq; if (!(i >= 0) || !reqOk(i) || !((i + "") in S.inv)) return 1; return [1, 1, 1.1, 1.2, 1.35, 1.5][reqLv(i)]; }
+// requiem: по одному коту на редкость; при пробуждении меняется картинка, включается бесконечная лихорадка, аура и свои эффекты тапа
+const REQ = {
+  7: {n: 0, c: ["#ff5252", "#ffd54f", "#fff"], ring: 260, bn: 7, spd: 110},
+  80: {n: 1, c: ["#448aff", "#82b1ff", "#fff"], ring: 300, bn: 9, spd: 150},
+  98: {n: 2, c: ["#76ff03", "#c6ff00", "#fff"], ring: 300, bn: 9, spd: 150},
+  94: {n: 3, c: ["#9ccc65", "#aeea00", "#ffd54f"], ring: 280, bn: 8, spd: 120},
+  33: {n: 4, c: ["#ff6d00", "#ffd54f", "#ff3d00"], ring: 280, bn: 10, spd: 140},
+  58: {n: 5, c: ["#69f0ae", "#00e676", "#ccff90"], ring: 340, bn: 12, spd: 170},
+}, REQ_NEED = 16000, REQ_LV = 4000;
+const RQIMG = {7: 0, 80: 1, 98: 2, 94: 3, 33: 4, 58: 5};
+const reqOk = i => (+i) in REQ;
+const RQ = () => { if (S.rq) delete S.rq; return S.rq2 && S.rq2.xp ? S.rq2 : (S.rq2 = {xp: {}, d: {}}); };
+const reqDone = i => !!(S && S.rq2 && S.rq2.d && S.rq2.d[i]);
+const reqOwn = i => i >= 0 && (i + "") in S.inv;
+function reqOn() { return !!(S && S.rq2 && +S.eq >= 0 && reqOk(S.eq) && reqDone(+S.eq) && reqOwn(+S.eq)); }
+function reqLv(i) { return reqDone(i) ? 5 : Math.min(4, 1 + Math.floor((RQ().xp[i] || 0) / REQ_LV)); }
+function reqMul() { if (!S) return 1; const i = +S.eq; if (!reqOk(i) || !reqOwn(i)) return 1; return [1, 1, 1.1, 1.2, 1.35, 1.5][reqLv(i)]; }
 function reqFlash(i) {
   toast("Реквием пробудился: " + ITEMS[i][1] + "!"); hap("heavy"); try { fxConfetti(160); jingle(2); } catch (e) {}
   checkAch(); mark(); save(true); render();
 }
 function reqTick() {
-  const r = RQ(); if (r.on >= 0 && !((r.on + "") in S.inv)) { r.xp[r.on] = 0; r.on = -1; }
-  const i = +S.eq; if (!(i >= 0) || !reqOk(i) || !((i + "") in S.inv) || r.on === i) return;
-  const x = r.xp[i] || 0, n = Math.min(REQ_NEED, x + 1); r.xp[i] = n;
+  const i = +S.eq; if (!reqOk(i) || !reqOwn(i) || reqDone(i)) return;
+  const r = RQ(), x = r.xp[i] || 0, n = Math.min(REQ_NEED, x + 1); r.xp[i] = n;
   const l0 = 1 + Math.floor(x / REQ_LV), l1 = 1 + Math.floor(n / REQ_LV);
   if (l1 !== l0 && l1 <= 4) { toast(ITEMS[i][1] + ": уровень " + l1 + " (+" + Math.round(([1, 1, 1.1, 1.2, 1.35][l1] - 1) * 100) + "% к тапу)"); hap("ok"); }
-  if (n >= REQ_NEED && x < REQ_NEED) { if (r.on < 0) { r.on = i; reqFlash(i); } else toast(ITEMS[i][1] + ": реквием готов, но он у другого кота. Передать можно в инфо о коте"); }
+  if (n >= REQ_NEED) { r.d[i] = 1; reqFlash(i); }
 }
 function reqTap(crit) {
-  if (!reqOn()) return; const c = $("#coin"); if (!c) return; const b = c.getBoundingClientRect(), x = b.left + b.width / 2, y = b.top + b.height / 2;
-  try { fxRing(x, y, crit ? "#ffd54f" : "#b388ff", crit ? 340 : 230, crit ? 620 : 420); fxBurst(x, y, crit ? 16 : 5, ["#b388ff", "#ffd54f", "#fff"], crit ? 170 : 100); } catch (e) {}
+  if (!reqOn()) return; const c = $("#coin"); if (!c) return; const q = REQ[+S.eq], b = c.getBoundingClientRect(), x = b.left + b.width / 2, y = b.top + b.height / 2;
+  try { fxRing(x, y, crit ? "#ffd54f" : q.c[0], crit ? q.ring + 90 : q.ring, crit ? 620 : 420); fxBurst(x, y, crit ? q.bn * 2 : q.bn, q.c, crit ? q.spd + 50 : q.spd); } catch (e) {}
 }
-const reqCls = i => RQ().on === +i ? " rq" : reqOk(i) ? " rqp" : "";
-const reqTag = i => !reqOk(i) ? "" : RQ().on === +i ? `<span class="rqt on">${ic("sparkle", 10)}Реквием</span>` : `<span class="rqt">Ур. ${reqLv(i)}</span>`;
+const reqCls = i => reqDone(i) ? " rq rq" + i : reqOk(i) ? " rqp" : "";
+const reqTag = i => !reqOk(i) ? "" : reqDone(i) ? `<span class="rqt on">${ic("sparkle", 10)}Реквием</span>` : `<span class="rqt">Ур. ${reqLv(i)}</span>`;
 function reqInfo(i) {
-  if (!reqOk(i) || !((i + "") in S.inv)) return "";
-  const r = RQ(), x = r.xp[i] || 0, on = r.on === +i, lv = reqLv(i);
-  const st = on ? `<span style="color:#b388ff;font-weight:700">пробуждён</span>` : `Ур. ${lv} · ${fmt(x)}/${fmt(REQ_NEED)}`;
-  return `<div style="padding:8px 0 2px"><div style="display:flex;justify-content:space-between;gap:10px"><span class="t2" style="margin:0;font-size:14px">${ic("sparkle", 14)} Реквием</span><span style="font-size:14px">${st}</span></div>${on ? "" : `<div style="margin-top:6px">${bar(x / REQ_NEED)}</div>`}<div class="t2" style="font-size:11px;margin:6px 0 0;line-height:1.35">Копится, пока кот на монете и ты тапаешь. На ур. 2–4 растёт бонус к тапу, а полный реквием даёт бесконечную лихорадку (обычная отключается), особые эффекты и ауру. Реквием может быть только у одного кота.</div>${!on && x >= REQ_NEED && r.on >= 0 ? `<div style="margin-top:8px">${btn("Передать реквием сюда (прогресс прежнего обнулится)", "rqmove", `data-i="${i}"`, "o")}</div>` : ""}</div>`;
+  if (!reqOk(i) || !reqOwn(i)) return "";
+  const x = RQ().xp[i] || 0, on = reqDone(i), lv = reqLv(i);
+  const st = on ? `<span style="color:${REQ[i].c[0]};font-weight:700">пробуждён</span>` : `Ур. ${lv} · ${fmt(x)}/${fmt(REQ_NEED)}`;
+  return `<div style="padding:8px 0 2px"><div style="display:flex;justify-content:space-between;gap:10px"><span class="t2" style="margin:0;font-size:14px">${ic("sparkle", 14)} Реквием</span><span style="font-size:14px">${st}</span></div>${on ? "" : `<div style="margin-top:6px">${bar(x / REQ_NEED)}</div>`}<div class="t2" style="font-size:11px;margin:6px 0 0;line-height:1.35">Копится, пока кот на монете и ты тапаешь. На ур. 2–4 растёт бонус к тапу. Полный реквием: картинка кота меняется на мощную, включается бесконечная лихорадка (обычная отключается), появляются аура на монете и особые эффекты тапа.</div></div>`;
 }
-A.rqmove = function (e) { const i = +e.dataset.i, r = RQ(); if ((r.xp[i] || 0) < REQ_NEED) return; closeModal(); if (r.on >= 0) r.xp[r.on] = 0; r.on = i; reqFlash(i); };
 
 // ---------- секретные достижения
 const HACH = [
@@ -2241,7 +2234,7 @@ const HACH = [
 function hxStat(k) {
   const H = S.hx || {};
   if (k === "hx:mid") return H.mid | 0; if (k === "hx:burst") return H.burst | 0; if (k === "hx:chess") return H.chw | 0; if (k === "hx:gh") return H.gh | 0;
-  if (k === "hx:req") return S.rq && S.rq.on >= 0 ? 1 : 0; if (k === "hx:pl") return Math.min(1, S.pl | 0);
+  if (k === "hx:req") return S.rq2 && S.rq2.d && Object.keys(S.rq2.d).length ? 1 : 0; if (k === "hx:pl") return Math.min(1, S.pl | 0);
   if (k === "hx:astro") { const l = ITEMS.map((it, i) => it[6] >= 11 && it[6] <= 19 ? i : -1).filter(i => i >= 0); return l.length >= 9 && l.every(i => (i + "") in S.inv) ? 1 : 0; }
   return 0;
 }
@@ -2272,11 +2265,38 @@ A.asc = function () {
 A.ascgo = function () {
   if (ascProg() < ascNeed()) return; closeModal();
   S.pl = (S.pl || 0) + 1; S.a0 = S.total;
-  Object.assign(S, {pts: 0, run: 0, click: 0, crit: 0, fev: 0, b: BUILDS.map(() => 0), boost: 0, gems: 0, gt: 0, inv: {}, holo: [], eq: -1, hist: [], pity: 0, perks: {}, sets: [], rq: {xp: {}, on: -1}});
+  Object.assign(S, {pts: 0, run: 0, click: 0, crit: 0, fev: 0, b: BUILDS.map(() => 0), boost: 0, gems: 0, gt: 0, inv: {}, holo: [], eq: -1, hist: [], pity: 0, perks: {}, sets: [], rq2: {xp: {}, d: {}}}); delete S.rq; S.wd = Math.min(S.pl, 6);
   fever = frenzy = 0; combo = 0; checkAch(); mark(); snap = {inv: {}}; save(true);
   toast("Вознесение! Титул: " + plTitle(S.pl)); hap("heavy"); try { fxConfetti(200); jingle(2); } catch (e) {} render(); $("#view").scrollTop = 0;
 };
 const plChip = l => (l | 0) > 0 ? `<div class="plchip pl${Math.min(l | 0, 6)}">${ic("gem", 14)}<span>${plTitle(l | 0)}</span></div>` : "";
+
+// ---------- Миры Вознесения
+const W_N = ["Обычный мир", "Кристальный мир", "Космос", "Лавовые недра", "Океан", "Сакура", "Золотой мир"];
+const W_ICO = ["", "gem", "star", "fire", "game", "sparkle", "crown"];
+const wdCur = () => Math.max(0, Math.min((S && S.wd) | 0, (S && S.pl) | 0, 6));
+function wCoin() { return wdCur() === 2 ? '<div class="sring b"><i></i></div><div class="sring f"><i></i></div>' : ""; }
+function wAvFx(w, back) { w |= 0; if (w !== 2) return ""; return back ? '<div class="avr b"><i></i></div>' : '<div class="avr f"><i></i></div>'; }
+function wApply() {
+  const w = wdCur(), cl = document.body.classList; for (let k = 0; k <= 6; k++) cl.toggle("w" + k, k === w && w > 0);
+  let el = document.getElementById("wbg");
+  if (!w) { if (el) el.remove(); return; }
+  if (!el) { el = document.createElement("div"); el.id = "wbg"; document.body.insertBefore(el, document.getElementById("app")); }
+  if (el.dataset.w === w + "") return; el.dataset.w = w; el.className = "w" + w;
+  const n = w === 2 ? 34 : 16; let h = "";
+  for (let i = 0; i < n; i++) {
+    const r = Math.random(), x = Math.random() * 100, y = Math.random() * 100, s = 4 + Math.random() * (w === 1 ? 14 : w === 2 ? 3 : 10), d = 6 + Math.random() * 10, dl = -Math.random() * d, rev = w === 1 && i % 2 ? " rv" : "";
+    h += `<i class="wp${rev}" style="left:${w === 1 ? 0 : x}%;top:${y}%;width:${s}px;height:${s}px;--d:${d}s;--dl:${dl}s;--r:${Math.round(r * 360)}deg"></i>`;
+  }
+  el.innerHTML = h;
+}
+{ const _r = render; render = function () { const x = _r.apply(this, arguments); try { wApply(); } catch (e) {} return x; }; }
+A.wsel = function (e) { const k = +(e.dataset ? e.dataset.k : e) | 0; if (k > (S.pl | 0)) return; S.wd = k; mark(); save(true); wApply(); render(); try { A.prof({dataset: {i: me.id}}); } catch (er) {} };
+function wSel() {
+  const l = Math.min(S.pl | 0, 6); if (l < 1) return "";
+  let h = ""; for (let k = 0; k <= 6; k++) { const on = k > l, cur = k === wdCur(); h += `<div ${on ? "" : `data-a="wsel" data-k="${k}"`} class="wchip w${k}${cur ? " cur" : ""}${on ? " lock" : ""}">${k ? ic(W_ICO[k], 14) : ""}<span>${on ? "???" : W_N[k]}</span></div>`; }
+  return `<div class="sec" style="margin:16px 0 6px;text-align:center">Мир профиля</div><div class="wsel">${h}</div>`;
+}
 
 // ---------- Шахматы: рейтинг
 let chr = null;
@@ -2315,7 +2335,7 @@ function encPage() {
   for (const [key, nm, src] of ENC_G) {
     const all = gr[key]; if (!all.length) continue; const hv = all.filter(i => (i + "") in S.inv).length;
     let ids = all.filter(i => encF === "all" || (encF === "have") === ((i + "") in S.inv)).sort((a, b) => ITEMS[b][2] - ITEMS[a][2] || a - b); if (!ids.length) continue;
-    const more = ids.length > 40 ? ids.length - 40 : 0; if (more) ids = ids.slice(0, 40);
+    const more = 0;
     h += `<div class="sec" style="display:flex;align-items:center"><span class="grow" style="margin:0">${nm}</span><span class="chip">${hv}/${all.length}</span></div><div class="t2" style="margin:0 4px 6px;font-size:11px">Где добыть: ${src}</div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">` +
       ids.map(i => { const o = (i + "") in S.inv, r = ITEMS[i][2]; return `<div class="cell${o ? " fxc" : ""}${o ? reqCls(i) : ""}" data-a="catinfo" data-i="${i}" style="${o ? "" : "opacity:.55"}"><div style="${o ? "" : "filter:grayscale(1) brightness(.7)"}">${catEl(i, 52, {holo: S.holo.includes(i), fx: o})}</div><span style="color:${RC[r]}">${esc(ITEMS[i][1])}</span><span style="color:var(--onv);font-weight:500;font-size:9px">${RARS[r][0]}</span></div>`; }).join("") + `</div>` + (more ? `<div class="t2" style="text-align:center;margin:6px">…и ещё ${more}</div>` : "");
   }

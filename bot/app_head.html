@@ -632,6 +632,53 @@ body.evton #view{padding-bottom:calc(140px + env(safe-area-inset-bottom))}
 .plw.pl3::before,.plw.pl4::before,.plw.pl5::before,.plw.pl6::before{background:conic-gradient(#7b5cff,#40c4ff,#69f0ae,#ffd54f,#ff4081,#7b5cff);-webkit-mask:radial-gradient(circle,transparent 58%,#000 60%);mask:radial-gradient(circle,transparent 58%,#000 60%);animation:rqs 4s linear infinite;inset:-8px}
 .plw.pl4::after,.plw.pl5::after,.plw.pl6::after{content:"";position:absolute;inset:-14px;border-radius:50%;box-shadow:0 0 28px rgba(154,140,255,.8);pointer-events:none}
 .plw.pl5::after,.plw.pl6::after{box-shadow:0 0 34px rgba(255,213,79,.9)}
+
+
+/* миры */
+#wbg{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+#wbg.w1{background:radial-gradient(120% 80% at 50% 0,#0b3a4d,#06141f 70%)}
+#wbg.w2{background:radial-gradient(100% 70% at 70% 0,#2a1456,#07031a 75%)}
+#wbg.w3{background:radial-gradient(120% 80% at 50% 100%,#6a1b00,#1a0500 75%)}
+#wbg.w4{background:linear-gradient(#033b6b,#021226)}
+#wbg.w5{background:linear-gradient(#3a1230,#14060f)}
+#wbg.w6{background:radial-gradient(120% 80% at 50% 0,#4a3500,#120c00 75%)}
+.wp{position:absolute;display:block}
+.w1 .wp{background:linear-gradient(135deg,#a5f3ff,#40c4ff);clip-path:polygon(50% 0,100% 40%,50% 100%,0 40%);opacity:.75;animation:wlr var(--d) linear var(--dl) infinite}
+.w1 .wp.rv{animation-name:wrl}
+.w2 .wp{background:#fff;border-radius:50%;box-shadow:0 0 6px #fff;animation:wtw calc(var(--d)/3) ease-in-out var(--dl) infinite}
+.w3 .wp{background:radial-gradient(#ffd54f,#ff5722);border-radius:50%;top:auto!important;bottom:-20px;animation:wup var(--d) linear var(--dl) infinite}
+.w4 .wp{border:2px solid #7fd8ff;border-radius:50%;top:auto!important;bottom:-30px;animation:wup var(--d) linear var(--dl) infinite;opacity:.7}
+.w5 .wp{background:#ffb7d5;border-radius:80% 0 80% 0;top:-20px!important;animation:wdn var(--d) linear var(--dl) infinite}
+.w6 .wp{background:#ffd54f;transform:rotate(var(--r));top:-20px!important;animation:wdn var(--d) linear var(--dl) infinite;box-shadow:0 0 8px #ffb300}
+@keyframes wlr{from{transform:translateX(-12vw) rotate(0)}to{transform:translateX(112vw) rotate(360deg)}}
+@keyframes wrl{from{transform:translateX(112vw) rotate(0)}to{transform:translateX(-12vw) rotate(-360deg)}}
+@keyframes wtw{0%,100%{opacity:.15;transform:scale(.6)}50%{opacity:1;transform:scale(1.2)}}
+@keyframes wup{from{transform:translateY(0)}to{transform:translateY(-115vh)}}
+@keyframes wdn{from{transform:translate(0,0) rotate(0)}to{transform:translate(40px,115vh) rotate(300deg)}}
+body.w1 #c-pts{color:#a5f3ff;text-shadow:0 0 16px #40c4ff}
+body.w2 #c-pts{color:#e8dcff;text-shadow:0 0 18px #9a5cff;letter-spacing:1px}
+body.w3 #c-pts{color:#ffd0a0;text-shadow:0 0 16px #ff5722}
+body.w4 #c-pts{color:#cdf1ff;text-shadow:0 0 14px #29b6f6}
+body.w5 #c-pts{color:#ffd3e6;text-shadow:0 0 14px #ff4081}
+body.w6 #c-pts{color:#ffe082;text-shadow:0 0 16px #ffb300;font-variant-numeric:tabular-nums}
+.sring,.avr{position:absolute;left:50%;top:50%;pointer-events:none}
+.sring{width:420px;height:120px;margin:-60px 0 0 -210px;transform:rotate(-16deg)}
+.sring.b{z-index:0}.sring.f{z-index:3;clip-path:inset(50% 0 0 0)}
+.sring i,.avr i{position:absolute;inset:0;border-radius:50%;background:radial-gradient(ellipse at center,transparent 49%,rgba(255,236,190,.35) 50%,rgba(230,190,120,.85) 54%,rgba(120,90,50,.5) 57%,transparent 58%,rgba(255,230,180,.7) 60%,rgba(200,160,100,.8) 64%,transparent 66%,rgba(255,240,200,.35) 69%,transparent 71%);filter:drop-shadow(0 0 6px rgba(255,220,150,.5))}
+#field #coin{position:relative;z-index:1}
+.avr{width:150px;height:44px;margin:-22px 0 0 -75px;transform:rotate(-16deg)}
+.avr.b{z-index:0}.avr.f{z-index:3;clip-path:inset(50% 0 0 0)}
+.plw.pw2{background:radial-gradient(1.5px 1.5px at 10% 20%,#fff,transparent),radial-gradient(2px 2px at 88% 30%,#e8dcff,transparent),radial-gradient(1.5px 1.5px at 20% 85%,#fff,transparent),radial-gradient(2px 2px at 92% 80%,#fff,transparent)}
+.plw.pw1 .pfav{box-shadow:0 0 18px #40c4ff}.plw.pw3 .pfav{box-shadow:0 0 20px #ff5722}.plw.pw4 .pfav{box-shadow:0 0 18px #29b6f6}.plw.pw5 .pfav{box-shadow:0 0 18px #ff80ab}.plw.pw6 .pfav{box-shadow:0 0 22px #ffc107}
+.wsel{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+.wchip{display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border-radius:14px;background:var(--sch);font-size:12px;font-weight:600;cursor:pointer}
+.wchip.cur{background:var(--pri);color:var(--onp)}.wchip.lock{opacity:.4;cursor:default}
+.solc{position:relative;overflow:hidden;background:color-mix(in srgb,#9a5cff 16%,var(--sc))!important;box-shadow:inset 0 0 0 2px #b388ff!important}
+.solc .circ{background:#7b4dff!important;color:#fff!important}
+.solc .t1{color:#d0b8ff}
+.solc .btn:not(.o){background:#b388ff;color:#1d0b3a}
+.solc .sst{position:absolute;inset:0;pointer-events:none;background:radial-gradient(1.5px 1.5px at 12% 22%,#fff,transparent),radial-gradient(1.5px 1.5px at 38% 80%,#fff,transparent),radial-gradient(2px 2px at 64% 18%,#e8dcff,transparent),radial-gradient(1.5px 1.5px at 86% 70%,#fff,transparent),radial-gradient(2px 2px at 92% 20%,#e8dcff,transparent),radial-gradient(1.5px 1.5px at 52% 52%,#fff,transparent);animation:sstw 2.6s ease-in-out infinite}
+@keyframes sstw{50%{opacity:.25}}
 .rar7{color:#e040fb}
 </style></head><body>
 <div id="load"><div class="lw"><div class="lglow"></div><div class="lm" id="lm">🍉</div><div class="lsh"></div></div><div class="lti">MDMelonClicker</div><div id="lt">Подключаюсь…</div><div class="tr"><i id="lbar"></i></div><div id="ltip"></div></div>

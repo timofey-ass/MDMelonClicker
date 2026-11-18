@@ -66,6 +66,7 @@ function checkAch() {
 }
 const pickR = ri => { const l = ITEMS.map((it, i) => it[2] === ri && !it[6] && !it[7] ? i : -1).filter(i => i >= 0); return l[Math.floor(Math.random() * l.length)]; };
 function rarR(w) { let r = Math.random() * w.reduce((a, b) => a + b, 0); for (let i = 0; i < w.length; i++) { r -= w[i]; if (r <= 0) return i; } return 0; }
+const SOLC = ["planet", "Солнечная система", 0, [1, 1, 1, 1, 1]], CS = ci => ci === 99 ? SOLC : CS(ci);
 function roll(ci) { if (ci === 4) { const q = Math.random(); if (q < .02) return 72; if (q < .07) return 63; ci = 2; } let w = CASES[ci][3].slice(); if (S.pity >= 14) w = [0, 0].concat(w.slice(2)); return pickR(rarR(w)); }
 function grant(idx, holo) { const k = idx + ""; const have = S.inv[k] || 0; S.inv[k] = have + 1; if (have === 0) { if (holo) { S.holo.push(idx); return "newholo"; } return "new"; } if (holo && !S.holo.includes(idx)) { S.holo.push(idx); return "holo"; } return "dup"; }
 const dupCount = r => Object.keys(S.inv).reduce((a, k) => a + (ITEMS[+k][2] === r ? Math.max(0, S.inv[k] - 1) : 0), 0);
@@ -131,7 +132,7 @@ function tGame() {
   const eq = +S.eq; const coin = eq >= 0 && (eq + "") in S.inv ? eq : 63;
   return `<div class="chips"><span class="chip" id="c-cps">0/с</span><span class="chip" id="c-tap"></span><span class="chip" id="c-mult"></span><span class="chip p" id="c-buff" style="display:none"></span></div>
   <div style="text-align:center;font-size:44px;font-weight:800;margin:6px 0 0;color:var(--on)" id="c-pts">0</div>
-  <div id="field"><div id="ring"></div><div id="coin" data-coin class="${reqOn() ? "rqa" : ""}">${catEl(coin, 240, {})}</div></div>
+  <div id="field"><div id="ring"></div>${wCoin()}<div id="coin" data-coin class="${reqOn() ? "rqa rq" + S.eq : ""}">${catEl(coin, 240, {})}</div></div>
   <div style="display:flex;align-items:center;gap:10px;margin:0 4px 10px"><span class="t2" style="font-weight:700;display:flex;align-items:center;gap:6px">${ic("fire", 14)}Комбо</span><div class="wb grow"><div class="tr"></div><div class="ac" id="combo" style="width:0%"><i></i></div></div></div>
   <div class="card p" id="daily" style="display:none"><div class="grow t1" style="display:flex;align-items:center;gap:8px">${ic("box", 18)}Ежедневный бонус готов</div>${btn("Забрать", "daily")}</div>`;
 }
@@ -155,7 +156,7 @@ function tCases() {
   h += `<div class="card p"><div class="grow"><div class="t1" style="display:flex;align-items:center;gap:8px">${ic("ticket", 18)}Бесплатный кейс</div><div class="t2" id="freeT"></div></div>${btn("Открыть", "free", 'id="freeB"')}</div>`;
   if (S.fc.some(x => x > 0)) h += `<div class="card"><div class="t1 grow" style="display:flex;align-items:center;gap:8px">${ic("ticket", 16)}За уровни:</div>${[0, 1, 2].filter(c => S.fc[c] > 0).map(c => btn(ic(CASES[c][0], 16) + "×" + S.fc[c], "lvcase", `data-i="${c}"`)).join("")}</div>`;
   CASES.map((c, ci) => ci).concat([99]).sort((a, b) => casePrice(b) - casePrice(a)).forEach(ci => {
-    if (ci === 99) { h += solCard(); return; }
+    if (ci === 99) { const pr = casePrice(99); h += `<div class="card solc"><i class="sst"></i>${circ("planet", 54)}<div class="grow"><div class="t1">Солнечная система</div><div class="t2" style="font-size:11px">50% — монеты, 50% — кот-планета: Луна, Марс, Венера, Земля, Уран, Нептун, Юпитер, Сатурн и очень редкая Солнечная система</div></div><div class="jb">${btn(fmt(pr), "case", `data-i="99" data-n="1" ${cost(pr, "pts")}`)}${btn("×5", "case", `data-i="99" data-n="5" ${cost(pr * 5, "pts")}`, "o")}</div></div>`; return; }
     const c = CASES[ci], pr = casePrice(ci);
     const tot = c[3].reduce((a, b) => a + b, 0); const ch = c[3].map((x, i) => x ? RARS[i][0].slice(0, 5) + ". " + String(+(x / tot * 100).toFixed(1)) + "%" : "").filter(Boolean).join(" · "); const cur = ci === GEM_CASE ? "gems" : "pts";
     h += `<div class="card${ci === 4 ? " bluecase" : ci === 5 ? " redcase" : ""}">${circ(c[0], 54)}<div class="grow"><div class="t1">${c[1]}</div><div class="t2" style="font-size:11px">${ci === 5 ? "70% — монеты (от 0.4× до 3× цены), 30% — течкот: Google, OnePlus, Vivo, Apple, Xiaomi, Samsung. Каждый даёт +50% ко всему" : ci === 4 ? "Шанс 2% выбить Королевского арбуза (×40 к тапу), 5% — особого кота Джоске (+100% ко всему). Иначе падает как в Золотом: " + ch : ch}</div></div><div class="jb">${btn((ci === GEM_CASE ? ic("gem", 14) : "") + fmt(pr), "case", `data-i="${ci}" data-n="1" ${cost(pr, cur)}`)}${btn("×5", "case", `data-i="${ci}" data-n="5" ${cost(pr * 5, cur)}`, "o")}</div></div>`;
@@ -164,14 +165,8 @@ function tCases() {
   if (S.hist.length) h += `<div class="sec">Последние выпадения</div><div class="hs">${S.hist.slice(-10).reverse().map(i => catEl(i, 44)).join("")}</div>`;
   { const sl = RARS.map((R, r) => [r, dupCount(r)]).filter(([r, n]) => r <= 6 && n >= 1);
     if (sl.length) h += `<div class="sec">Продать дубликаты</div><div class="gml" style="margin:0 0 8px">` + sl.map(([r, n]) => `<div class="card" style="padding:10px 14px"><div class="t1 grow" style="font-size:14px;color:${RC[r]}">${RARS[r][0]} ×${n}</div><button class="chip" style="border:0;font-family:inherit;color:var(--gold)" data-a="sell" data-i="${r}">${ic("coin", 14)}${fmt(n * sellVal(r))}${SELLGEM[r] ? " +" + n * SELLGEM[r] + ic("gem", 12) : ""}</button></div>`).join("") + `</div>`; }
-  h += `<div class="sec" style="display:flex;align-items:center"><span class="grow" style="margin:0">Коллекция · нажми на кота</span><button class="chip" style="border:0;font-family:inherit;color:var(--pri)" data-a="mnu" data-k="enc">Энциклопедия</button></div>`;
-  for (let ri = RARS.length - 1; ri >= 0; ri--) {
-    const ids = ITEMS.map((it, i) => it[2] === ri && (i < 70 || i >= 72 || (i + "") in S.inv) && !it[7] ? i : -1).filter(i => i >= 0); if (!ids.length) continue;
-    h += `<div style="font-size:11px;font-weight:700;color:${RC[ri]};margin:8px 4px 4px">${RARS[ri][0]} · ${ri === 8 ? "×40 к тапу" : ri === 7 ? "×1 секстилион к одному тапу" : "+" + RARS[ri][2] + "% за предмет"}</div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">`;
-    for (const idx of ids) { const o = S.inv[idx + ""] || 0, ho = S.holo.includes(idx), isq = +S.eq === idx;
-      h += `<div class="cell${o ? " fxc" : ""}${o ? reqCls(idx) : ""}" ${o ? `data-a="catinfo" data-i="${idx}"` : ""} style="${isq || ho ? `box-shadow:inset 0 0 0 2px ${ho ? "#fff" : RC[ri]}` : ""}">${o ? catEl(idx, 52, {holo: ho, fx: true}) : `<div class="q">?</div>`}<span style="color:${o ? RC[ri] : "var(--out)"}">${o ? (ho ? "★ " : "") + ITEMS[idx][1] : "???"}</span>${o > 1 ? `<span style="color:var(--onv);font-weight:500">×${o}</span>` : ""}${o ? reqTag(idx) : ""}</div>`; }
-    h += `</div>`;
-  }
+  { const tot = ITEMS.filter(it => !it[7]).length, hv = Object.keys(S.inv).filter(k => ITEMS[k] && !ITEMS[k][7]).length;
+    h += `<div class="card" data-a="mnu" data-k="enc" style="cursor:pointer">${circ("cat", 46)}<div class="grow"><div class="t1">Энциклопедия котов</div><div class="t2" style="margin:0;font-size:12px">Вся коллекция: открыто ${hv} из ${tot}. Нажми, чтобы посмотреть и выбрать кота на монету</div></div>${ic("arrow", 22)}</div>`; }
   return h;
 }
 const WKT = [["Открой 20 кейсов", 20, 4, () => S.opened], ["Сделай 3000 тапов", 3000, 3, () => S.taps], ["Купи 50 генераторов", 50, 3, () => owned()]];
@@ -232,8 +227,8 @@ function showResult(icon, res, title, again) {
   setTimeout(() => { if (!document.body.contains(o)) return; hap("ok"); o.innerHTML = `<h2>${title || ""}</h2>` + (res[0] === null ? `<div class="rv"><div style="color:var(--onv)">${ic("smoke", 90)}</div><div class="t1">Не повезло…</div><div class="t2">Дубль сгорел</div></div>` : rvHtml(res[0], res[1])) + `<div style="margin-top:26px;display:flex;gap:10px">${again ? btn("Ещё раз", "again", `data-i="${again[0]}" data-n="${again[1]}"`, "t") : ""}${btn("Закрыть", "close")}</div>`; render(); }, 1100);
 }
 function showMulti(ci, wins, n) {
-  const o = ov(`<h2>${CASES[ci][1]} ×${n}</h2><div style="animation:bn .5s 3;color:var(--on)">${ic(CASES[ci][0], 120)}</div>`); hap("medium");
-  setTimeout(() => { if (!document.body.contains(o)) return; hap("ok"); o.innerHTML = `<h2>${CASES[ci][1]} ×${n}</h2><div class="rgrid">${wins.map(([w, k]) => `<div class="cell">${catEl(w, 64, {holo: S.holo.includes(w)})}<span class="rar${ITEMS[w][2]}">${ITEMS[w][1]}</span><span style="color:var(--onv);font-weight:500">${KIND[k]}</span></div>`).join("")}</div><div style="margin-top:20px;display:flex;gap:10px">${btn("Ещё ×" + n, "again", `data-i="${ci}" data-n="${n}"`, "t")}${btn("Закрыть", "close")}</div>`; render(); }, 1100);
+  const o = ov(`<h2>${CS(ci)[1]} ×${n}</h2><div style="animation:bn .5s 3;color:var(--on)">${ic(CS(ci)[0], 120)}</div>`); hap("medium");
+  setTimeout(() => { if (!document.body.contains(o)) return; hap("ok"); o.innerHTML = `<h2>${CS(ci)[1]} ×${n}</h2><div class="rgrid">${wins.map(([w, k]) => `<div class="cell">${catEl(w, 64, {holo: S.holo.includes(w)})}<span class="rar${ITEMS[w][2]}">${ITEMS[w][1]}</span><span style="color:var(--onv);font-weight:500">${KIND[k]}</span></div>`).join("")}</div><div style="margin-top:20px;display:flex;gap:10px">${btn("Ещё ×" + n, "again", `data-i="${ci}" data-n="${n}"`, "t")}${btn("Закрыть", "close")}</div>`; render(); }, 1100);
 }
 function showSet(key) {
   const s = SETS.find(x => x[0] === key), ids = setIdx(key); const have = ids.filter(i => (i + "") in S.inv).length;
@@ -249,7 +244,7 @@ function openCase(ci, mode, n) {
   const wins = [];
   for (let k = 0; k < n; k++) { const win = roll(ci), holo = Math.random() < (ci < 2 ? .06 : .12); S.opened++; S.pity = ITEMS[win][2] >= 2 ? 0 : S.pity + 1; const kind = grant(win, holo); S.hist = S.hist.concat([win]).slice(-14); addXp(20 + 15 * ITEMS[win][2]); wins.push([win, kind]); }
   checkAch(); mark(); save(true);
-  if (n === 1) showResult(CASES[ci][0], wins[0], CASES[ci][1], mode === 0 ? [ci, 1] : null); else showMulti(ci, wins, n);
+  if (n === 1) showResult(CS(ci)[0], wins[0], CS(ci)[1], mode === 0 ? [ci, 1] : null); else showMulti(ci, wins, n);
 }
 function afterCraft(win) { S.hist = S.hist.concat([win]).slice(-14); addXp(10 + 10 * ITEMS[win][2]); checkAch(); mark(); save(true); }
 const A = {
@@ -488,7 +483,8 @@ setTheme = function (i) {
 const RB = ["#ff6b9d", "#ffb86b", "#fff06b", "#8cff6b", "#6bffd9", "#6ba8ff", "#a86bff", "#ff6bd9"];
 function catEl(idx, size, extra) {
   const k = idx === "coin" ? 63 : idx, c = k % 8, r = Math.floor(k / 8), ho = extra && extra.holo;
-  const gl = ho || (ITEMS[idx] && ITEMS[idx][2] >= 5), bgs = idx >= 93 ? `background-image:url(${ADM_IMG.replace("admin/0.jpg", "new2/" + (idx - 93) + ".jpg?v=2")});background-size:cover;background-position:center` : idx >= 73 ? `background-image:url(${ADM_IMG.replace("admin/0.jpg", "new/" + (idx - 73) + ".jpg?v=2")});background-size:cover;background-position:center` : idx >= 70 ? `background-image:url(${ADM_IMG.replace("0.jpg", (idx - 70) + ".jpg")});background-size:cover;background-position:center` : idx >= 64 ? `background-image:url(${TECH_IMG(idx - 64)});background-size:cover;background-position:center` : idx === 63 ? `background-image:url(${JOSKE_IMG});background-size:cover;background-position:center` : `background-position:${c / 7 * 100}% ${r / 7 * 100}%`;
+  const gl = ho || (ITEMS[idx] && ITEMS[idx][2] >= 5); let bgs = idx >= 93 ? `background-image:url(${ADM_IMG.replace("admin/0.jpg", "new2/" + (idx - 93) + ".jpg?v=2")});background-size:cover;background-position:center` : idx >= 73 ? `background-image:url(${ADM_IMG.replace("admin/0.jpg", "new/" + (idx - 73) + ".jpg?v=2")});background-size:cover;background-position:center` : idx >= 70 ? `background-image:url(${ADM_IMG.replace("0.jpg", (idx - 70) + ".jpg")});background-size:cover;background-position:center` : idx >= 64 ? `background-image:url(${TECH_IMG(idx - 64)});background-size:cover;background-position:center` : idx === 63 ? `background-image:url(${JOSKE_IMG});background-size:cover;background-position:center` : `background-position:${c / 7 * 100}% ${r / 7 * 100}%`;
+  if (typeof RQIMG !== "undefined" && S && S.rq2 && S.rq2.d && S.rq2.d[idx] && RQIMG[idx] !== undefined) bgs = `background-image:url(${ADM_IMG.replace("admin/0.jpg", "rq/" + RQIMG[idx] + ".jpg?v=1")});background-size:cover;background-position:center`;
   return `<div class="cat${ho ? " h" : ""}${gl ? " g" : ""}" style="width:${size}px;height:${size}px;${bgs}">${extra && extra.fx ? `<i class="gl2${ho ? " rb" : ""}"></i>` : ""}</div>`;
 }
 function bindCards(root) {
@@ -593,15 +589,16 @@ function preroll(ov, icon, then) {
   }; step();
 }
 function roulette(ci, wk, mode) {
-  if (!LS("fxc", 1)) { const ov0 = mkOv(CASES[ci][1]); reveal(ov0, wk, () => openCase(ci, mode === 2 && S.fc[ci] > 0 ? 2 : 0), false); return; }
-  const win = wk[0], ov = mkOv(CASES[ci][1]), W = 112, N = 52, WIN_I = 44, w = ci === 4 ? CASES[2][3] : CASES[ci][3], sw = innerWidth, special = false;
+  if (!LS("fxc", 1)) { const ov0 = mkOv(CS(ci)[1]); reveal(ov0, wk, () => openCase(ci, mode === 2 && S.fc[ci] > 0 ? 2 : 0), false); return; }
+  const win = wk[0], ov = mkOv(CS(ci)[1]), W = 112, N = 52, WIN_I = 44, w = ci === 4 ? CASES[2][3] : CS(ci)[3], sw = innerWidth, special = false;
   const hint = document.createElement("div"); hint.className = "hint"; hint.textContent = "Нажми, чтобы пропустить"; hint.style.opacity = 0; ov.appendChild(hint);
   const strip = document.createElement("div"); strip.className = "strip"; strip.style.width = W * N + "px"; let h = "";
   const coinRc = a => `<div class="rc" style="box-shadow:inset 0 0 0 2px var(--gold)"><div style="color:var(--gold)">${ic("coin", 52)}</div><span style="color:var(--gold)">+${fmt(a)}</span></div>`;
   for (let n = 0; n < N; n++) {
     if (n === WIN_I && wk[1] === "coins") { h += coinRc(wk[2]); continue; }
     if (n !== WIN_I && ci === 5 && Math.random() < .65) { h += coinRc(coinPrize(casePrice(5))); continue; }
-    let idx; if (n === WIN_I) idx = win; else { let ri = rarR(w); if (Math.abs(n - WIN_I) <= 2 && Math.random() < .6) ri = Math.max(ri, w[3] > 0 ? 3 : 2); idx = pickR(ri); }
+    if (n !== WIN_I && ci === 99 && Math.random() < .5) { h += coinRc(Math.round((1000 + cps() * 10) * (.5 + Math.random()))); continue; }
+    let idx; if (n === WIN_I) idx = win; else if (ci === 99) idx = solRoll(); else { let ri = rarR(w); if (Math.abs(n - WIN_I) <= 2 && Math.random() < .6) ri = Math.max(ri, w[3] > 0 ? 3 : 2); idx = pickR(ri); }
     const rc = RC[ITEMS[idx][2]]; h += `<div class="rc" style="box-shadow:inset 0 0 0 2px ${rc}">${catEl(idx, 62)}<span style="color:${rc}">${ITEMS[idx][1]}</span></div>`;
   }
   strip.innerHTML = h; ov.appendChild(strip);
@@ -609,7 +606,7 @@ function roulette(ci, wk, mode) {
   [strip, mark, arr].forEach(v => v.style.opacity = 0);
   const tx0 = sw / 2 - W / 2, off = rnd(-.4, .4) * (W - 8), tx1 = sw / 2 - (WIN_I * W + W / 2) - off;
   strip.style.transform = `translateX(${tx0}px)`;
-  preroll(ov, CASES[ci][0], () => {
+  preroll(ov, CS(ci)[0], () => {
     [strip, mark, arr].concat(special ? [] : [hint]).forEach(v => { v.style.transition = "opacity .25s"; v.style.opacity = 1; });
     ov.onclick = special ? null : () => { skipRoll = true; };
     const t0 = performance.now(), dur = special ? 9100 : 6200; let last = -1;
@@ -670,7 +667,7 @@ function reveal(ov, wk, againFn, fail) {
 function resultOnly(icon, wk, title) { const ov = mkOv(title || "Крафт"); ov.dataset.t = noemo(title || "Крафт"); preroll(ov, icon, () => reveal(ov, wk, null, wk[0] === null)); }
 showResult = function (icon, res, title, again) { resultOnly(icon, res, title); };
 showMulti = function (ci, wins, n) {
-  const title = CASES[ci][1] + " ×" + n, ov = mkOv(title); ov.dataset.t = title;
+  const title = CS(ci)[1] + " ×" + n, ov = mkOv(title); ov.dataset.t = title;
   const rar = w => w[0] === null ? 1 : ITEMS[w[0]][2], isHolo = w => w[1] === "holo" || w[1] === "newholo";
   const col = w => w[0] === null ? "#ffd54f" : isHolo(w) ? "#fff" : RC[ITEMS[w[0]][2]];
   const box = document.createElement("div"); box.className = "mbox"; box.innerHTML = wins.map(() => `<div class="mc"><div class="mq">${ic("box", 34)}</div></div>`).join(""); ov.appendChild(box);
@@ -709,7 +706,7 @@ showMulti = function (ci, wins, n) {
     }, 430);
   };
   if (!LS("fxc", 1)) { skip(); return; }
-  preroll(ov, CASES[ci][0], step);
+  preroll(ov, CS(ci)[0], step);
 };
 openCase = function (ci, mode, n) {
   if (busy) return; n = n || 1; const t = now();
@@ -717,7 +714,7 @@ openCase = function (ci, mode, n) {
   else if (mode === 2) { if (S.fc[ci] < 1) return; S.fc[ci]--; n = 1; }
   else { const c = casePrice(ci) * n; if (ci === GEM_CASE) { if (S.gems < c) return toast("Не хватает самоцветов"); S.gems -= c; } else { if (S.pts < c) return toast("Не хватает монет"); S.pts -= c; } }
   const wins = [];
-  for (let k = 0; k < n; k++) { if (ci === 5 && Math.random() < .7) { const amt = coinPrize(casePrice(5)); S.pts += amt; S.run += amt; S.total += amt; S.opened++; addXp(20); wins.push([null, "coins", amt]); continue; } const win = roll(ci), holo = Math.random() < (ci < 2 ? .06 : .12); S.opened++; S.pity = ITEMS[win][2] >= 2 ? 0 : S.pity + 1; const kind = grant(win, holo); S.hist = S.hist.concat([win]).slice(-14); addXp(20 + 15 * ITEMS[win][2]); wins.push([win, kind]); }
+  for (let k = 0; k < n; k++) { if (ci === 99) { if (Math.random() < .5) { const amt = Math.round((1000 + cps() * 10) * (.5 + Math.random())); S.pts += amt; S.run += amt; S.total += amt; S.opened++; addXp(20); wins.push([null, "coins", amt]); } else { const win = solRoll(), kind = grant(win, Math.random() < .1); S.opened++; S.hist = S.hist.concat([win]).slice(-14); addXp(20 + 15 * ITEMS[win][2]); wins.push([win, kind]); } continue; } if (ci === 5 && Math.random() < .7) { const amt = coinPrize(casePrice(5)); S.pts += amt; S.run += amt; S.total += amt; S.opened++; addXp(20); wins.push([null, "coins", amt]); continue; } const win = roll(ci), holo = Math.random() < (ci < 2 ? .06 : .12); S.opened++; S.pity = ITEMS[win][2] >= 2 ? 0 : S.pity + 1; const kind = grant(win, holo); S.hist = S.hist.concat([win]).slice(-14); addXp(20 + 15 * ITEMS[win][2]); wins.push([win, kind]); }
   checkAch(); mark(); save(true); actx();
   if (n === 1) roulette(ci, wins[0], mode); else showMulti(ci, wins, n);
 };
@@ -729,7 +726,7 @@ tGame = function () {
   const eq = +S.eq, cat = eq >= 0 && (eq + "") in S.inv ? eq : "coin", rr = cat === "coin" ? "" : `<i class="rr" style="border-color:${RC[ITEMS[cat][2]]}"></i>`;
   return `<div class="gcol"><div id="g-pts" style="text-align:center;font-size:46px;font-weight:700;color:var(--pri);line-height:1.15">0</div><div class="t2" style="text-align:center;margin:-2px 0 8px;font-size:13px">монет</div>
   <div class="chips"><span class="chip" id="g-cps"></span><span class="chip" id="g-tap"></span><span class="chip" id="g-gem"></span><span class="chip p" id="g-buff" style="display:none"></span></div>
-  <div id="field"><div id="ring"></div><div id="coin" data-coin class="${reqOn() ? "rqa" : ""}"><div class="wv" style="clip-path:${cat === "coin" ? WAVY : "none"};border-radius:${cat === "coin" ? 0 : "50%"}">${catEl(cat, 240, {})}${rr}<i class="gl"></i></div></div></div>
+  <div id="field"><div id="ring"></div>${wCoin()}<div id="coin" data-coin class="${reqOn() ? "rqa rq" + S.eq : ""}"><div class="wv" style="clip-path:${cat === "coin" ? WAVY : "none"};border-radius:${cat === "coin" ? 0 : "50%"}">${catEl(cat, 240, {})}${rr}<i class="gl"></i></div></div></div>
   <div style="display:flex;align-items:center;gap:10px;margin:0 4px 8px"><span class="t2" style="font-weight:700;display:flex;align-items:center;gap:6px;margin:0;min-width:96px">${ic("fire", 14)}<span id="clt">Комбо</span></span><div class="wb grow"><div class="tr"></div><div class="ac" id="combo" style="width:0%"><i></i></div></div></div>
   <div class="card p" id="daily" style="display:none;margin-bottom:0"><div class="grow t1" style="display:flex;align-items:center;gap:8px">${ic("box", 18)}Ежедневный бонус готов</div>${btn("Забрать", "daily")}</div></div>`;
 };
