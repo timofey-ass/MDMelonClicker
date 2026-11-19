@@ -74,7 +74,7 @@ async function init(db) {
   try { await db.prepare("CREATE TABLE IF NOT EXISTS clans (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE, owner INTEGER, ts INTEGER)").run(); } catch (e) {}
   try { await db.prepare("CREATE TABLE IF NOT EXISTS clan_m (uid INTEGER PRIMARY KEY, cid INTEGER, ts INTEGER)").run(); } catch (e) {}
   for (const q of ["ALTER TABLE clans ADD COLUMN descr TEXT DEFAULT ''", "ALTER TABLE clans ADD COLUMN icon TEXT DEFAULT '🛡'", "ALTER TABLE clans ADD COLUMN mode INTEGER DEFAULT 0", "ALTER TABLE clans ADD COLUMN bank REAL DEFAULT 0", "ALTER TABLE clans ADD COLUMN badges TEXT DEFAULT ''", "ALTER TABLE clans ADD COLUMN style TEXT DEFAULT ''", "ALTER TABLE clan_m ADD COLUMN role INTEGER DEFAULT 0", "ALTER TABLE clan_m ADD COLUMN don REAL DEFAULT 0"]) { try { await db.prepare(q).run(); } catch (e) {} }
-  for (const q of ["CREATE TABLE IF NOT EXISTS td (id INTEGER PRIMARY KEY AUTOINCREMENT, p1 INTEGER, n1 TEXT, p2 INTEGER, n2 TEXT, stake REAL, st TEXT, s1 REAL, s2 REAL, t1 INTEGER DEFAULT 0, t2 INTEGER DEFAULT 0, res TEXT, c1 INTEGER DEFAULT 0, c2 INTEGER DEFAULT 0, ts INTEGER)", "CREATE TABLE IF NOT EXISTS tdr (uid INTEGER PRIMARY KEY, name TEXT, w INTEGER DEFAULT 0, l INTEGER DEFAULT 0, d INTEGER DEFAULT 0)", "CREATE TABLE IF NOT EXISTS clg (cid INTEGER, uid INTEGER, score INTEGER, ts INTEGER, PRIMARY KEY (cid,uid))", "CREATE TABLE IF NOT EXISTS clraid (id INTEGER PRIMARY KEY AUTOINCREMENT, att INTEGER, an TEXT, def INTEGER, dn TEXT, uid INTEGER, name TEXT, sc INTEGER, ds INTEGER, win INTEGER, loot REAL, ts INTEGER)", "ALTER TABLE clans ADD COLUMN wall INTEGER DEFAULT 0", "ALTER TABLE clans ADD COLUMN shield INTEGER DEFAULT 0"]) { try { await db.prepare(q).run(); } catch (e) {} }
+  for (const q of ["CREATE TABLE IF NOT EXISTS td (id INTEGER PRIMARY KEY AUTOINCREMENT, p1 INTEGER, n1 TEXT, p2 INTEGER, n2 TEXT, stake REAL, st TEXT, s1 REAL, s2 REAL, t1 INTEGER DEFAULT 0, t2 INTEGER DEFAULT 0, res TEXT, c1 INTEGER DEFAULT 0, c2 INTEGER DEFAULT 0, ts INTEGER)", "CREATE TABLE IF NOT EXISTS tdr (uid INTEGER PRIMARY KEY, name TEXT, w INTEGER DEFAULT 0, l INTEGER DEFAULT 0, d INTEGER DEFAULT 0)", "ALTER TABLE tdr ADD COLUMN elo INTEGER DEFAULT 1000", "CREATE TABLE IF NOT EXISTS clg (cid INTEGER, uid INTEGER, score INTEGER, ts INTEGER, PRIMARY KEY (cid,uid))", "CREATE TABLE IF NOT EXISTS clraid (id INTEGER PRIMARY KEY AUTOINCREMENT, att INTEGER, an TEXT, def INTEGER, dn TEXT, uid INTEGER, name TEXT, sc INTEGER, ds INTEGER, win INTEGER, loot REAL, ts INTEGER)", "ALTER TABLE clans ADD COLUMN wall INTEGER DEFAULT 0", "ALTER TABLE clans ADD COLUMN shield INTEGER DEFAULT 0"]) { try { await db.prepare(q).run(); } catch (e) {} }
   try { await db.prepare("CREATE TABLE IF NOT EXISTS clan_req (uid INTEGER PRIMARY KEY, cid INTEGER, ts INTEGER)").run(); } catch (e) {}
   try { await db.prepare("CREATE TABLE IF NOT EXISTS clan_chat (id INTEGER PRIMARY KEY AUTOINCREMENT, cid INTEGER, uid INTEGER, name TEXT, text TEXT, ts INTEGER)").run(); } catch (e) {}
   ready = true;
@@ -1473,7 +1473,13 @@ async function api(path, req, env) {
   const tdFinish = async (tb, t1, t2, why) => {
     const w = t1 > t2 ? 1 : t2 > t1 ? 2 : 0, win = Math.floor(tb.stake * 1.9), res = {winner: w, t1, t2, why: why || "", pay1: w === 1 ? win : w === 0 ? tb.stake : 0, pay2: w === 2 ? win : w === 0 ? tb.stake : 0};
     const r = await db.prepare("UPDATE td SET st='done', t1=?, t2=?, res=? WHERE id=? AND st='play2'").bind(t1, t2, JSON.stringify(res), tb.id).run();
-    if (r.meta.changes === 1) for (const [u, n, k] of [[tb.p1, tb.n1, w === 1 ? "w" : w === 2 ? "l" : "d"], [tb.p2, tb.n2, w === 2 ? "w" : w === 1 ? "l" : "d"]]) { await db.prepare("INSERT OR IGNORE INTO tdr (uid,name,w,l,d) VALUES (?,?,0,0,0)").bind(u, n).run(); await db.prepare("UPDATE tdr SET name=?, " + k + "=" + k + "+1 WHERE uid=?").bind(n, u).run(); }
+    if (r.meta.changes === 1) {
+      for (const [u, n] of [[tb.p1, tb.n1], [tb.p2, tb.n2]]) await db.prepare("INSERT OR IGNORE INTO tdr (uid,name,w,l,d,elo) VALUES (?,?,0,0,0,1000)").bind(u, n).run();
+      const a = await db.prepare("SELECT * FROM tdr WHERE uid=?").bind(tb.p1).first(), c = await db.prepare("SELECT * FROM tdr WHERE uid=?").bind(tb.p2).first();
+      const sa = w === 1 ? 1 : w === 2 ? 0 : .5, ea = 1 / (1 + Math.pow(10, ((c.elo || 1000) - (a.elo || 1000)) / 400)), K = 28, da = Math.round(K * (sa - ea)), dc = -da;
+      const col = w === 1 ? ["w", "l"] : w === 2 ? ["l", "w"] : ["d", "d"];
+      await db.batch([db.prepare("UPDATE tdr SET name=?, elo=MAX(100,COALESCE(elo,1000)+?), " + col[0] + "=" + col[0] + "+1 WHERE uid=?").bind(tb.n1, da, tb.p1), db.prepare("UPDATE tdr SET name=?, elo=MAX(100,COALESCE(elo,1000)+?), " + col[1] + "=" + col[1] + "+1 WHERE uid=?").bind(tb.n2, dc, tb.p2)]);
+    }
   };
   const tdSweep = async () => {
     await db.prepare("UPDATE td SET st='cancel' WHERE st='wait' AND ts<?").bind(now - 1800).run();
@@ -1492,9 +1498,10 @@ async function api(path, req, env) {
     if (path === "td_list") {
       const rows = (await db.prepare("SELECT id,n1,stake,t1 FROM td WHERE st='wait' AND p1!=? ORDER BY id DESC LIMIT 20").bind(id).all()).results;
       const act = await tdActive(), claims = (await db.prepare("SELECT id FROM td WHERE ((p1=? AND c1=0) OR (p2=? AND c2=0)) AND st IN ('done','cancel') ORDER BY id DESC LIMIT 5").bind(id, id).all()).results.map(x => x.id);
-      const top = (await db.prepare("SELECT uid,name,w,l,d FROM tdr WHERE w+l+d>0 ORDER BY w DESC, l ASC LIMIT 10").all()).results;
-      const me = (await db.prepare("SELECT w,l,d FROM tdr WHERE uid=?").bind(id).first()) || {w: 0, l: 0, d: 0};
-      return J({rows, mine: act ? act.id : 0, claims, top, me});
+      const top = (await db.prepare("SELECT uid,name,w,l,d,COALESCE(elo,1000) AS elo FROM tdr WHERE w+l+d>0 ORDER BY elo DESC, w DESC LIMIT 20").all()).results;
+      const me = (await db.prepare("SELECT w,l,d,COALESCE(elo,1000) AS elo FROM tdr WHERE uid=?").bind(id).first()) || {w: 0, l: 0, d: 0, elo: 1000};
+      me.rank = me.w + me.l + me.d > 0 ? (await db.prepare("SELECT COUNT(*) AS c FROM tdr WHERE w+l+d>0 AND COALESCE(elo,1000)>?").bind(me.elo).first()).c + 1 : 0;
+      return J({rows, mine: act ? act.id : 0, claims, top, me, id});
     }
     if (path === "td_state") { const tb = await db.prepare("SELECT * FROM td WHERE id=? AND (p1=? OR p2=?)").bind(Number(b.id), id, id).first(); return tb ? J(tdView(tb)) : J({error: "Дуэль не найдена"}); }
     if (path === "td_create" || path === "td_join") {

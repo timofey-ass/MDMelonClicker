@@ -2434,18 +2434,23 @@ function runTaps(title, dur, sub) {
 async function tdLoad() {
   const r = await api("td_list", {}); if (!r || r.error) return; TDS = r;
   for (const id of r.claims || []) { const c = await api("td_claim", {id}); if (c && c.amount > 0) { S.pts += c.amount; mark(); save(true); toast("Дуэль: +" + fmt(c.amount)); } }
-  if (moreSub === 7) render();
+  if (cz.sub === 13) render();
 }
 function tdPage() {
-  if (!TDS) return `<div class="t2" style="text-align:center;margin:20px">Загружаю…</div>`;
-  const T = TDS, st = [1e3, 1e4, 1e5, 1e6, 1e7, 1e8];
-  let h = `<div class="card col"><div class="t1" style="display:flex;align-items:center;gap:8px;color:var(--pri)">${ic("tap", 20)} Дуэли тапов</div><div class="t2" style="margin:0;font-size:12px;line-height:1.4">20 секунд, кто больше натапает. Ставки в монетах, победитель забирает ×1.9. Автокликеры и нечеловеческий ритм определяются сервером: за это проигрыш и бан дуэлей.</div><div class="t2" style="margin:6px 0 0;font-size:12px">Твои итоги: ${T.me.w} побед · ${T.me.l} поражений · ${T.me.d} ничьих</div></div>`;
+  const back = `<button class="btn t bkb" data-a="czgo" data-k="0">← Казино</button>`;
+  if (!TDS) return back + `<div class="t2" style="text-align:center;margin:20px">Загружаю…</div>`;
+  const T = TDS, m = T.me, g = m.w + m.l + m.d, wr = g ? Math.round(m.w / g * 100) : 0, st = [1e3, 1e4, 1e5, 1e6, 1e7, 1e8];
+  const cell = (v, k, c) => `<div class="cell" style="padding:10px 2px"><b style="font-size:18px;color:${c || "var(--on)"}">${v}</b><span style="color:var(--onv);font-weight:500">${k}</span></div>`;
+  let h = back + `<div class="card col chrme"><div style="display:flex;align-items:center;gap:12px"><div class="chav" style="width:56px;height:56px">${ic("tap", 28)}</div><div class="grow"><div class="t2" style="margin:0">Твой рейтинг</div><div style="font-size:34px;font-weight:700;color:var(--pri);line-height:1.1">${m.elo}</div></div><div style="text-align:right"><div class="t2" style="margin:0">Место</div><div class="t1" style="font-size:22px">${m.rank ? "#" + m.rank : "—"}</div></div></div>
+    <div class="t2" style="margin:2px 0 -2px;font-size:12px;font-weight:700">Дуэли${g ? " · " + wr + "% побед" : ""}</div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">${cell(m.w, "Победы", "var(--good)")}${cell(m.d, "Ничьи")}${cell(m.l, "Поражения", "#ff8a80")}</div></div>`;
+  h += `<div class="card col"><div class="t1" style="display:flex;align-items:center;gap:8px;color:var(--pri)">${ic("tap", 20)} Дуэль тапов</div><div class="t2" style="margin:0;font-size:12px;line-height:1.4">20 секунд, кто больше натапает. Победитель забирает ×1.9 от ставки. Автокликеры и нечеловеческий ритм определяет сервер: за это поражение и бан дуэлей.</div></div>`;
   h += `<div class="sec">Бросить вызов</div><div class="gml" style="margin:0 0 8px;display:grid;grid-template-columns:repeat(3,1fr);gap:2px">${st.map((v, i) => `<button class="btn ${S.pts >= v ? "" : "dis"}" style="background:var(--sch);color:var(--onv);border-radius:${i === 0 ? "20px 6px 6px 6px" : i === 2 ? "6px 20px 6px 6px" : i === 3 ? "6px 6px 6px 20px" : i === 5 ? "6px 6px 20px 6px" : "6px"}" data-a="tdnew" data-v="${v}">${fmt(v)}</button>`).join("")}</div>`;
   if (T.mine) h += `<div class="card col"><div class="t2" style="margin:0">У тебя уже есть активная дуэль. Дождись соперника или закрой её.</div>${btn("Закрыть дуэль", "tdcancel", `data-i="${T.mine}"`, "o")}</div>`;
   h += `<div class="sec">Открытые вызовы · ${T.rows.length}</div>`;
   h += T.rows.length ? `<div class="gml" style="margin:0 0 8px">${T.rows.map(x => `<div class="card" style="padding:10px 14px"><div class="grow"><div class="t1" style="font-size:15px">${esc(x.n1)}</div><div class="t2" style="margin:0;font-size:12px">Ставка ${fmt(x.stake)} · бьёт ${x.t1} тапов</div></div>${btn("Принять", "tdjoin", `data-i="${x.id}" data-v="${x.stake}"`)}</div>`).join("")}</div>` : `<div class="t2" style="text-align:center;margin:8px">Пока никто не вызвал. Брось вызов первым</div>`;
-  h += `<div class="sec">Лучшие дуэлянты</div><div class="gml" style="margin:0 0 8px">${T.top.map((x, i) => `<div class="card" style="padding:8px 14px"><div class="t1" style="font-size:15px;width:26px">${i + 1}</div><div class="grow t1" style="font-size:15px">${esc(x.name)}</div><div class="t2" style="margin:0;font-size:12px">${x.w}-${x.l}-${x.d}</div></div>`).join("") || `<div class="t2" style="text-align:center">Пусто</div>`}</div>`;
-  return h;
+  h += `<div class="sec">Таблица лидеров</div>`;
+  h += T.top.length ? `<div class="gml" style="margin:0 0 8px">${T.top.map((x, k) => `<div class="card${x.uid === T.id ? " p" : ""}" style="padding:10px 14px"><div style="width:28px;font-weight:800;font-size:16px;color:${k === 0 ? "#ffd54f" : k === 1 ? "#cfd8dc" : k === 2 ? "#ffab76" : "var(--out)"}">${k < 3 ? ic("medal", 22) : k + 1}</div><div class="grow"><div class="t1" style="font-size:15px">${esc(x.name)}</div><div class="t2" style="margin:0;font-size:11px">${x.w} п · ${x.d} н · ${x.l} пор</div></div><b style="font-size:18px">${x.elo}</b></div>`).join("")}</div>` : `<div class="t2" style="text-align:center;margin:16px">Пока никто не сыграл. Брось вызов и стань первым!</div>`;
+  return h + `<div class="t2" style="font-size:12px;margin:4px 6px">Старт 1000. Побеждаешь сильного, получаешь больше.</div>`;
 }
 async function tdPlay(r0, mine) {
   const taps = await runTaps("Дуэль тапов", r0.dur || 20000, "Ставка " + fmt(r0.stake) + (r0.t1 ? " · нужно больше " + r0.t1 : ""));
@@ -2525,11 +2530,18 @@ async function feTick() {
 }
 setInterval(feTick, 75000);
 
-{ const _m = A.mnu; A.mnu = function (e) { const k = e.dataset.k; if (k === "td" || k === "cr") { tab = 5; moreSub = k === "td" ? 7 : 8; render(); $("#view").scrollTop = 0; if (k === "td") tdLoad(); else crLoad(); return; } return _m.apply(this, arguments); }; }
+{ const _m = A.mnu; A.mnu = function (e) { const k = e.dataset.k; if (k === "cr") { tab = 5; moreSub = 8; render(); $("#view").scrollTop = 0; crLoad(); return; } return _m.apply(this, arguments); }; }
 { const _t = tMore; tMore = function () {
-  if (moreSub === 7) return mback + tdPage();
   if (moreSub === 8) return mback + crPage();
   const h = _t(); if (moreSub !== 0) return h;
   const k = h.indexOf(mbtn("ghost", "Кот-призрак", "gh")); if (k < 0) return h;
-  return h.slice(0, k) + mbtn("tap", "Дуэли тапов", "td") + mbtn("shield", "Клановые рейды", "cr") + h.slice(k);
+  return h.slice(0, k) + mbtn("shield", "Клановые рейды", "cr") + h.slice(k);
 }; }
+
+{ const _tc = tCasino; tCasino = function () {
+  if (cz.sub === 13) return tdPage();
+  const h = _tc(); if (cz.sub !== 0) return h;
+  const card = `<div class="gmc"><div class="gmh"><div class="circ">${ic("tap", 26)}</div><span class="grow"><b>Дуэли тапов · 20 секунд</b><div class="t2" style="margin:2px 0 0;font-size:12px;font-weight:500">Кто больше натапает, тот забирает ставку. Есть рейтинг</div></span></div><div class="gmb"><button data-a="czgo" data-k="13">Играть</button></div></div>`;
+  const k = h.indexOf('<div class="t2" style="margin:14px 6px;font-size:12px">Играть можно'); if (k < 6 || h.slice(k - 6, k) !== "</div>") return h + card; return h.slice(0, k - 6) + card + h.slice(k - 6);
+}; }
+{ const _cg = A.czgo; A.czgo = function (e) { if (+e.dataset.k === 13) { if (S.pts < 0) return kickOut(); cz.sub = 13; render(); tdLoad(); $("#view").scrollTop = 0; return; } return _cg.apply(this, arguments); }; }
