@@ -2458,7 +2458,7 @@ async function tdPlay(r0, mine) {
   if (r.cheat) { toast("Автокликер замечен: дуэль проиграна"); tdLoad(); return; }
   if (r.st === "done") {
     const c = r.claimed ? {amount: 0} : await api("td_claim", {id: r0.id}); if (c && c.amount > 0) { S.pts += c.amount; mark(); save(true); }
-    const w = r.winner; modal(`<div style="text-align:center"><div class="t1" style="font-size:22px;color:${w === 1 ? "var(--pri)" : "inherit"}">${w === 1 ? "Победа!" : w === 2 ? "Поражение" : "Ничья"}</div><div class="t2">Ты: ${r.my} · соперник: ${r.their < 0 ? "не сыграл" : r.their}</div><div class="t1" style="font-size:18px">${c && c.amount ? "+" + fmt(c.amount) : ""}</div>${btn("Ок", "close")}</div>`); if (w === 1) try { fxConfetti(80); jingle(2); } catch (e) {}
+    const w = r.winner; modal(`<div style="text-align:center"><div class="t1" style="font-size:22px;color:${w === 1 ? "var(--pri)" : "inherit"}">${w === 1 ? "Победа!" : w === 2 ? "Поражение" : "Ничья"}</div><div class="t2">Ты: ${r.my} · соперник: ${r.their < 0 ? "не сыграл" : r.their}</div><div class="t1" style="font-size:18px">${c && c.amount ? "+" + fmt(c.amount) : ""}</div>${btn("Ок", "mclose")}</div>`); if (w === 1) try { fxConfetti(80); jingle(2); } catch (e) {}
   } else toast("Результат: " + r.score + " тапов. Ждём соперника");
   tdLoad();
 }
@@ -2490,8 +2490,8 @@ async function crRun(kind, target) {
   const s = await api("cr_start", {kind, target}); if (!s || s.error) { toast((s && s.error) || "Нет связи"); return; }
   const taps = await runTaps(kind === "guard" ? "Дежурство" : "Рейд", s.dur, kind === "guard" ? "Чем больше тапов, тем крепче защита" : "Побей защиту клана");
   const r = await api("cr_end", {taps}); if (!r || r.error) { toast((r && r.error) || "Нет связи"); crLoad(); return; }
-  if (r.kind === "guard") modal(`<div style="text-align:center"><div class="t1" style="font-size:20px">Дежурство завершено</div><div class="t2">Твой результат ${r.score} · защита клана ${r.def}</div>${btn("Ок", "close")}</div>`);
-  else { if (r.win && r.loot) try { fxConfetti(80); jingle(2); } catch (e) {} modal(`<div style="text-align:center"><div class="t1" style="font-size:22px;color:${r.win ? "var(--pri)" : "inherit"}">${r.win ? "Рейд удался!" : "Рейд отбит"}</div><div class="t2">${r.score} против защиты ${r.def} клана «${esc(r.target)}»</div>${r.win ? `<div class="t1" style="font-size:18px">В казну клана: +${fmt(r.loot)}</div>` : ""}${btn("Ок", "close")}</div>`); }
+  if (r.kind === "guard") modal(`<div style="text-align:center"><div class="t1" style="font-size:20px">Дежурство завершено</div><div class="t2">Твой результат ${r.score} · защита клана ${r.def}</div>${btn("Ок", "mclose")}</div>`);
+  else { if (r.win && r.loot) try { fxConfetti(80); jingle(2); } catch (e) {} modal(`<div style="text-align:center"><div class="t1" style="font-size:22px;color:${r.win ? "var(--pri)" : "inherit"}">${r.win ? "Рейд удался!" : "Рейд отбит"}</div><div class="t2">${r.score} против защиты ${r.def} клана «${esc(r.target)}»</div>${r.win ? `<div class="t1" style="font-size:18px">В казну клана: +${fmt(r.loot)}</div>` : ""}${btn("Ок", "mclose")}</div>`); }
   crLoad();
 }
 A.crguard = () => crRun("guard", 0);
@@ -2545,3 +2545,10 @@ setInterval(feTick, 75000);
   const k = h.indexOf('<div class="t2" style="margin:14px 6px;font-size:12px">Играть можно'); if (k < 6 || h.slice(k - 6, k) !== "</div>") return h + card; return h.slice(0, k - 6) + card + h.slice(k - 6);
 }; }
 { const _cg = A.czgo; A.czgo = function (e) { if (+e.dataset.k === 13) { if (S.pts < 0) return kickOut(); cz.sub = 13; render(); tdLoad(); $("#view").scrollTop = 0; return; } return _cg.apply(this, arguments); }; }
+
+// ---------- объявление о заморозке проекта
+A.frzlink = function () { const u = "https://t.me/tmfqp"; try { if (tg && tg.openTelegramLink) return tg.openTelegramLink(u); } catch (e) {} window.open(u, "_blank"); };
+const frzShow = () => {
+  try { modal(`<div style="text-align:center"><div class="circ" style="margin:0 auto 12px;width:64px;height:64px">${ic("flake", 32)}</div><div class="t1" style="font-size:20px;margin-bottom:8px">Игра заморожена</div><div class="t2" style="font-size:14px;line-height:1.45;margin:0 0 14px">На данный момент обновления выходить не будут: автор работает над другим проектом. Вся информация здесь: <b>@tmfqp</b></div><div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">${btn(ic("tg", 16) + " @tmfqp", "frzlink")}${btn("Понятно", "mclose", "", "o")}</div></div>`); } catch (e) {}
+};
+const frzIv = setInterval(() => { if (document.querySelector(".mdl, .tdov")) return; clearInterval(frzIv); frzShow(); }, 900);
