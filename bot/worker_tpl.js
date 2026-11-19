@@ -1457,7 +1457,7 @@ async function api(path, req, env) {
     const e = await kvj("fe" + id), ms = Date.now(), pub = x => ({type: x.type, ts: x.ts, left: x.ts + 70000 - Date.now(), cat: x.type === "shell" ? x.ans : undefined, sw: x.sw});
     if (e && !e.done && ms < e.ts + 70000) return J({ev: pub(e)});
     if (e && now - e.at < 240) return J({none: 1});
-    const type = crnd(2) === 0 ? "rain" : "shell", sw = []; for (let i = 0; i < 9; i++) { const a = crnd(3); sw.push([a, (a + 1 + crnd(2)) % 3]); }
+    const type = "shell", sw = []; for (let i = 0; i < 9; i++) { const a = crnd(3); sw.push([a, (a + 1 + crnd(2)) % 3]); }
     const ev = {type, ans: crnd(3), sw: type === "shell" ? sw : undefined, ts: ms, at: now, done: 0};
     await kvs("fe" + id, ev); return J({ev: pub(ev)});
   }
