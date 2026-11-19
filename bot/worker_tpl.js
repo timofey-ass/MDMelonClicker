@@ -67,6 +67,7 @@ async function init(db) {
   try { await db.prepare("CREATE TABLE IF NOT EXISTS clans (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE, owner INTEGER, ts INTEGER)").run(); } catch (e) {}
   try { await db.prepare("CREATE TABLE IF NOT EXISTS clan_m (uid INTEGER PRIMARY KEY, cid INTEGER, ts INTEGER)").run(); } catch (e) {}
   for (const q of ["ALTER TABLE clans ADD COLUMN descr TEXT DEFAULT ''", "ALTER TABLE clans ADD COLUMN icon TEXT DEFAULT '🛡'", "ALTER TABLE clans ADD COLUMN mode INTEGER DEFAULT 0", "ALTER TABLE clans ADD COLUMN bank REAL DEFAULT 0", "ALTER TABLE clans ADD COLUMN badges TEXT DEFAULT ''", "ALTER TABLE clans ADD COLUMN style TEXT DEFAULT ''", "ALTER TABLE clan_m ADD COLUMN role INTEGER DEFAULT 0", "ALTER TABLE clan_m ADD COLUMN don REAL DEFAULT 0"]) { try { await db.prepare(q).run(); } catch (e) {} }
+  for (const q of ["CREATE TABLE IF NOT EXISTS td (id INTEGER PRIMARY KEY AUTOINCREMENT, p1 INTEGER, n1 TEXT, p2 INTEGER, n2 TEXT, stake REAL, st TEXT, s1 REAL, s2 REAL, t1 INTEGER DEFAULT 0, t2 INTEGER DEFAULT 0, res TEXT, c1 INTEGER DEFAULT 0, c2 INTEGER DEFAULT 0, ts INTEGER)", "CREATE TABLE IF NOT EXISTS tdr (uid INTEGER PRIMARY KEY, name TEXT, w INTEGER DEFAULT 0, l INTEGER DEFAULT 0, d INTEGER DEFAULT 0)", "CREATE TABLE IF NOT EXISTS clg (cid INTEGER, uid INTEGER, score INTEGER, ts INTEGER, PRIMARY KEY (cid,uid))", "CREATE TABLE IF NOT EXISTS clraid (id INTEGER PRIMARY KEY AUTOINCREMENT, att INTEGER, an TEXT, def INTEGER, dn TEXT, uid INTEGER, name TEXT, sc INTEGER, ds INTEGER, win INTEGER, loot REAL, ts INTEGER)", "ALTER TABLE clans ADD COLUMN wall INTEGER DEFAULT 0", "ALTER TABLE clans ADD COLUMN shield INTEGER DEFAULT 0"]) { try { await db.prepare(q).run(); } catch (e) {} }
   try { await db.prepare("CREATE TABLE IF NOT EXISTS clan_req (uid INTEGER PRIMARY KEY, cid INTEGER, ts INTEGER)").run(); } catch (e) {}
   try { await db.prepare("CREATE TABLE IF NOT EXISTS clan_chat (id INTEGER PRIMARY KEY AUTOINCREMENT, cid INTEGER, uid INTEGER, name TEXT, text TEXT, ts INTEGER)").run(); } catch (e) {}
   ready = true;
@@ -221,7 +222,7 @@ async function lbTrack(db, env, now) {
     }
   }
 }
-const RL = new Map(), RL_HEAVY = /^(ns_|bn_|evt_|cz_|ch_|chg_(?!state|list|top)|gh_(?!state)|cg_(?!state|list)|dc_|p2_|(offer|accept|cancel)$|chat_send|promo_use|bm_buy|loan_|uc_submit|idea_submit|import|fr_|gift|clan_)/;
+const RL = new Map(), RL_HEAVY = /^(ns_|bn_|evt_|cz_|ch_|chg_(?!state|list|top)|td_(?!state|list)|fe_|cr_(?!state)|gh_(?!state)|cg_(?!state|list)|dc_|p2_|(offer|accept|cancel)$|chat_send|promo_use|bm_buy|loan_|uc_submit|idea_submit|import|fr_|gift|clan_)/;
 function rateHit(id, path, now) {
   if (id === ADMIN) return false;
   if (RL.size > 5000) RL.clear();
@@ -1360,6 +1361,172 @@ async function api(path, req, env) {
       } catch (e) { return J(r); }
     }
     return J({error: "?"});
+  }
+  // ---------- защита от автокликера: человеческий ли ритм тапов
+  const humanTaps = (arr, dur) => {
+    if (!Array.isArray(arr) || arr.length > 420) return "bot";
+    const t = arr.map(Number); if (t.some(x => !isFinite(x) || x < 0 || x > dur + 1500)) return "bot";
+    for (let i = 1; i < t.length; i++) if (t[i] < t[i - 1]) return "bot";
+    const n = t.length; if (n < 2) return null;
+    const iv = []; for (let i = 1; i < n; i++) iv.push(t[i] - t[i - 1]);
+    if (n >= 12 && iv.filter(x => x < 50).length / iv.length > .15) return "bot";
+    let j = 0; for (let i = 0; i < n; i++) { while (t[i] - t[j] > 1000) j++; if (i - j + 1 > 16) return "bot"; }
+    if (n >= 40) { const m = iv.reduce((a, x) => a + x, 0) / iv.length, sd = Math.sqrt(iv.reduce((a, x) => a + (x - m) * (x - m), 0) / iv.length); if (sd / m < .1) return "bot"; }
+    return null;
+  };
+  const strikeGet = async () => { const r = await db.prepare("SELECT v FROM kv WHERE k=?").bind("tb" + id).first(); return r ? Number(r.v) || 0 : 0; };
+  const strikeAdd = async () => { const n = (await strikeGet()) + 1; await db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES (?,?)").bind("tb" + id, String(n)).run(); return n; };
+  const kvj = async k => { const r = await db.prepare("SELECT v FROM kv WHERE k=?").bind(k).first(); try { return r ? JSON.parse(r.v) : null; } catch (e) { return null; } };
+  const kvs = (k, o) => db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES (?,?)").bind(k, JSON.stringify(o)).run();
+  const TD_DUR = 20000;
+  // ---------- дуэли тапов
+  const tdFinish = async (tb, t1, t2, why) => {
+    const w = t1 > t2 ? 1 : t2 > t1 ? 2 : 0, win = Math.floor(tb.stake * 1.9), res = {winner: w, t1, t2, why: why || "", pay1: w === 1 ? win : w === 0 ? tb.stake : 0, pay2: w === 2 ? win : w === 0 ? tb.stake : 0};
+    const r = await db.prepare("UPDATE td SET st='done', t1=?, t2=?, res=? WHERE id=? AND st='play2'").bind(t1, t2, JSON.stringify(res), tb.id).run();
+    if (r.meta.changes === 1) for (const [u, n, k] of [[tb.p1, tb.n1, w === 1 ? "w" : w === 2 ? "l" : "d"], [tb.p2, tb.n2, w === 2 ? "w" : w === 1 ? "l" : "d"]]) { await db.prepare("INSERT OR IGNORE INTO tdr (uid,name,w,l,d) VALUES (?,?,0,0,0)").bind(u, n).run(); await db.prepare("UPDATE tdr SET name=?, " + k + "=" + k + "+1 WHERE uid=?").bind(n, u).run(); }
+  };
+  const tdSweep = async () => {
+    await db.prepare("UPDATE td SET st='cancel' WHERE st='wait' AND ts<?").bind(now - 1800).run();
+    await db.prepare("UPDATE td SET st='cancel' WHERE st='play1' AND s1<?").bind(Date.now() - 45000).run();
+    const st = (await db.prepare("SELECT * FROM td WHERE st='play2' AND s2<? LIMIT 20").bind(Date.now() - 45000).all()).results; for (const t of st) await tdFinish(t, t.t1, -1, "time");
+  };
+  const tdActive = () => db.prepare("SELECT * FROM td WHERE ((p1=? AND st IN ('play1','wait','play2')) OR (p2=? AND st='play2')) LIMIT 1").bind(id, id).first();
+  const tdView = (tb) => {
+    const seat = tb.p1 === id ? 1 : 2, res = tb.res ? JSON.parse(tb.res) : null, o = {id: tb.id, st: tb.st, stake: tb.stake, seat, opp: seat === 1 ? tb.n2 : tb.n1, t1: tb.t1};
+    if (res) { o.winner = res.winner === 0 ? 0 : res.winner === seat ? 1 : 2; o.my = seat === 1 ? res.t1 : res.t2; o.their = seat === 1 ? res.t2 : res.t1; o.pay = seat === 1 ? res.pay1 : res.pay2; o.claimed = !!tb["c" + seat]; }
+    if (tb.st === "cancel") { o.pay = seat === 1 && !tb.c1 ? tb.stake : 0; o.claimed = !!tb["c" + seat]; }
+    return o;
+  };
+  if (path.startsWith("td_")) {
+    await tdSweep();
+    if (path === "td_list") {
+      const rows = (await db.prepare("SELECT id,n1,stake,t1 FROM td WHERE st='wait' AND p1!=? ORDER BY id DESC LIMIT 20").bind(id).all()).results;
+      const act = await tdActive(), claims = (await db.prepare("SELECT id FROM td WHERE ((p1=? AND c1=0) OR (p2=? AND c2=0)) AND st IN ('done','cancel') ORDER BY id DESC LIMIT 5").bind(id, id).all()).results.map(x => x.id);
+      const top = (await db.prepare("SELECT uid,name,w,l,d FROM tdr WHERE w+l+d>0 ORDER BY w DESC, l ASC LIMIT 10").all()).results;
+      const me = (await db.prepare("SELECT w,l,d FROM tdr WHERE uid=?").bind(id).first()) || {w: 0, l: 0, d: 0};
+      return J({rows, mine: act ? act.id : 0, claims, top, me});
+    }
+    if (path === "td_state") { const tb = await db.prepare("SELECT * FROM td WHERE id=? AND (p1=? OR p2=?)").bind(Number(b.id), id, id).first(); return tb ? J(tdView(tb)) : J({error: "Дуэль не найдена"}); }
+    if (path === "td_create" || path === "td_join") {
+      if ((await strikeGet()) >= 3) return J({error: "Дуэли отключены: замечен автокликер"});
+      if (await tdActive()) return J({error: "У тебя уже есть активная дуэль"});
+      if (path === "td_create") {
+        const stake = Math.floor(Number(b.stake)); if (!(stake >= 100) || !isFinite(stake)) return J({error: "Неверная ставка"});
+        const r = await db.prepare("INSERT INTO td (p1,n1,stake,st,s1,ts) VALUES (?,?,?,?,?,?)").bind(id, name, stake, "play1", Date.now(), now).run();
+        return J({ok: true, id: r.meta.last_row_id, dur: TD_DUR});
+      }
+      const tb = await db.prepare("SELECT * FROM td WHERE id=? AND st='wait' AND p1!=?").bind(Number(b.id), id).first(); if (!tb) return J({error: "Дуэль уже занята"});
+      const r = await db.prepare("UPDATE td SET st='play2', p2=?, n2=?, s2=? WHERE id=? AND st='wait'").bind(id, name, Date.now(), tb.id).run();
+      if (r.meta.changes !== 1) return J({error: "Дуэль уже занята"});
+      return J({ok: true, id: tb.id, stake: tb.stake, dur: TD_DUR, t1: tb.t1});
+    }
+    if (path === "td_end") {
+      const tb = await db.prepare("SELECT * FROM td WHERE id=? AND ((p1=? AND st='play1') OR (p2=? AND st='play2'))").bind(Number(b.id), id, id).first(); if (!tb) return J({error: "Дуэль не идёт"});
+      const seat = tb.p1 === id ? 1 : 2, el = Date.now() - (seat === 1 ? tb.s1 : tb.s2);
+      if (el < TD_DUR - 600) return J({error: "Рано"});
+      const bad = el > TD_DUR + 15000 ? "time" : humanTaps(b.taps, TD_DUR);
+      if (bad) {
+        if (bad === "bot") { await strikeAdd(); }
+        if (seat === 1) { await db.prepare("UPDATE td SET st='cancel', c1=1 WHERE id=? AND st='play1'").bind(tb.id).run(); return J({cheat: bad === "bot"}); }
+        await tdFinish(tb, tb.t1, -1, bad); const t2 = await db.prepare("SELECT * FROM td WHERE id=?").bind(tb.id).first(); return J({...tdView(t2), cheat: bad === "bot"});
+      }
+      const score = b.taps.length;
+      if (seat === 1) { await db.prepare("UPDATE td SET st='wait', t1=?, ts=? WHERE id=? AND st='play1'").bind(score, now, tb.id).run(); return J({ok: true, score}); }
+      await tdFinish(tb, tb.t1, score, ""); const t2 = await db.prepare("SELECT * FROM td WHERE id=?").bind(tb.id).first(); return J(tdView(t2));
+    }
+    if (path === "td_claim") {
+      const tb = await db.prepare("SELECT * FROM td WHERE id=? AND (p1=? OR p2=?) AND st IN ('done','cancel')").bind(Number(b.id), id, id).first(); if (!tb) return J({amount: 0});
+      const seat = tb.p1 === id ? 1 : 2; if (tb.st === "cancel" && seat !== 1) return J({amount: 0});
+      const r = await db.prepare("UPDATE td SET c" + seat + "=1 WHERE id=? AND c" + seat + "=0").bind(tb.id).run(); if (r.meta.changes !== 1) return J({amount: 0});
+      let amount = tb.stake; if (tb.st === "done") { const res = JSON.parse(tb.res); amount = seat === 1 ? res.pay1 : res.pay2; }
+      await casinoPay(db, id, amount); return J({amount});
+    }
+    if (path === "td_cancel") { const r = await db.prepare("UPDATE td SET st='cancel' WHERE id=? AND p1=? AND st='wait'").bind(Number(b.id), id).run(); return J(r.meta.changes === 1 ? {ok: true} : {error: "Уже занята"}); }
+  }
+  // ---------- события на поле (золотой дождь / угадай арбуз)
+  if (path === "fe_roll") {
+    const e = await kvj("fe" + id), ms = Date.now(), pub = x => ({type: x.type, ts: x.ts, left: x.ts + 70000 - Date.now(), cat: x.type === "shell" ? x.ans : undefined, sw: x.sw});
+    if (e && !e.done && ms < e.ts + 70000) return J({ev: pub(e)});
+    if (e && now - e.at < 240) return J({none: 1});
+    const type = crnd(2) === 0 ? "rain" : "shell", sw = []; for (let i = 0; i < 9; i++) { const a = crnd(3); sw.push([a, (a + 1 + crnd(2)) % 3]); }
+    const ev = {type, ans: crnd(3), sw: type === "shell" ? sw : undefined, ts: ms, at: now, done: 0};
+    await kvs("fe" + id, ev); return J({ev: pub(ev)});
+  }
+  if (path === "fe_claim") {
+    const e = await kvj("fe" + id); if (!e || e.done) return J({error: "Нет события"});
+    const el = Date.now() - e.ts;
+    if (el < (e.type === "rain" ? 11000 : 2500)) return J({error: "Рано"});
+    e.done = 1; await kvs("fe" + id, e);
+    const u = await getUser(db, id), unit = Math.max(50, Math.floor(num(u && u.total) * 0.00002));
+    let pts = 0, ok = false;
+    if (e.type === "rain") {
+      if (el < 11000 || el > 40000) return J({error: "Время вышло"});
+      if (humanTaps(b.taps, 12000)) { await strikeAdd(); return J({error: "Подозрительный ритм: событие не засчитано"}); }
+      pts = Math.min(Array.isArray(b.taps) ? b.taps.length : 0, 45) * unit;
+    } else {
+      if (el < 2500 || el > 65000) return J({error: "Время вышло"});
+      ok = Number(b.pick) === e.ans; pts = (ok ? 25 : 3) * unit;
+    }
+    if (pts > 0) await casinoPay(db, id, pts);
+    return J({ok, pts, ans: e.ans, type: e.type});
+  }
+  // ---------- клановые рейды и защита
+  const crDef = async cid => {
+    const c = await db.prepare("SELECT wall FROM clans WHERE id=?").bind(cid).first(), g = await db.prepare("SELECT MAX(score) AS m FROM clg WHERE cid=? AND ts>?").bind(cid, now - 86400).first();
+    return Math.round(Math.max(30, (g && g.m) || 0) * (1 + .1 * ((c && c.wall) || 0)));
+  };
+  if (path.startsWith("cr_")) {
+    const my = await db.prepare("SELECT cid,role FROM clan_m WHERE uid=?").bind(id).first(); if (!my) return J({error: "Ты не в клане"});
+    if (path === "cr_state") {
+      const c = await db.prepare("SELECT id,name,icon,bank,wall,shield FROM clans WHERE id=?").bind(my.cid).first();
+      const g = await db.prepare("SELECT score,ts FROM clg WHERE cid=? AND uid=? AND ts>?").bind(my.cid, id, now - 86400).first();
+      const tg = (await db.prepare("SELECT c.id,c.name,c.icon,c.shield,c.bank,(SELECT COUNT(*) FROM clan_m m WHERE m.cid=c.id) AS n FROM clans c WHERE c.id!=? ORDER BY (SELECT COALESCE(SUM(u.total),0) FROM clan_m m JOIN users u ON u.id=m.uid WHERE m.cid=c.id) DESC LIMIT 15").bind(my.cid).all()).results.map(x => ({id: x.id, name: x.name, icon: x.icon, n: x.n, shield: Math.max(0, (x.shield || 0) - now), loot: Math.floor((x.bank || 0) * .05)}));
+      const log = (await db.prepare("SELECT att,an,def,dn,name,sc,ds,win,loot,ts FROM clraid WHERE att=? OR def=? ORDER BY id DESC LIMIT 8").bind(my.cid, my.cid).all()).results;
+      const cd = await kvj("crt" + id);
+      return J({clan: {id: c.id, name: c.name, icon: c.icon, bank: c.bank || 0, wall: c.wall || 0, shield: Math.max(0, (c.shield || 0) - now), def: await crDef(my.cid), wallCost: 1e8 * Math.pow(3, c.wall || 0), role: my.role}, my: g || null, cool: cd && cd.until > now ? cd.until - now : 0, tg, log, myc: my.cid});
+    }
+    if (path === "cr_wall") {
+      if (my.role < 1) return J({error: "Только глава или офицер"});
+      const c = await db.prepare("SELECT wall,bank FROM clans WHERE id=?").bind(my.cid).first(), lv = c.wall || 0; if (lv >= 10) return J({error: "Максимальная стена"});
+      const cost = 1e8 * Math.pow(3, lv); if ((c.bank || 0) < cost) return J({error: "В казне не хватает монет"});
+      const r = await db.prepare("UPDATE clans SET bank=bank-?, wall=? WHERE id=? AND COALESCE(wall,0)=? AND bank>=?").bind(cost, lv + 1, my.cid, lv, cost).run();
+      return r.meta.changes === 1 ? J({ok: true, wall: lv + 1}) : J({error: "Попробуй ещё раз"});
+    }
+    if (path === "cr_start") {
+      if ((await strikeGet()) >= 3) return J({error: "Рейды отключены: замечен автокликер"});
+      const kind = b.kind === "raid" ? "raid" : "guard", cd = await kvj("crt" + id);
+      if (cd && cd.until > now) return J({error: "Отдохни ещё " + Math.ceil((cd.until - now) / 60) + " мин"});
+      let target = 0;
+      if (kind === "raid") {
+        target = Number(b.target); const t = await db.prepare("SELECT id,shield FROM clans WHERE id=?").bind(target).first();
+        if (!t || t.id === my.cid) return J({error: "Нет такого клана"}); if ((t.shield || 0) > now) return J({error: "Клан под защитой"});
+      }
+      const s = Date.now(); await kvs("crr" + id, {kind, target, s});
+      return J({ok: true, dur: TD_DUR});
+    }
+    if (path === "cr_end") {
+      const run = await kvj("crr" + id); if (!run || run.done) return J({error: "Забег не идёт"});
+      run.done = 1; await kvs("crr" + id, run);
+      const el = Date.now() - run.s; if (el < TD_DUR - 600 || el > TD_DUR + 15000) return J({error: "Время вышло"});
+      if (humanTaps(b.taps, TD_DUR)) { await strikeAdd(); return J({error: "Подозрительный ритм: забег не засчитан", cheat: 1}); }
+      const score = b.taps.length;
+      if (run.kind === "guard") {
+        await db.prepare("INSERT OR REPLACE INTO clg (cid,uid,score,ts) VALUES (?,?,?,?)").bind(my.cid, id, Math.max(score, ((await db.prepare("SELECT score FROM clg WHERE cid=? AND uid=? AND ts>?").bind(my.cid, id, now - 86400).first()) || {}).score || 0), now).run();
+        await kvs("crt" + id, {until: now + 600}); return J({ok: true, kind: "guard", score, def: await crDef(my.cid)});
+      }
+      await kvs("crt" + id, {until: now + 1800});
+      const t = await db.prepare("SELECT id,name,bank,shield,owner FROM clans WHERE id=?").bind(run.target).first(), me = await db.prepare("SELECT name FROM clans WHERE id=?").bind(my.cid).first();
+      if (!t) return J({error: "Клан исчез"}); if ((t.shield || 0) > now) return J({error: "Клан уже под защитой"});
+      const def = await crDef(t.id), win = score > def; let loot = 0;
+      if (win) {
+        loot = Math.floor((t.bank || 0) * .05);
+        const r = await db.prepare("UPDATE clans SET bank=bank-?, shield=? WHERE id=? AND bank>=? AND COALESCE(shield,0)<=?").bind(loot, now + 4 * 3600, t.id, loot, now).run();
+        if (r.meta.changes !== 1) loot = 0; else await db.prepare("UPDATE clans SET bank=COALESCE(bank,0)+? WHERE id=?").bind(loot, my.cid).run();
+        tg0(t.owner, "Твой клан «" + t.name + "» зарейдили! Клан «" + me.name + "» унёс " + Math.floor(loot) + " монет из казны. Усиль стену и дежурь.");
+      }
+      await db.prepare("INSERT INTO clraid (att,an,def,dn,uid,name,sc,ds,win,loot,ts) VALUES (?,?,?,?,?,?,?,?,?,?,?)").bind(my.cid, me.name, t.id, t.name, id, name, score, def, win ? 1 : 0, loot, now).run();
+      return J({ok: true, kind: "raid", score, def, win, loot, target: t.name});
+    }
   }
   if (path === "evt_claim") {
     const e = await evtGet(db, now); if (!e || !e.cat && e.cat !== 0 || e.auto) return J({error: "Нет подарка"});

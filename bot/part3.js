@@ -2415,3 +2415,121 @@ tMore = function () {
   const k = h.indexOf(mbtn("cube", "Мастерская", "ws")); if (k < 0) return h;
   return h.slice(0, k) + mbtn("ghost", "Кот-призрак", "gh") + mbtn("cat", "Энциклопедия котов", "enc") + h.slice(k);
 };
+
+// ---------- Арена: дуэли тапов, клановые рейды, события на поле
+let TDS = null, CRS = null, feBusy = false;
+const rv = n => Math.round(n);
+// забег на 20 секунд: пишем время каждого настоящего тапа (синтетические события игнорируются)
+function runTaps(title, dur, sub) {
+  return new Promise(res => {
+    const el = document.createElement("div"); el.className = "tdov";
+    el.innerHTML = `<div class="tdt">${esc(title)}</div><div class="tds">${esc(sub || "")}</div><div class="tdn" id="tdn">0</div><div class="tdc" id="tdc">3</div><button class="tdb" id="tdb" disabled>${ic("tap", 64)}</button><div class="tdbar"><i id="tdi"></i></div>`;
+    document.body.appendChild(el);
+    const taps = []; let t0 = 0, on = false, cnt = 3; const $n = el.querySelector("#tdn"), $c = el.querySelector("#tdc"), $b = el.querySelector("#tdb"), $i = el.querySelector("#tdi");
+    const iv = setInterval(() => { cnt--; if (cnt > 0) { $c.textContent = cnt; return; } clearInterval(iv); $c.textContent = "Тапай!"; $b.disabled = false; on = true; t0 = performance.now(); hap("heavy");
+      const tm = setInterval(() => { const p = (performance.now() - t0) / dur; $i.style.width = Math.min(100, p * 100) + "%"; if (p >= 1) { clearInterval(tm); on = false; $b.disabled = true; setTimeout(() => { el.remove(); res(taps); }, 350); } }, 50); }, 900);
+    $b.addEventListener("pointerdown", ev => { if (!on || !ev.isTrusted) return; taps.push(Math.round(performance.now() - t0)); $n.textContent = taps.length; $b.classList.add("pr"); setTimeout(() => $b.classList.remove("pr"), 70); hap("light"); });
+  });
+}
+async function tdLoad() {
+  const r = await api("td_list", {}); if (!r || r.error) return; TDS = r;
+  for (const id of r.claims || []) { const c = await api("td_claim", {id}); if (c && c.amount > 0) { S.pts += c.amount; mark(); save(true); toast("Дуэль: +" + fmt(c.amount)); } }
+  if (moreSub === 7) render();
+}
+function tdPage() {
+  if (!TDS) return `<div class="t2" style="text-align:center;margin:20px">Загружаю…</div>`;
+  const T = TDS, st = [1e3, 1e4, 1e5, 1e6, 1e7, 1e8];
+  let h = `<div class="card col"><div class="t1" style="display:flex;align-items:center;gap:8px;color:var(--pri)">${ic("tap", 20)} Дуэли тапов</div><div class="t2" style="margin:0;font-size:12px;line-height:1.4">20 секунд, кто больше натапает. Ставки в монетах, победитель забирает ×1.9. Автокликеры и нечеловеческий ритм определяются сервером: за это проигрыш и бан дуэлей.</div><div class="t2" style="margin:6px 0 0;font-size:12px">Твои итоги: ${T.me.w} побед · ${T.me.l} поражений · ${T.me.d} ничьих</div></div>`;
+  h += `<div class="sec">Бросить вызов</div><div class="gml" style="margin:0 0 8px;display:grid;grid-template-columns:repeat(3,1fr);gap:2px">${st.map((v, i) => `<button class="btn ${S.pts >= v ? "" : "dis"}" style="background:var(--sch);color:var(--onv);border-radius:${i === 0 ? "20px 6px 6px 6px" : i === 2 ? "6px 20px 6px 6px" : i === 3 ? "6px 6px 6px 20px" : i === 5 ? "6px 6px 20px 6px" : "6px"}" data-a="tdnew" data-v="${v}">${fmt(v)}</button>`).join("")}</div>`;
+  if (T.mine) h += `<div class="card col"><div class="t2" style="margin:0">У тебя уже есть активная дуэль. Дождись соперника или закрой её.</div>${btn("Закрыть дуэль", "tdcancel", `data-i="${T.mine}"`, "o")}</div>`;
+  h += `<div class="sec">Открытые вызовы · ${T.rows.length}</div>`;
+  h += T.rows.length ? `<div class="gml" style="margin:0 0 8px">${T.rows.map(x => `<div class="card" style="padding:10px 14px"><div class="grow"><div class="t1" style="font-size:15px">${esc(x.n1)}</div><div class="t2" style="margin:0;font-size:12px">Ставка ${fmt(x.stake)} · бьёт ${x.t1} тапов</div></div>${btn("Принять", "tdjoin", `data-i="${x.id}" data-v="${x.stake}"`)}</div>`).join("")}</div>` : `<div class="t2" style="text-align:center;margin:8px">Пока никто не вызвал. Брось вызов первым</div>`;
+  h += `<div class="sec">Лучшие дуэлянты</div><div class="gml" style="margin:0 0 8px">${T.top.map((x, i) => `<div class="card" style="padding:8px 14px"><div class="t1" style="font-size:15px;width:26px">${i + 1}</div><div class="grow t1" style="font-size:15px">${esc(x.name)}</div><div class="t2" style="margin:0;font-size:12px">${x.w}-${x.l}-${x.d}</div></div>`).join("") || `<div class="t2" style="text-align:center">Пусто</div>`}</div>`;
+  return h;
+}
+async function tdPlay(r0, mine) {
+  const taps = await runTaps("Дуэль тапов", r0.dur || 20000, "Ставка " + fmt(r0.stake) + (r0.t1 ? " · нужно больше " + r0.t1 : ""));
+  const r = await api("td_end", {id: r0.id, taps}); if (!r || r.error) { toast((r && r.error) || "Нет связи"); tdLoad(); return; }
+  if (r.cheat) { toast("Автокликер замечен: дуэль проиграна"); tdLoad(); return; }
+  if (r.st === "done") {
+    const c = r.claimed ? {amount: 0} : await api("td_claim", {id: r0.id}); if (c && c.amount > 0) { S.pts += c.amount; mark(); save(true); }
+    const w = r.winner; modal(`<div style="text-align:center"><div class="t1" style="font-size:22px;color:${w === 1 ? "var(--pri)" : "inherit"}">${w === 1 ? "Победа!" : w === 2 ? "Поражение" : "Ничья"}</div><div class="t2">Ты: ${r.my} · соперник: ${r.their < 0 ? "не сыграл" : r.their}</div><div class="t1" style="font-size:18px">${c && c.amount ? "+" + fmt(c.amount) : ""}</div>${btn("Ок", "close")}</div>`); if (w === 1) try { fxConfetti(80); jingle(2); } catch (e) {}
+  } else toast("Результат: " + r.score + " тапов. Ждём соперника");
+  tdLoad();
+}
+A.tdnew = async function (e) {
+  const v = +e.dataset.v; if (S.pts < v) return toast("Не хватает монет");
+  S.pts -= v; mark(); save(true); const r = await api("td_create", {stake: v}); if (!r || r.error) { S.pts += v; mark(); save(true); return toast((r && r.error) || "Нет связи"); }
+  tdPlay({id: r.id, stake: v, dur: r.dur});
+};
+A.tdjoin = async function (e) {
+  const v = +e.dataset.v; if (S.pts < v) return toast("Не хватает монет");
+  S.pts -= v; mark(); save(true); const r = await api("td_join", {id: +e.dataset.i}); if (!r || r.error) { S.pts += v; mark(); save(true); toast((r && r.error) || "Нет связи"); return tdLoad(); }
+  tdPlay({id: r.id, stake: r.stake, dur: r.dur, t1: r.t1});
+};
+A.tdcancel = async function (e) { const r = await api("td_cancel", {id: +e.dataset.i}); if (r && r.error) toast(r.error); tdLoad(); };
+
+async function crLoad() { const r = await api("cr_state", {}); CRS = r || {error: "Нет связи"}; if (moreSub === 8) render(); }
+const crTime = s => s >= 3600 ? Math.ceil(s / 3600) + " ч" : Math.ceil(s / 60) + " мин";
+function crPage() {
+  if (!CRS) return `<div class="t2" style="text-align:center;margin:20px">Загружаю…</div>`;
+  if (CRS.error) return `<div class="card col"><div class="t1" style="color:var(--pri)">${ic("shield", 20)} Рейды</div><div class="t2" style="margin:0">${esc(CRS.error)}. Вступи в клан в разделе «Сообщество», чтобы защищать его и рейдить другие.</div></div>`;
+  const c = CRS.clan, mgr = c.role >= 1;
+  let h = `<div class="card col"><div class="t1" style="display:flex;align-items:center;gap:8px;color:var(--pri)">${ic("shield", 20)} Клановые рейды</div><div class="t2" style="margin:0;font-size:12px;line-height:1.4">Дежурь, чтобы поднять защиту клана на 24 часа. Рейдь чужие кланы: если твой забег сильнее их защиты, клан забирает 5% их казны. После рейда клан получает щит на 4 часа.</div></div>`;
+  h += `<div class="card col"><div style="display:flex;justify-content:space-between"><span class="t1" style="font-size:17px">${esc(c.name)}</span><span class="t2" style="margin:0">Казна ${fmt(c.bank)}</span></div><div class="t2" style="margin:2px 0 0;font-size:13px">Защита: <b>${c.def}</b> · стена ур. ${c.wall}/10${c.shield ? " · щит ещё " + crTime(c.shield) : ""}</div><div class="t2" style="margin:2px 0 8px;font-size:12px">Твой лучший забег дежурства: ${CRS.my ? CRS.my.score : "нет"}</div>${CRS.cool ? `<div class="t2" style="margin:0 0 6px;font-size:12px">Отдых: ${crTime(CRS.cool)}</div>` : ""}<div style="display:flex;gap:6px;flex-wrap:wrap">${btn(ic("shield", 16) + " Дежурить", "crguard", "", CRS.cool ? "dis" : "")}${mgr && c.wall < 10 ? btn(ic("up", 16) + " Стена · " + fmt(c.wallCost), "crwall", "", "o") : ""}</div></div>`;
+  h += `<div class="sec">Цели для рейда</div><div class="gml" style="margin:0 0 8px">${CRS.tg.map(x => `<div class="card" style="padding:10px 14px"><div class="grow"><div class="t1" style="font-size:15px">${esc(x.name)}</div><div class="t2" style="margin:0;font-size:12px">${x.n} игроков · добыча до ${fmt(x.loot)}${x.shield ? " · щит " + crTime(x.shield) : ""}</div></div>${btn("Рейд", "crraid", `data-i="${x.id}"`, x.shield || CRS.cool ? "dis" : "")}</div>`).join("") || `<div class="t2" style="text-align:center">Других кланов нет</div>`}</div>`;
+  h += `<div class="sec">Журнал</div><div class="gml" style="margin:0 0 8px">${CRS.log.map(x => { const att = x.att === CRS.myc; return `<div class="card" style="padding:8px 14px"><div class="grow"><div class="t1" style="font-size:14px">${att ? "Мы → " + esc(x.dn) : esc(x.an) + " → нас"}</div><div class="t2" style="margin:0;font-size:12px">${esc(x.name)}: ${x.sc} против ${x.ds} · ${x.win ? (att ? "успех, +" : "ограбили, −") + fmt(x.loot) : (att ? "провал" : "отбились")}</div></div></div>`; }).join("") || `<div class="t2" style="text-align:center">Пока тихо</div>`}</div>`;
+  return h;
+}
+async function crRun(kind, target) {
+  const s = await api("cr_start", {kind, target}); if (!s || s.error) { toast((s && s.error) || "Нет связи"); return; }
+  const taps = await runTaps(kind === "guard" ? "Дежурство" : "Рейд", s.dur, kind === "guard" ? "Чем больше тапов, тем крепче защита" : "Побей защиту клана");
+  const r = await api("cr_end", {taps}); if (!r || r.error) { toast((r && r.error) || "Нет связи"); crLoad(); return; }
+  if (r.kind === "guard") modal(`<div style="text-align:center"><div class="t1" style="font-size:20px">Дежурство завершено</div><div class="t2">Твой результат ${r.score} · защита клана ${r.def}</div>${btn("Ок", "close")}</div>`);
+  else { if (r.win && r.loot) try { fxConfetti(80); jingle(2); } catch (e) {} modal(`<div style="text-align:center"><div class="t1" style="font-size:22px;color:${r.win ? "var(--pri)" : "inherit"}">${r.win ? "Рейд удался!" : "Рейд отбит"}</div><div class="t2">${r.score} против защиты ${r.def} клана «${esc(r.target)}»</div>${r.win ? `<div class="t1" style="font-size:18px">В казну клана: +${fmt(r.loot)}</div>` : ""}${btn("Ок", "close")}</div>`); }
+  crLoad();
+}
+A.crguard = () => crRun("guard", 0);
+A.crraid = e => crRun("raid", +e.dataset.i);
+A.crwall = async function () { const r = await api("cr_wall", {}); if (r && r.error) toast(r.error); else toast("Стена усилена"); crLoad(); };
+
+// события на поле
+const feChip = ev => {
+  document.querySelectorAll(".fechip").forEach(x => x.remove()); const d = document.createElement("button"); d.className = "fechip";
+  d.innerHTML = `${ic(ev.type === "rain" ? "coin" : "paw", 18)}<span>${ev.type === "rain" ? "Золотой дождь!" : "Угадай арбуз!"}</span>`; document.body.appendChild(d);
+  const kill = setTimeout(() => d.remove(), Math.max(5000, ev.left || 60000)); d.onclick = () => { clearTimeout(kill); d.remove(); feRun(ev); };
+};
+async function feDone(taps, pick, type) {
+  const r = await api("fe_claim", {taps, pick}); if (!r || r.error) { toast((r && r.error) || "Нет связи"); return; }
+  if (r.pts > 0) { S.pts += r.pts; S.total += r.pts; S.run += r.pts; mark(); save(true); }
+  toast((type === "shell" ? (r.ok ? "Угадал! " : "Не угадал. ") : "Поймано! ") + "+" + fmt(r.pts)); if (r.pts > 0) { hap("ok"); try { fxConfetti(r.ok || type === "rain" ? 60 : 10); } catch (e) {} }
+}
+function feRun(ev) {
+  if (feBusy) return; feBusy = true; const el = document.createElement("div"); el.className = "tdov feov"; document.body.appendChild(el);
+  const end = () => { el.remove(); feBusy = false; };
+  if (ev.type === "rain") {
+    el.innerHTML = `<div class="tdt">Золотой дождь</div><div class="tds">Лови монеты пальцем</div><div class="tdn" id="fen">0</div><div class="tdbar"><i id="fei"></i></div>`;
+    const taps = [], t0 = performance.now(), n = el.querySelector("#fen"), bar = el.querySelector("#fei");
+    const sp = setInterval(() => { const c = document.createElement("div"); c.className = "fec"; c.style.left = (6 + Math.random() * 78) + "%"; c.style.animationDuration = (2.2 + Math.random() * 1.6) + "s"; c.innerHTML = ic("coin", 40); c.addEventListener("pointerdown", e => { if (!e.isTrusted || c.dataset.d) return; c.dataset.d = 1; taps.push(Math.round(performance.now() - t0)); n.textContent = taps.length; c.classList.add("got"); hap("light"); }); el.appendChild(c); setTimeout(() => c.remove(), 4000); }, 330);
+    const tm = setInterval(() => { const p = (performance.now() - t0) / 12000; bar.style.width = Math.min(100, p * 100) + "%"; if (p >= 1) { clearInterval(tm); clearInterval(sp); setTimeout(() => { end(); feDone(taps, 0, "rain"); }, 500); } }, 50);
+  } else {
+    el.innerHTML = `<div class="tdt">Угадай арбуз</div><div class="tds" id="fes">Запоминай, где кот</div><div class="shg" id="shg">${[0, 1, 2].map(i => `<div class="shm" data-i="${i}"><div class="shc">${ic("paw", 34)}</div><div class="shw"></div></div>`).join("")}</div>`;
+    const ms = [...el.querySelectorAll(".shm")], s = el.querySelector("#fes"), cat = ev.cat, pos = [0, 1, 2]; let can = false;
+    const place = () => ms.forEach((m, i) => m.style.transform = `translateX(${(pos[i] - 1) * 104}px)`); place();
+    ms[cat].classList.add("show"); setTimeout(() => { ms[cat].classList.remove("show"); s.textContent = "Следи внимательно…"; let k = 0; const sh = setInterval(() => { const [a, b2] = ev.sw[k], ia = pos.indexOf(a), ib = pos.indexOf(b2); [pos[ia], pos[ib]] = [pos[ib], pos[ia]]; place(); hap("light"); if (++k >= ev.sw.length) { clearInterval(sh); can = true; s.textContent = "Где кот? Выбери арбуз"; } }, 520); }, 1400);
+    ms.forEach((m, i) => m.addEventListener("pointerdown", e => { if (!can || !e.isTrusted) return; can = false; m.classList.add("show"); ms[cat].classList.add("show"); setTimeout(() => { end(); feDone([], i, "shell"); }, 900); }));
+  }
+}
+async function feTick() {
+  try { if (feBusy || document.hidden || tab !== 0 || !S || document.querySelector(".modal, .tdov, .fechip")) return; const r = await api("fe_roll", {}); if (r && r.ev) feChip(r.ev); } catch (e) {}
+}
+setInterval(feTick, 75000);
+
+{ const _m = A.mnu; A.mnu = function (e) { const k = e.dataset.k; if (k === "td" || k === "cr") { tab = 5; moreSub = k === "td" ? 7 : 8; render(); $("#view").scrollTop = 0; if (k === "td") tdLoad(); else crLoad(); return; } return _m.apply(this, arguments); }; }
+{ const _t = tMore; tMore = function () {
+  if (moreSub === 7) return mback + tdPage();
+  if (moreSub === 8) return mback + crPage();
+  const h = _t(); if (moreSub !== 0) return h;
+  const k = h.indexOf(mbtn("ghost", "Кот-призрак", "gh")); if (k < 0) return h;
+  return h.slice(0, k) + mbtn("tap", "Дуэли тапов", "td") + mbtn("shield", "Клановые рейды", "cr") + h.slice(k);
+}; }

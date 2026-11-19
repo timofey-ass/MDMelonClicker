@@ -601,3 +601,49 @@ test("Вознесение: сервер не даёт уровень выше, 
   assert.ok(!r.error);
   const st = (await call(A, "profile", { uid: 1001 })); assert.equal(st.pl, 0);
 });
+
+const human = n => { const t = []; let x = 0; for (let i = 0; i < n; i++) { x += 110 + ((i * 37) % 90); t.push(x); } return t; };
+const robot = n => Array.from({ length: n }, (_, i) => 80 + i * 70);
+
+test("дуэли тапов: человек выигрывает ×1.9, автокликер проигрывает и банится", async () => {
+  const { call, sq } = await makeEnv();
+  await call(A, "save", { rev: 0, state: baseState({ pts: 1e6, total: 1e6 }) }); await call(B, "save", { rev: 0, state: baseState({ pts: 1e6, total: 1e6 }) });
+  const c = await call(A, "td_create", { stake: 1000 }); assert.ok(c.ok);
+  assert.match((await call(A, "td_end", { id: c.id, taps: human(60) })).error || "", /Рано/);
+  sq.prepare("UPDATE td SET s1=?").run(Date.now() - 20500);
+  assert.equal((await call(A, "td_end", { id: c.id, taps: human(100) })).score, 100);
+  const j = await call(B, "td_join", { id: c.id }); assert.ok(j.ok);
+  sq.prepare("UPDATE td SET s2=?").run(Date.now() - 20500);
+  const r = await call(B, "td_end", { id: c.id, taps: human(60) }); assert.equal(r.st, "done"); assert.equal(r.winner, 2);
+  const w = await call(A, "td_claim", { id: c.id }); assert.equal(w.amount, 1900);
+  // автокликер
+  const c2 = await call(B, "td_create", { stake: 500 }); sq.prepare("UPDATE td SET s1=? WHERE id=?").run(Date.now() - 20500, c2.id);
+  const bad = await call(B, "td_end", { id: c2.id, taps: robot(200) }); assert.equal(bad.cheat, true);
+  for (let i = 0; i < 2; i++) { const c3 = await call(B, "td_create", { stake: 500 }); if (c3.error) break; sq.prepare("UPDATE td SET s1=? WHERE id=?").run(Date.now() - 20500, c3.id); await call(B, "td_end", { id: c3.id, taps: robot(200) }); }
+  assert.match((await call(B, "td_create", { stake: 500 })).error || "", /автокликер/);
+});
+
+test("события на поле: выдаются раз в несколько минут, дождь проверяет ритм", async () => {
+  const { call, sq } = await makeEnv();
+  await call(A, "save", { rev: 0, state: baseState({ pts: 1e6, total: 1e9 }) });
+  const r = await call(A, "fe_roll", {}); assert.ok(r.ev);
+  assert.equal((await call(A, "fe_roll", {})).ev.type, r.ev.type);
+  assert.match((await call(A, "fe_claim", { taps: [], pick: 0 })).error || "x", /Рано/);
+  sq.prepare("UPDATE kv SET v=json_set(v,'$.ts',?,'$.type','rain') WHERE k='fe1001'").run(Date.now() - 12500);
+  const bad = await call(A, "fe_claim", { taps: robot(40) }); assert.match(bad.error || "", /ритм/);
+  assert.equal((await call(A, "fe_roll", {})).none, 1);
+});
+
+test("клановые рейды: дежурство, рейд, щит и казна", async () => {
+  const { call, sq } = await makeEnv();
+  await call(A, "save", { rev: 0, state: baseState({ total: 2e6, run: 2e6, pts: 2e6 }) }); await call(B, "save", { rev: 0, state: baseState({ total: 2e6, run: 2e6, pts: 2e6 }) });
+  const ca = await call(A, "clan_create", { name: "Альфа" }), cb = await call(B, "clan_create", { name: "Бета" }); assert.ok(ca.ok && cb.ok);
+  sq.prepare("UPDATE clans SET bank=1000000 WHERE id=?").run(cb.id);
+  const st = await call(A, "cr_state", {}); assert.equal(st.tg.length, 1);
+  const s = await call(A, "cr_start", { kind: "raid", target: cb.id }); assert.ok(s.ok);
+  sq.prepare("UPDATE kv SET v=json_set(v,'$.s',?) WHERE k='crr1001'").run(Date.now() - 20500);
+  const e = await call(A, "cr_end", { taps: human(80) }); assert.equal(e.win, true); assert.equal(e.loot, 50000);
+  assert.equal(sq.prepare("SELECT bank FROM clans WHERE id=?").get(ca.id).bank, 50000);
+  sq.prepare("UPDATE kv SET v='{\"until\":0}' WHERE k='crt1001'").run();
+  assert.match((await call(A, "cr_start", { kind: "raid", target: cb.id })).error || "", /защитой/);
+});
