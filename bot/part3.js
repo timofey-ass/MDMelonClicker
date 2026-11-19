@@ -128,7 +128,7 @@ A.prof = async function (e) {
   const photo = own ? (tgp || r.photo) : r.photo;
   const bg = r.bnimg ? `url(${r.bnimg}) center/cover` : BNR[bn % BNR.length];
   const bnr = `<div style="height:120px;margin:-20px -18px 0;background:${bg};border-radius:28px 28px 0 0"></div>`;
-  const avh = `<div class="plw pl${Math.min(r.pl | 0, 6)} pw${own ? wdCur() : Math.min(r.wd | 0, r.pl | 0, 6)}" style="position:relative;width:96px;margin:-48px auto 8px">${wAvFx(own ? wdCur() : Math.min(r.wd | 0, r.pl | 0, 6), 1)}<div class="pfav" style="margin:0">${eq}${photo ? `<img src="${esc(photo)}" style="position:absolute;inset:0" onerror="this.remove()">` : ""}</div>${photo && r.eq >= 0 ? `<div title="Текущий кот" style="position:absolute;right:-8px;bottom:-4px;width:46px;height:46px;border-radius:50%;overflow:hidden;border:3px solid var(--surf);background:#222;box-shadow:0 2px 8px #0008">${catEl(r.eq, 46, {})}</div>` : ""}${wAvFx(own ? wdCur() : Math.min(r.wd | 0, r.pl | 0, 6), 0)}</div>`;
+  const avh = `<div class="plw pl${Math.min(r.pl | 0, 6)} pw${own ? wdCur() : wdOf(r)}" style="position:relative;width:96px;margin:-48px auto 8px">${wAvFx(own ? wdCur() : wdOf(r), 1)}<div class="pfav" style="margin:0">${eq}${photo ? `<img src="${esc(photo)}" style="position:absolute;inset:0" onerror="this.remove()">` : ""}</div>${photo && r.eq >= 0 ? `<div title="Текущий кот" style="position:absolute;right:-8px;bottom:-4px;width:46px;height:46px;border-radius:50%;overflow:hidden;border:3px solid var(--surf);background:#222;box-shadow:0 2px 8px #0008">${catEl(r.eq, 46, {})}</div>` : ""}${wAvFx(own ? wdCur() : wdOf(r), 0)}</div>`;
   const bnc = own ? `<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;align-items:center;margin:4px 0 10px">${BNR.map((g, k) => `<div data-a="setbn" data-k="${k}" style="width:30px;height:22px;border-radius:8px;background:${g};cursor:pointer;${!r.bnimg && k === bn ? "outline:2px solid var(--pri);outline-offset:2px" : ""}"></div>`).join("")}<button class="chip" style="border:0;font-family:inherit" data-a="bnup">${ic("image", 16)} Своё фото</button>${r.bnimg ? `<button class="chip" style="border:0;font-family:inherit" data-a="bndel">${ic("close", 14)}</button>` : ""}</div>` : "";
   const bch = String(r.badges || "").split("~")[0].split("").filter(c => BADGES[c]).map(c => `<span class="chip" style="display:inline-flex;gap:5px;align-items:center;font-size:12px">${bdg(c, 16)}${BADGES[c][0]}</span>`).join("");
   const tr = (r.offers || []).length ? `<div class="sec" style="margin:16px 0 6px;text-align:center">Активные обмены</div>${r.offers.map(o => `<div style="display:flex;align-items:center;justify-content:center;gap:8px;padding:3px 0">${catEl(o.give, 36, {})}<span style="color:var(--onv)">${ic("arrow", 18)}</span>${catEl(o.want, 36, {})}<span class="t2" style="font-size:12px;margin:0"><span class="rar${ITEMS[o.give][2]}">${ITEMS[o.give][1]}</span> за <span class="rar${ITEMS[o.want][2]}">${ITEMS[o.want][1]}</span></span></div>`).join("")}` : "";
@@ -140,7 +140,7 @@ A.prof = async function (e) {
   const ex = (pf.bio ? `<div class="t2" style="margin:10px 8px 0;font-style:italic;color:var(--on)">«${esc(pf.bio)}»</div>` : "") + (fav.length ? `<div class="sec" style="margin:16px 0 8px;text-align:center">Витрина</div><div style="display:flex;gap:12px;justify-content:center">${fav.map(k => catEl(+k, 68, {})).join("")}</div>` : "") + ((r.achs || []).length ? `<div class="sec" style="margin:16px 0 8px;text-align:center">Достижения · ${r.achs.length}</div><div style="display:flex;flex-wrap:wrap;gap:5px;justify-content:center">${r.achs.map(id => { const a = ACH.find(x => x[0] === id); return a ? `<span style="font-size:11px;background:var(--sch);border-radius:10px;padding:3px 8px" title="${esc(a[2])}">${ic("cup", 12)} ${esc(a[1])}</span>` : ""; }).join("")}</div>` : "");
   const grid = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px">${rows.map(x => `<div style="background:var(--sch);border-radius:16px;padding:10px 6px;text-align:center"><div style="font-size:16px;font-weight:800">${x[1]}</div><div class="t2" style="font-size:11px;margin:2px 0 0">${x[0]}</div></div>`).join("")}</div>`;
   const adm2 = isAdm && r.bnimg ? `<div style="margin-top:8px">${btn("Убрать баннер игрока", "admbn", `data-i="${uid}"`, "o")}</div>` : "";
-  modal(bnr + `<div class="pfc">${avh}<div class="t1" style="font-size:22px">${nm(r.name, r.badges)}</div>${plChip(r.pl)}<div class="t2" style="margin:2px 0 0">ID ${r.id}${isAdm ? " · " + (r.un ? `<a href="https://t.me/${r.un}" target="_blank" style="color:var(--pri)">@${esc(r.un)}</a>` : "без юзернейма") : ""}${r.clan ? ` · <span ${r.clanid ? `data-a="clview" data-i="${r.clanid}" style="cursor:pointer;color:var(--pri)"` : ""}><span style="${nsCss("~" + (r.clanst || ""))}">${esc(r.clan)}</span>${cbdg(r.clanb, 13)}</span>` : ""}</div>${stt}${r.eq >= 0 ? `<div class="t2" style="margin:6px 0 0;font-size:12px">Сейчас с котом: <span class="rar${ITEMS[r.eq][2]}">${esc(ITEMS[r.eq][1])}</span></div>` : ""}${bnc}<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:8px">${bch}</div>${ex}${tr}${frb}${own ? wSel() : ""}${invh}${grid}${adm2}${adm}<div style="margin-top:16px;text-align:center">${btn("Закрыть", "mclose", "", "t")}</div></div>`);
+  modal(bnr + `<div class="pfc">${wProf(wdOf(r))}${avh}<div class="t1" style="font-size:22px">${nm(r.name, r.badges)}</div>${plChip(r.pl)}<div class="t2" style="margin:2px 0 0">ID ${r.id}${isAdm ? " · " + (r.un ? `<a href="https://t.me/${r.un}" target="_blank" style="color:var(--pri)">@${esc(r.un)}</a>` : "без юзернейма") : ""}${r.clan ? ` · <span ${r.clanid ? `data-a="clview" data-i="${r.clanid}" style="cursor:pointer;color:var(--pri)"` : ""}><span style="${nsCss("~" + (r.clanst || ""))}">${esc(r.clan)}</span>${cbdg(r.clanb, 13)}</span>` : ""}</div>${stt}${r.eq >= 0 ? `<div class="t2" style="margin:6px 0 0;font-size:12px">Сейчас с котом: <span class="rar${ITEMS[r.eq][2]}">${esc(ITEMS[r.eq][1])}</span></div>` : ""}${bnc}<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:8px">${bch}</div>${ex}${tr}${frb}${own ? wSel() : ""}${invh}${grid}${adm2}${adm}<div style="margin-top:16px;text-align:center">${btn("Закрыть", "mclose", "", "t")}</div></div>`);
 };
 const BNR = ["linear-gradient(135deg,#ff9a3c,#ff3d6e)", "linear-gradient(135deg,#43e97b,#38f9d7)", "linear-gradient(135deg,#4facfe,#7b5cff)", "linear-gradient(135deg,#f6d365,#fda085)", "linear-gradient(135deg,#a18cd1,#fbc2eb)", "linear-gradient(135deg,#232526,#5a5f66)", "linear-gradient(135deg,#00c6ff,#0072ff)", "linear-gradient(135deg,#f953c6,#b91d73)"];
 A.setbn = async function (e) { S.bn = +e.dataset.k; mark(); save(true); await api("bn_set", {img: ""}); A.prof({dataset: {i: me.id}}); };
@@ -2271,37 +2271,42 @@ A.ascnow = function () { if (!isAdm) return; ascForce = 1; try { A.ascgo(); } fi
 A.ascgo = function () {
   if (!ascForce && ascProg() < ascNeed()) return; closeModal();
   S.pl = (S.pl || 0) + 1; S.a0 = S.total;
-  Object.assign(S, {pts: 0, run: 0, click: 0, crit: 0, fev: 0, b: BUILDS.map(() => 0), boost: 0, gems: 0, gt: 0, inv: {}, holo: [], eq: -1, hist: [], pity: 0, perks: {}, sets: [], rq2: {xp: {}, d: {}}}); delete S.rq; S.wd = Math.min(S.pl, 6);
+  Object.assign(S, {pts: 0, run: 0, click: 0, crit: 0, fev: 0, b: BUILDS.map(() => 0), boost: 0, gems: 0, gt: 0, inv: {}, holo: [], eq: -1, hist: [], pity: 0, perks: {}, sets: [], rq2: {xp: {}, d: {}}}); delete S.rq; S.wd = Math.min(S.pl, 7);
   fever = frenzy = 0; combo = 0; checkAch(); mark(); snap = {inv: {}}; save(true);
   toast("Вознесение! Титул: " + plTitle(S.pl)); hap("heavy"); try { fxConfetti(200); jingle(2); } catch (e) {} render(); $("#view").scrollTop = 0;
 };
 const plChip = l => (l | 0) > 0 ? `<div class="plchip pl${Math.min(l | 0, 6)}">${ic("gem", 14)}<span>${plTitle(l | 0)}</span></div>` : "";
 
 // ---------- Миры Вознесения
-const W_N = ["Обычный мир", "Кристальный мир", "Космос", "Лавовые недра", "Океан", "Сакура", "Золотой мир"];
-const W_ICO = ["", "gem", "star", "fire", "game", "sparkle", "crown"];
-const wdCur = () => Math.max(0, Math.min((S && S.wd) | 0, (S && S.pl) | 0, 6));
+const W_N = ["Обычный мир", "Кристальный мир", "Космос", "Лавовые недра", "Океан", "Сакура", "Золотой мир", "ДжоДжо"];
+const W_ICO = ["", "gem", "star", "fire", "game", "sparkle", "crown", "bolt"];
+const wdCur = () => !S ? 0 : Math.max(0, Math.min(S.wd === undefined ? 7 : S.wd | 0, S.pl | 0, 7));
+const wdOf = r => Math.max(0, Math.min(r.wd === undefined ? 7 : r.wd | 0, r.pl | 0, 7));
 function wCoin() { return wdCur() === 2 ? '<div class="sring b"><i></i></div><div class="sring f"><i></i></div>' : ""; }
 function wAvFx(w, back) { w |= 0; if (w !== 2) return ""; return back ? '<div class="avr b"><i></i></div>' : '<div class="avr f"><i></i></div>'; }
 function wApply() {
-  const w = wdCur(), cl = document.body.classList; for (let k = 0; k <= 6; k++) cl.toggle("w" + k, k === w && w > 0);
+  const w = wdCur(), cl = document.body.classList; for (let k = 0; k <= 7; k++) cl.toggle("w" + k, k === w && w > 0);
   let el = document.getElementById("wbg");
   if (!w) { if (el) el.remove(); return; }
   if (!el) { el = document.createElement("div"); el.id = "wbg"; document.body.insertBefore(el, document.getElementById("app")); }
   if (el.dataset.w === w + "") return; el.dataset.w = w; el.className = "w" + w;
-  const n = w === 2 ? 34 : 16; let h = "";
-  for (let i = 0; i < n; i++) {
-    const r = Math.random(), x = Math.random() * 100, y = Math.random() * 100, s = 4 + Math.random() * (w === 1 ? 14 : w === 2 ? 3 : 10), d = 6 + Math.random() * 10, dl = -Math.random() * d, rev = w === 1 && i % 2 ? " rv" : "";
-    h += `<i class="wp${rev}" style="left:${w === 1 ? 0 : x}%;top:${y}%;width:${s}px;height:${s}px;--d:${d}s;--dl:${dl}s;--r:${Math.round(r * 360)}deg"></i>`;
-  }
-  el.innerHTML = h;
+  el.innerHTML = wParts(w, w === 2 ? 34 : 16);
 }
+function wParts(w, n) {
+  let h = "";
+  for (let i = 0; i < n; i++) {
+    const r = Math.random(), x = Math.random() * 100, y = Math.random() * 100, s = w === 7 ? 18 + Math.random() * 26 : 4 + Math.random() * (w === 1 ? 14 : w === 2 ? 3 : 10), d = 6 + Math.random() * 10, dl = -Math.random() * d, rev = w === 1 && i % 2 ? " rv" : "";
+    h += `<i class="wp${rev}" style="left:${w === 1 ? 0 : x}%;top:${y}%;${w === 7 ? "font-size:" + s + "px" : "width:" + s + "px;height:" + s + "px"};--d:${d}s;--dl:${dl}s;--r:${Math.round(r * 360)}deg">${w === 7 ? "ゴ" : ""}</i>`;
+  }
+  return h;
+}
+function wProf(w) { return w ? `<div class="wpf w${w}">${wParts(w, 14)}</div>` : ""; }
 function rqApply() { const on = reqOn(); document.body.classList.toggle("rqon", on); if (on) document.body.style.setProperty("--rqc", REQ[+S.eq].c[0]); }
 { const _r = render; render = function () { const x = _r.apply(this, arguments); try { wApply(); rqApply(); } catch (e) {} return x; }; }
 A.wsel = function (e) { const k = +(e.dataset ? e.dataset.k : e) | 0; if (k > (S.pl | 0)) return; S.wd = k; mark(); save(true); wApply(); render(); try { A.prof({dataset: {i: me.id}}); } catch (er) {} };
 function wSel() {
-  const l = Math.min(S.pl | 0, 6); if (l < 1) return "";
-  let h = ""; for (let k = 0; k <= 6; k++) { const on = k > l, cur = k === wdCur(); h += `<div ${on ? "" : `data-a="wsel" data-k="${k}"`} class="wchip w${k}${cur ? " cur" : ""}${on ? " lock" : ""}">${k ? ic(W_ICO[k], 14) : ""}<span>${on ? "???" : W_N[k]}</span></div>`; }
+  const l = Math.min(S.pl | 0, 7); if (l < 1) return "";
+  let h = ""; for (let k = 0; k <= 7; k++) { const on = k > l, cur = k === wdCur(); h += `<div ${on ? "" : `data-a="wsel" data-k="${k}"`} class="wchip w${k}${cur ? " cur" : ""}${on ? " lock" : ""}">${k ? ic(W_ICO[k], 14) : ""}<span>${on ? "???" : W_N[k]}</span></div>`; }
   return `<div class="sec" style="margin:16px 0 6px;text-align:center">Мир профиля</div><div class="wsel">${h}</div>`;
 }
 
