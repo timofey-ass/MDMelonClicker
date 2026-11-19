@@ -48,7 +48,7 @@ function factor() { const t = now(); let f = baseMult(); if (EVT && t < EVT.unti
 const nerf = x => x <= 1e3 ? x : 1e3 * Math.pow(x / 1e3, .7);
 function cpsRaw() { return BUILDS.reduce((a, b, i) => a + b[3] * S.b[i], 0) * factor() * (1 + .1 * perk("cps")); }
 function cps() { return nerf(cpsRaw()); }
-function tapValue() { return nerf((1 + S.click + .02 * cpsRaw() / Math.max(factor(), 1)) * factor() * (1 + .1 * perk("tap"))) * (("70" in S.inv) ? 1e21 : 1) * (("72" in S.inv) ? 40 : 1) * reqMul(); }
+function tapValue() { if (("70" in S.inv) || ("71" in S.inv)) return 1; return nerf((1 + S.click + .02 * cpsRaw() / Math.max(factor(), 1)) * factor() * (1 + .1 * perk("tap"))) * (("70" in S.inv) ? 1e21 : 1) * (("72" in S.inv) ? 40 : 1) * reqMul(); }
 const BGR = [1.15, 1.15, 1.15, 1.16, 1.17, 1.18, 1.18];
 function bCost(i, n) { const g = BGR[i] || 1.15; return BUILDS[i][2] * Math.pow(g, S.b[i]) * (Math.pow(g, n) - 1) / (g - 1); }
 function bCount(i) { if (qty === 1) return 1; if (qty === 10) return 10; let n = 0; while (n < 500 && bCost(i, n + 1) <= S.pts) n++; return Math.max(1, n); }

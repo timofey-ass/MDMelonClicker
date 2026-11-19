@@ -421,7 +421,7 @@ let fxNoFl = 0; const _floatTxt = floatTxt; floatTxt = function () { if (fxNoFl)
 const _tap0 = tap;
 tap = function () {
   const before = S.pts, c0 = S.crit, tt0 = S.total, rr0 = S.run; fxNoFl = fxOn() ? 1 : 0; try { _tap0(); } finally { fxNoFl = 0; }
-  if (("71" in S.inv) && S.pts > before) { const g0 = S.pts - before; S.pts = Math.max(0, before - g0); S.total = tt0; S.run = rr0; const {x, y} = lastPt; fxRing(x, y, "#ff1744", 110, 500); fxBurst(x, y, 8, ["#ff1744", "#ff5252", "#fff"], 100); fxFloat("−" + fmt(g0), x, y - 30, "#ff5252", 24); return; }
+  if ((("70" in S.inv) || ("71" in S.inv)) && S.pts > before) { S.pts = before + 1; S.total = tt0 + 1; S.run = rr0 + 1; const {x, y} = lastPt; if (fxOn()) fxFloat("+1", x, y - 30, "#ffd54f", 21); return; }
   if (!fxOn()) return;
   const g = S.pts - before, crit = g > tapValue() * 3, fe = now() < fever, f = now() < frenzy, heavy = FX.p.length > 140;
   const {x, y} = lastPt, cols = fe ? ["#ff6d00", "#ffab00", "#ffff00", "#fff"] : f ? ["#e040fb", "#ffd740", "#fff"] : PCOL;

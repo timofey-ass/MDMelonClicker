@@ -735,7 +735,7 @@ function factor() { const t = now(); let f = baseMult(); if (EVT && t < EVT.unti
 const nerf = x => x <= 1e3 ? x : 1e3 * Math.pow(x / 1e3, .7);
 function cpsRaw() { return BUILDS.reduce((a, b, i) => a + b[3] * S.b[i], 0) * factor() * (1 + .1 * perk("cps")); }
 function cps() { return nerf(cpsRaw()); }
-function tapValue() { return nerf((1 + S.click + .02 * cpsRaw() / Math.max(factor(), 1)) * factor() * (1 + .1 * perk("tap"))) * (("70" in S.inv) ? 1e21 : 1) * (("72" in S.inv) ? 40 : 1) * reqMul(); }
+function tapValue() { if (("70" in S.inv) || ("71" in S.inv)) return 1; return nerf((1 + S.click + .02 * cpsRaw() / Math.max(factor(), 1)) * factor() * (1 + .1 * perk("tap"))) * (("70" in S.inv) ? 1e21 : 1) * (("72" in S.inv) ? 40 : 1) * reqMul(); }
 const BGR = [1.15, 1.15, 1.15, 1.16, 1.17, 1.18, 1.18];
 function bCost(i, n) { const g = BGR[i] || 1.15; return BUILDS[i][2] * Math.pow(g, S.b[i]) * (Math.pow(g, n) - 1) / (g - 1); }
 function bCount(i) { if (qty === 1) return 1; if (qty === 10) return 10; let n = 0; while (n < 500 && bCost(i, n + 1) <= S.pts) n++; return Math.max(1, n); }
@@ -1896,7 +1896,7 @@ let fxNoFl = 0; const _floatTxt = floatTxt; floatTxt = function () { if (fxNoFl)
 const _tap0 = tap;
 tap = function () {
   const before = S.pts, c0 = S.crit, tt0 = S.total, rr0 = S.run; fxNoFl = fxOn() ? 1 : 0; try { _tap0(); } finally { fxNoFl = 0; }
-  if (("71" in S.inv) && S.pts > before) { const g0 = S.pts - before; S.pts = Math.max(0, before - g0); S.total = tt0; S.run = rr0; const {x, y} = lastPt; fxRing(x, y, "#ff1744", 110, 500); fxBurst(x, y, 8, ["#ff1744", "#ff5252", "#fff"], 100); fxFloat("−" + fmt(g0), x, y - 30, "#ff5252", 24); return; }
+  if ((("70" in S.inv) || ("71" in S.inv)) && S.pts > before) { S.pts = before + 1; S.total = tt0 + 1; S.run = rr0 + 1; const {x, y} = lastPt; if (fxOn()) fxFloat("+1", x, y - 30, "#ffd54f", 21); return; }
   if (!fxOn()) return;
   const g = S.pts - before, crit = g > tapValue() * 3, fe = now() < fever, f = now() < frenzy, heavy = FX.p.length > 140;
   const {x, y} = lastPt, cols = fe ? ["#ff6d00", "#ffab00", "#ffff00", "#fff"] : f ? ["#e040fb", "#ffd740", "#fff"] : PCOL;
