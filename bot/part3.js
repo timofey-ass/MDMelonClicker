@@ -2201,6 +2201,10 @@ function reqFlash(i) {
   toast("Реквием пробудился: " + ITEMS[i][1] + "!"); hap("heavy"); try { fxConfetti(160); jingle(2); } catch (e) {}
   checkAch(); mark(); save(true); render();
 }
+A.rqnow = function (e) {
+  const i = +e.dataset.i; if (!isAdm || !reqOk(i) || !reqOwn(i) || reqDone(i)) return;
+  const r = RQ(); r.xp[i] = REQ_NEED; r.d[i] = 1; closeModal(); reqFlash(i);
+};
 function reqTick() {
   const i = +S.eq; if (!reqOk(i) || !reqOwn(i) || reqDone(i)) return;
   const r = RQ(), x = r.xp[i] || 0, n = Math.min(REQ_NEED, x + 1); r.xp[i] = n;
@@ -2218,7 +2222,7 @@ function reqInfo(i) {
   if (!reqOk(i) || !reqOwn(i)) return "";
   const x = RQ().xp[i] || 0, on = reqDone(i), lv = reqLv(i);
   const st = on ? `<span style="color:${REQ[i].c[0]};font-weight:700">пробуждён</span>` : `Ур. ${lv} · ${fmt(x)}/${fmt(REQ_NEED)}`;
-  return `<div style="padding:8px 0 2px"><div style="display:flex;justify-content:space-between;gap:10px"><span class="t2" style="margin:0;font-size:14px">${ic("sparkle", 14)} Реквием</span><span style="font-size:14px">${st}</span></div>${on ? "" : `<div style="margin-top:6px">${bar(x / REQ_NEED)}</div>`}<div class="t2" style="font-size:11px;margin:6px 0 0;line-height:1.35">Копится, пока кот на монете и ты тапаешь. На ур. 2–4 растёт бонус к тапу. Полный реквием: картинка кота меняется на мощную, включается бесконечная лихорадка (обычная отключается), появляются аура на монете и особые эффекты тапа.</div></div>`;
+  return `<div style="padding:8px 0 2px"><div style="display:flex;justify-content:space-between;gap:10px"><span class="t2" style="margin:0;font-size:14px">${ic("sparkle", 14)} Реквием</span><span style="font-size:14px">${st}</span></div>${on ? "" : `<div style="margin-top:6px">${bar(x / REQ_NEED)}</div>`}${isAdm && !on ? `<div style="margin-top:10px">${btn(ic("sparkle", 16) + " Мгновенный реквием", "rqnow", `data-i="${i}"`)}</div>` : ""}<div class="t2" style="font-size:11px;margin:6px 0 0;line-height:1.35">Копится, пока кот на монете и ты тапаешь. На ур. 2–4 растёт бонус к тапу. Полный реквием: картинка кота меняется на мощную, включается бесконечная лихорадка (обычная отключается), появляются аура на монете и особые эффекты тапа.</div></div>`;
 }
 
 // ---------- секретные достижения
