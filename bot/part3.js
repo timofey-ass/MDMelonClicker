@@ -2295,8 +2295,8 @@ function wApply() {
 function wParts(w, n) {
   let h = "";
   for (let i = 0; i < n; i++) {
-    const r = Math.random(), x = Math.random() * 100, y = Math.random() * 100, s = w === 7 ? 18 + Math.random() * 26 : 4 + Math.random() * (w === 1 ? 14 : w === 2 ? 3 : 10), d = 6 + Math.random() * 10, dl = -Math.random() * d, rev = w === 1 && i % 2 ? " rv" : "";
-    h += `<i class="wp${rev}" style="left:${w === 1 ? 0 : x}%;top:${y}%;${w === 7 ? "font-size:" + s + "px" : "width:" + s + "px;height:" + s + "px"};--d:${d}s;--dl:${dl}s;--r:${Math.round(r * 360)}deg">${w === 7 ? "ゴ" : ""}</i>`;
+    const r = Math.random(), x = Math.random() * 100, y = Math.random() * 100, s = w === 7 ? 22 + Math.random() * 30 : 4 + Math.random() * (w === 1 ? 14 : w === 2 ? 3 : 10), d = 6 + Math.random() * 10, dl = -Math.random() * d, rev = w === 1 && i % 2 ? " rv" : "";
+    h += `<i class="wp${rev}" style="left:${w === 1 ? 0 : x}%;top:${y}%;width:${s}px;height:${w === 7 ? s * 1.05 : s}px;--d:${d}s;--dl:${dl}s;--r:${Math.round(r * 360)}deg"></i>`;
   }
   return h;
 }
