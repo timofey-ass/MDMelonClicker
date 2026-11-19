@@ -654,6 +654,7 @@ test("защита от автокликера: быстрый ритм трем
   let x = 0; const fast = Array.from({ length: 280 }, (_, i) => (x += 20 + ((i * 53) % 37)));
   const c = await call(A, "td_create", { stake: 1000 }); sq.prepare("UPDATE td SET s1=?").run(Date.now() - 20500);
   assert.equal((await call(A, "td_end", { id: c.id, taps: fast })).score, 280);
+  sq.prepare("UPDATE td SET st='cancel'").run();
   const c2 = await call(A, "td_create", { stake: 1000 }); sq.prepare("UPDATE td SET s1=? WHERE id=?").run(Date.now() - 20500, c2.id);
   assert.equal((await call(A, "td_end", { id: c2.id, taps: Array.from({ length: 300 }, (_, i) => 50 + i * 20) })).cheat, true);
 });
