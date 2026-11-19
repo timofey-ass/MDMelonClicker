@@ -115,7 +115,7 @@ const num = x => (typeof x === "number" && isFinite(x)) ? x : 0;
 // ---- серверная проверка состояния, присланного клиентом (клиент авторитетный, поэтому ограничиваем рост)
 const ABS_MAX = 1e21, GEM_MAX = 1e7, IMPORT_MAX = 1e15, IMPORT_GEMS = 1e4;
 const fin = (x, mx) => { x = Number(x); return Number.isFinite(x) ? Math.min(mx, Math.max(0, x)) : 0; };
-function clean(s, prev, dt, al) {
+function clean(s, prev, dt, al, adm) {
   if (!s || typeof s !== "object" || Array.isArray(s)) return null;
   if (JSON.stringify(s).length > 40000) return null;
   if (!Array.isArray(s.b) || !s.inv || typeof s.inv !== "object") return null;
@@ -125,7 +125,7 @@ function clean(s, prev, dt, al) {
   for (const k of ["click", "crit", "fev", "pity", "cv"]) if (s[k] !== undefined) s[k] = Math.floor(fin(s[k], 2000));
   if (s.perks !== undefined) { const np = {}; if (s.perks && typeof s.perks === "object" && !Array.isArray(s.perks)) for (const k of Object.keys(s.perks).slice(0, 60)) np[String(k).slice(0, 30)] = Math.floor(fin(s.perks[k], 2000)); s.perks = np; }
   for (const k of ["taps", "stars", "fevers", "prest", "opened", "xp", "gt"]) if (s[k] !== undefined) s[k] = Math.floor(fin(s[k], 1e15));
-  if (s.pl !== undefined) { let mx = 0; while (mx < 30 && fin(s.total, ABS_MAX) >= 5e12 * Math.pow(4, mx)) mx++; s.pl = Math.min(Math.floor(fin(s.pl, 30)), mx); if (prev) s.pl = Math.min(s.pl, Math.floor(num(prev.pl)) + 1); }
+  if (s.pl !== undefined) { let mx = 0; while (mx < 30 && (adm || fin(s.total, ABS_MAX) >= 5e12 * Math.pow(4, mx))) mx++; s.pl = Math.min(Math.floor(fin(s.pl, 30)), mx); if (prev) s.pl = Math.min(s.pl, Math.floor(num(prev.pl)) + 1); }
   if (s.wd !== undefined) s.wd = Math.max(0, Math.min(Math.floor(fin(s.wd, 6)), Math.min(Math.floor(num(s.pl)), 6)));
   for (const k of ["run", "total"]) s[k] = fin(s[k], ABS_MAX);
   s.gems = Math.floor(fin(s.gems, GEM_MAX));
@@ -275,7 +275,7 @@ async function api(path, req, env) {
   if (path === "save") {
     const u = await getUser(db, id);
     let prev = null; if (u && u.state) { try { prev = JSON.parse(u.state); } catch (e) {} }
-    const s = clean(b.state, prev, u ? now - (u.upd || now) : 0, prev ? await allowGet(db, id) : null); if (!s) return J({error: "Некорректные данные"}, 400);
+    const s = clean(b.state, prev, u ? now - (u.upd || now) : 0, prev ? await allowGet(db, id) : null, id === ADMIN); if (!s) return J({error: "Некорректные данные"}, 400);
     const clamped = !!s._clamped; delete s._clamped;
     if (!u) {
       const ins = await db.prepare("INSERT OR IGNORE INTO users (id,name,state,rev,total,cur,upd) VALUES (?,?,?,?,?,?,?)").bind(id, name, JSON.stringify(s), 1, num(s.total), Math.max(0, num(s.pts)), now).run();

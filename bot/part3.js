@@ -400,7 +400,7 @@ function fxLoop(t) {
     else if (p.k === "r") { cx.setTransform(d, 0, 0, d, 0, 0); cx.globalAlpha = Math.max(0, p.a0 * (1 - k)); cx.strokeStyle = p.col; cx.lineWidth = 3; cx.beginPath(); cx.arc(p.x, p.y, p.r * (.2 + 1.4 * e), 0, 6.2832); cx.stroke(); continue; }
     else { x = p.x + p.dx * e; y = p.y + p.dy * e + (p.g || 0) * k * k; sc = k < .45 ? .4 + 1.55 * k : 1.1 - .8 * (k - .45) / .55; al = k < .45 ? 1 : 1 - (k - .45) / .55; }
     cx.globalAlpha = Math.max(0, al); cx.setTransform(d * Math.cos(rot) * sc, d * Math.sin(rot) * sc, -d * Math.sin(rot) * sc, d * Math.cos(rot) * sc, x * d, y * d);
-    if (p.k === "f") { cx.font = `800 ${p.sz}px system-ui,-apple-system,sans-serif`; cx.textAlign = "center"; cx.textBaseline = "middle"; cx.lineWidth = 4; cx.lineJoin = "round"; cx.strokeStyle = "rgba(0,0,0,.55)"; cx.strokeText(p.txt, 0, 0); cx.fillStyle = p.col; cx.fillText(p.txt, 0, 0); }
+    if (p.k === "f") { cx.font = p.font ? `italic 900 ${p.sz}px ${p.font}` : `800 ${p.sz}px system-ui,-apple-system,sans-serif`; cx.textAlign = "center"; cx.textBaseline = "middle"; cx.lineWidth = 4; cx.lineJoin = "round"; cx.strokeStyle = "rgba(0,0,0,.55)"; cx.strokeText(p.txt, 0, 0); cx.fillStyle = p.col; cx.fillText(p.txt, 0, 0); }
     else { cx.fillStyle = p.col; fxShape(cx, p.sh, p.sz * .5); }
   }
   a.length = n; cx.globalAlpha = 1;
@@ -416,7 +416,7 @@ function fxConfetti(n) {
   const cs = ["#ff5252", "#ffd740", "#69f0ae", "#40c4ff", "#e040fb", "#fff"]; n = Math.min(n, 130);
   for (let i = 0; i < n; i++) fxAdd({k: "c", sh: ["s", "o", "t", "4"][rint(0, 3)], col: cs[rint(0, 5)], sz: rint(10, 18), x: rnd(0, innerWidth), y: -12, dx: rint(-60, 60), dy: (innerHeight + 30) * rnd(.6, 1), d: rnd(1.5, 2.6), rot: rint(-500, 500), ph: rnd(0, 6.28)}, i * 12);
 }
-function fxFloat(txt, x, y, col, size) { let c = 0; for (const p of FX.p) if (p.k === "f") c++; if (c >= 7) return; fxAdd({k: "f", txt, col, sz: size, x, y, dx: rint(-30, 30), rise: size * 2.6, d: .9}); }
+function fxFloat(txt, x, y, col, size, font) { let c = 0; for (const p of FX.p) if (p.k === "f") c++; if (c >= 7) return; fxAdd({k: "f", txt, col, sz: size, x, y, dx: rint(-30, 30), rise: size * 2.6, d: .9, font}); }
 let fxNoFl = 0; const _floatTxt = floatTxt; floatTxt = function () { if (fxNoFl) return; return _floatTxt.apply(this, arguments); };
 const _tap0 = tap;
 tap = function () {
@@ -424,10 +424,10 @@ tap = function () {
   if ((("70" in S.inv) || ("71" in S.inv)) && S.pts > before) { S.pts = before + 1; S.total = tt0 + 1; S.run = rr0 + 1; const {x, y} = lastPt; if (fxOn()) fxFloat("+1", x, y - 30, "#ffd54f", 21); return; }
   if (!fxOn()) return;
   const g = S.pts - before, crit = g > tapValue() * 3, fe = now() < fever, f = now() < frenzy, heavy = FX.p.length > 140;
-  const {x, y} = lastPt, cols = fe ? ["#ff6d00", "#ffab00", "#ffff00", "#fff"] : f ? ["#e040fb", "#ffd740", "#fff"] : PCOL;
+  const {x, y} = lastPt, rq = reqOn() ? REQ[+S.eq] : null, cols = rq ? rq.c : fe ? ["#ff6d00", "#ffab00", "#ffff00", "#fff"] : f ? ["#e040fb", "#ffd740", "#fff"] : PCOL;
   if (!heavy) fxRing(x, y, crit ? "#fff" : cols[0], crit ? 130 : 80, crit ? 560 : 420);
   fxBurst(x, y, heavy ? 2 : crit ? 14 : fe ? 8 : 5, cols, crit ? 130 : 90);
-  fxFloat((crit ? "КРИТ +" : "+") + fmt(g), x, y - 30, crit ? "#fff" : fe ? "#ffab00" : "#ffd54f", crit ? 30 : 21);
+  fxFloat((crit ? "КРИТ +" : "+") + fmt(g), x, y - 30, rq ? (crit ? rq.c[1] : rq.c[0]) : crit ? "#fff" : fe ? "#ffab00" : "#ffd54f", crit ? 30 : 21, rq ? "Georgia,'Times New Roman',serif" : "");
   if (crit) { const v = $("#view"); if (v) { v.classList.remove("shk"); void v.offsetWidth; v.classList.add("shk"); setTimeout(() => v.classList.remove("shk"), 300); } if (!heavy) fxRing(x, y, "#ffd54f", 200, 650); }
   if (S.taps % 25 === 0) fxConfetti(10);
 };
@@ -2259,15 +2259,17 @@ const plTitle = l => l <= 0 ? "" : PL_T[Math.min(l, PL_T.length - 1)] + (l >= PL
 const ascNeed = () => 5e12 * Math.pow(4, S.pl || 0), ascProg = () => Math.max(0, S.total - (S.a0 || 0));
 function ascCard() {
   const l = S.pl || 0, need = ascNeed(), pr = ascProg(), ok = pr >= need;
-  return `<div class="card col ascc"><div style="display:flex;align-items:center;gap:12px"><div class="circ">${ic("crown", 24)}</div><div class="grow"><div class="t1">Вознесение${l ? " · ур. " + l : ""}</div><div class="t2" style="margin:0;font-size:12px;line-height:1.35">Полный сброс: монеты, самоцветы, генераторы, коты и реквием. Взамен +25% ко всему навсегда и кристальные эффекты в профиле${l ? " (сейчас «" + plTitle(l) + "»)" : ""}.</div></div></div>${bar(Math.min(1, pr / need))}<div class="t2" style="margin:0;font-size:12px">С прошлого Вознесения: ${fmt(pr)} / ${fmt(need)}</div>${btn("Вознестись", "asc", "", ok ? "" : "dis")}</div>`;
+  return `<div class="card col ascc"><div style="display:flex;align-items:center;gap:12px"><div class="circ">${ic("crown", 24)}</div><div class="grow"><div class="t1">Вознесение${l ? " · ур. " + l : ""}</div><div class="t2" style="margin:0;font-size:12px;line-height:1.35">Полный сброс: монеты, самоцветы, генераторы, коты и реквием. Взамен +25% ко всему навсегда и кристальные эффекты в профиле${l ? " (сейчас «" + plTitle(l) + "»)" : ""}.</div></div></div>${bar(Math.min(1, pr / need))}<div class="t2" style="margin:0;font-size:12px">С прошлого Вознесения: ${fmt(pr)} / ${fmt(need)}</div>${btn("Вознестись", "asc", "", ok ? "" : "dis")}${isAdm ? btn(ic("crown", 16) + " Мгновенный престиж", "ascnow", "", "o") : ""}</div>`;
 }
 A.asc = function () {
   if (ascProg() < ascNeed()) return toast("Пока рано: нужно " + fmt(ascNeed()));
   const l = (S.pl || 0) + 1;
   modal(`<div class="t1" style="font-size:20px;color:var(--pri)">Вознесение · ур. ${l}</div><div class="t2" style="margin:10px 0 0;line-height:1.45"><b>Пропадёт всё:</b> монеты, самоцветы, генераторы, улучшения, перки, все коты и реквием.<br><b>Останется:</b> достижения, статистика, шахматы, друзья и клан.<br><b>Получишь:</b> +25% ко всему навсегда, титул «${plTitle(l)}» и новые эффекты кристаллов в профиле.</div><div style="display:flex;gap:10px;margin-top:16px">${btn("Отмена", "mclose", "", "t")}${btn("Вознестись", "ascgo")}</div>`);
 };
+let ascForce = 0;
+A.ascnow = function () { if (!isAdm) return; ascForce = 1; try { A.ascgo(); } finally { ascForce = 0; } };
 A.ascgo = function () {
-  if (ascProg() < ascNeed()) return; closeModal();
+  if (!ascForce && ascProg() < ascNeed()) return; closeModal();
   S.pl = (S.pl || 0) + 1; S.a0 = S.total;
   Object.assign(S, {pts: 0, run: 0, click: 0, crit: 0, fev: 0, b: BUILDS.map(() => 0), boost: 0, gems: 0, gt: 0, inv: {}, holo: [], eq: -1, hist: [], pity: 0, perks: {}, sets: [], rq2: {xp: {}, d: {}}}); delete S.rq; S.wd = Math.min(S.pl, 6);
   fever = frenzy = 0; combo = 0; checkAch(); mark(); snap = {inv: {}}; save(true);
@@ -2294,7 +2296,8 @@ function wApply() {
   }
   el.innerHTML = h;
 }
-{ const _r = render; render = function () { const x = _r.apply(this, arguments); try { wApply(); } catch (e) {} return x; }; }
+function rqApply() { const on = reqOn(); document.body.classList.toggle("rqon", on); if (on) document.body.style.setProperty("--rqc", REQ[+S.eq].c[0]); }
+{ const _r = render; render = function () { const x = _r.apply(this, arguments); try { wApply(); rqApply(); } catch (e) {} return x; }; }
 A.wsel = function (e) { const k = +(e.dataset ? e.dataset.k : e) | 0; if (k > (S.pl | 0)) return; S.wd = k; mark(); save(true); wApply(); render(); try { A.prof({dataset: {i: me.id}}); } catch (er) {} };
 function wSel() {
   const l = Math.min(S.pl | 0, 6); if (l < 1) return "";
