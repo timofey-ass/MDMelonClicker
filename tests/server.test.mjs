@@ -647,3 +647,13 @@ test("клановые рейды: дежурство, рейд, щит и ка�
   sq.prepare("UPDATE kv SET v='{\"until\":0}' WHERE k='crt1001'").run();
   assert.match((await call(A, "cr_start", { kind: "raid", target: cb.id })).error || "", /защитой/);
 });
+
+test("защита от автокликера: быстрый ритм тремя пальцами с разбросом проходит, строго одинаковый нет", async () => {
+  const { call, sq } = await makeEnv();
+  await call(A, "save", { rev: 0, state: baseState({ pts: 1e6, total: 1e6 }) });
+  let x = 0; const fast = Array.from({ length: 280 }, (_, i) => (x += 20 + ((i * 53) % 37)));
+  const c = await call(A, "td_create", { stake: 1000 }); sq.prepare("UPDATE td SET s1=?").run(Date.now() - 20500);
+  assert.equal((await call(A, "td_end", { id: c.id, taps: fast })).score, 280);
+  const c2 = await call(A, "td_create", { stake: 1000 }); sq.prepare("UPDATE td SET s1=? WHERE id=?").run(Date.now() - 20500, c2.id);
+  assert.equal((await call(A, "td_end", { id: c2.id, taps: Array.from({ length: 300 }, (_, i) => 50 + i * 20) })).cheat, true);
+});

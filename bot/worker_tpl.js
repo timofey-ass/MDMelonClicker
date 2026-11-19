@@ -1364,14 +1364,16 @@ async function api(path, req, env) {
   }
   // ---------- защита от автокликера: человеческий ли ритм тапов
   const humanTaps = (arr, dur) => {
-    if (!Array.isArray(arr) || arr.length > 420) return "bot";
+    if (!Array.isArray(arr) || arr.length > 1500) return "bot";
     const t = arr.map(Number); if (t.some(x => !isFinite(x) || x < 0 || x > dur + 1500)) return "bot";
     for (let i = 1; i < t.length; i++) if (t[i] < t[i - 1]) return "bot";
-    const n = t.length; if (n < 2) return null;
+    const n = t.length; if (n < 20) return null;
     const iv = []; for (let i = 1; i < n; i++) iv.push(t[i] - t[i - 1]);
-    if (n >= 12 && iv.filter(x => x < 50).length / iv.length > .15) return "bot";
-    let j = 0; for (let i = 0; i < n; i++) { while (t[i] - t[j] > 1000) j++; if (i - j + 1 > 16) return "bot"; }
-    if (n >= 40) { const m = iv.reduce((a, x) => a + x, 0) / iv.length, sd = Math.sqrt(iv.reduce((a, x) => a + (x - m) * (x - m), 0) / iv.length); if (sd / m < .1) return "bot"; }
+    // автокликер бьёт строго через одинаковые промежутки: почти все интервалы совпадают с медианой с точностью до нескольких миллисекунд
+    const so = iv.slice().sort((a, c) => a - c), med = so[Math.floor(so.length / 2)];
+    if (iv.filter(x => Math.abs(x - med) <= 3).length / iv.length >= .6) return "bot";
+    const m = iv.reduce((a, x) => a + x, 0) / iv.length, sd = Math.sqrt(iv.reduce((a, x) => a + (x - m) * (x - m), 0) / iv.length);
+    if (sd < 5) return "bot";
     return null;
   };
   const strikeGet = async () => { const r = await db.prepare("SELECT v FROM kv WHERE k=?").bind("tb" + id).first(); return r ? Number(r.v) || 0 : 0; };
