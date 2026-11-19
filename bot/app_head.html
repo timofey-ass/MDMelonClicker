@@ -611,15 +611,20 @@ body.evton #view{padding-bottom:calc(140px + env(safe-area-inset-bottom))}
 #tut .tb{display:flex;gap:8px;justify-content:flex-end}
 
 /* реквием */
-#coin.rqa{position:relative}
-#coin.rqa::before{content:"";position:absolute;inset:-18px;border-radius:50%;background:conic-gradient(#ff5252,#ffd54f,#69f0ae,#40c4ff,#b388ff,#ff5252);filter:blur(12px);opacity:.8;animation:rqs 3s linear infinite;z-index:-1}
-#coin.rqa::after{content:"";position:absolute;inset:-6px;border-radius:50%;border:3px solid #d0a8ff;box-shadow:0 0 22px #b388ff,inset 0 0 18px rgba(179,136,255,.6);animation:rqp 1.4s ease-in-out infinite;pointer-events:none;z-index:4}
+#coin.rqa{position:relative;--q1:#b388ff;--q2:#ffd54f}
+#coin.rqa::before{content:"";position:absolute;inset:-12px;border-radius:50%;background:conic-gradient(from 0deg,var(--q1),var(--q2),var(--q1),var(--q2),var(--q1));-webkit-mask:radial-gradient(circle,transparent calc(100% - 7px),#000 calc(100% - 6px));mask:radial-gradient(circle,transparent calc(100% - 7px),#000 calc(100% - 6px));animation:rqs 5s linear infinite;pointer-events:none;z-index:4;filter:drop-shadow(0 0 8px var(--q1))}
+#coin.rqa::after{content:"";position:absolute;inset:-46px;border-radius:50%;background:radial-gradient(circle,transparent 52%,color-mix(in srgb,var(--q1) 42%,transparent) 62%,color-mix(in srgb,var(--q2) 16%,transparent) 72%,transparent 80%);animation:rqp 2.4s ease-in-out infinite;pointer-events:none;z-index:-1}
 @keyframes rqs{to{transform:rotate(360deg)}}
-@keyframes rqp{50%{opacity:.45;transform:scale(1.04)}}
-.cell.rq{background:linear-gradient(135deg,rgba(179,136,255,.35),rgba(255,213,79,.28))!important;box-shadow:0 0 0 2px #b388ff,0 0 16px rgba(179,136,255,.7)!important;animation:rqg 2.2s ease-in-out infinite}
-@keyframes rqg{50%{box-shadow:0 0 0 2px #ffd54f,0 0 22px rgba(255,213,79,.7)}}
+@keyframes rqp{0%,100%{opacity:.55;transform:scale(.96)}50%{opacity:1;transform:scale(1.05)}}
+.cell.rq{--q1:#b388ff;--q2:#ffd54f;position:relative;overflow:hidden;background:color-mix(in srgb,var(--q1) 20%,var(--sc))!important;box-shadow:0 0 0 2px var(--q1),0 0 14px color-mix(in srgb,var(--q1) 55%,transparent)!important}
+.cell.rq::after{content:"";position:absolute;top:-30%;bottom:-30%;width:40%;left:-60%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.38),transparent);transform:skewX(-18deg);animation:rqsh 3.2s ease-in-out infinite;pointer-events:none}
+@keyframes rqsh{0%,55%{left:-60%}100%{left:130%}}
 .cell.rqp{box-shadow:inset 0 0 0 1px rgba(179,136,255,.5)}
 .rqt{font-size:9px;font-weight:700;padding:1px 6px;border-radius:8px;background:var(--sch);color:var(--onv);display:inline-flex;align-items:center;gap:2px}
+.cgrid{gap:2px!important}
+.cgrid>div{border-radius:6px!important}
+.cgrid>div:first-child{border-top-left-radius:22px!important}.cgrid>div:nth-child(2){border-top-right-radius:22px!important}
+.cgrid>div:nth-last-child(2){border-bottom-left-radius:22px!important}.cgrid>div:last-child{border-bottom-right-radius:22px!important}
 .rqt.on{background:#b388ff;color:#1d0b3a}
 /* вознесение и профиль */
 .ascc{border:1px solid color-mix(in srgb,#9a8cff 45%,transparent)}

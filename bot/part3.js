@@ -138,7 +138,7 @@ A.prof = async function (e) {
   const pf = r.pf || {}, fav = (pf.fav || []).filter(k => ITEMS[k]), on = r.online;
   const stt = `<div class="t2" style="margin:2px 0 0;font-size:12px;color:${on ? "var(--good)" : "var(--out)"}">${on ? "● в игре сейчас" : (r.seen ? "был(а) " + agoS(r.seen) : "не в сети")}${r.ban === 2 ? ' · <span style="color:#ff5252">забанен</span>' : r.banned ? ' · <span style="color:#ff5252">мут в чате</span>' : ""}</div>`;
   const ex = (pf.bio ? `<div class="t2" style="margin:10px 8px 0;font-style:italic;color:var(--on)">«${esc(pf.bio)}»</div>` : "") + (fav.length ? `<div class="sec" style="margin:16px 0 8px;text-align:center">Витрина</div><div style="display:flex;gap:12px;justify-content:center">${fav.map(k => catEl(+k, 68, {})).join("")}</div>` : "") + ((r.achs || []).length ? `<div class="sec" style="margin:16px 0 8px;text-align:center">Достижения · ${r.achs.length}</div><div style="display:flex;flex-wrap:wrap;gap:5px;justify-content:center">${r.achs.map(id => { const a = ACH.find(x => x[0] === id); return a ? `<span style="font-size:11px;background:var(--sch);border-radius:10px;padding:3px 8px" title="${esc(a[2])}">${ic("cup", 12)} ${esc(a[1])}</span>` : ""; }).join("")}</div>` : "");
-  const grid = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px">${rows.map(x => `<div style="background:var(--sch);border-radius:16px;padding:10px 6px;text-align:center"><div style="font-size:16px;font-weight:800">${x[1]}</div><div class="t2" style="font-size:11px;margin:2px 0 0">${x[0]}</div></div>`).join("")}</div>`;
+  const grid = `<div class="cgrid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px">${rows.map(x => `<div style="background:var(--sch);border-radius:16px;padding:10px 6px;text-align:center"><div style="font-size:16px;font-weight:800">${x[1]}</div><div class="t2" style="font-size:11px;margin:2px 0 0">${x[0]}</div></div>`).join("")}</div>`;
   const adm2 = isAdm && r.bnimg ? `<div style="margin-top:8px">${btn("Убрать баннер игрока", "admbn", `data-i="${uid}"`, "o")}</div>` : "";
   modal(bnr + `<div class="pfc">${wProf(wdOf(r))}${avh}<div class="t1" style="font-size:22px">${nm(r.name, r.badges)}</div>${plChip(r.pl)}<div class="t2" style="margin:2px 0 0">ID ${r.id}${isAdm ? " · " + (r.un ? `<a href="https://t.me/${r.un}" target="_blank" style="color:var(--pri)">@${esc(r.un)}</a>` : "без юзернейма") : ""}${r.clan ? ` · <span ${r.clanid ? `data-a="clview" data-i="${r.clanid}" style="cursor:pointer;color:var(--pri)"` : ""}><span style="${nsCss("~" + (r.clanst || ""))}">${esc(r.clan)}</span>${cbdg(r.clanb, 13)}</span>` : ""}</div>${stt}${r.eq >= 0 ? `<div class="t2" style="margin:6px 0 0;font-size:12px">Сейчас с котом: <span class="rar${ITEMS[r.eq][2]}">${esc(ITEMS[r.eq][1])}</span></div>` : ""}${bnc}<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:8px">${bch}</div>${ex}${tr}${frb}${own ? wSel() : ""}${invh}${grid}${adm2}${adm}<div style="margin-top:16px;text-align:center">${btn("Закрыть", "mclose", "", "t")}</div></div>`);
 };
@@ -425,8 +425,8 @@ tap = function () {
   if (!fxOn()) return;
   const g = S.pts - before, crit = g > tapValue() * 3, fe = now() < fever, f = now() < frenzy, heavy = FX.p.length > 140;
   const {x, y} = lastPt, rq = reqOn() ? REQ[+S.eq] : null, cols = rq ? rq.c : fe ? ["#ff6d00", "#ffab00", "#ffff00", "#fff"] : f ? ["#e040fb", "#ffd740", "#fff"] : PCOL;
-  if (!heavy) fxRing(x, y, crit ? "#fff" : cols[0], crit ? 130 : 80, crit ? 560 : 420);
-  fxBurst(x, y, heavy ? 2 : crit ? 14 : fe ? 8 : 5, cols, crit ? 130 : 90);
+  if (!heavy && !rq) fxRing(x, y, crit ? "#fff" : cols[0], crit ? 130 : 80, crit ? 560 : 420);
+  if (!rq) fxBurst(x, y, heavy ? 2 : crit ? 14 : fe ? 8 : 5, cols, crit ? 130 : 90);
   fxFloat((crit ? "КРИТ +" : "+") + fmt(g), x, y - 30, rq ? (crit ? rq.c[1] : rq.c[0]) : crit ? "#fff" : fe ? "#ffab00" : "#ffd54f", crit ? 30 : 21, rq ? "Georgia,'Times New Roman',serif" : "");
   if (crit) { const v = $("#view"); if (v) { v.classList.remove("shk"); void v.offsetWidth; v.classList.add("shk"); setTimeout(() => v.classList.remove("shk"), 300); } if (!heavy) fxRing(x, y, "#ffd54f", 200, 650); }
   if (S.taps % 25 === 0) fxConfetti(10);
@@ -2212,10 +2212,20 @@ function reqTick() {
   if (l1 !== l0 && l1 <= 4) { toast(ITEMS[i][1] + ": уровень " + l1 + " (+" + Math.round(([1, 1, 1.1, 1.2, 1.35][l1] - 1) * 100) + "% к тапу)"); hap("ok"); }
   if (n >= REQ_NEED) { r.d[i] = 1; reqFlash(i); }
 }
+Object.assign(REQ[7], {sh: ["▲", "●", "✦"], up: -70, g: -35}); Object.assign(REQ[80], {sh: ["✦", "◆", "✧"], up: 0, g: 10}); Object.assign(REQ[98], {sh: ["●", "✧", "●"], up: -30, g: -15}); Object.assign(REQ[94], {sh: ["■", "◆", "▲"], up: 0, g: 70}); Object.assign(REQ[33], {sh: ["▲", "✦", "●"], up: -55, g: -25}); Object.assign(REQ[58], {sh: ["★", "✦", "✧"], up: -10, g: 20});
+{ const st = document.createElement("style"); st.textContent = Object.keys(REQ).map(k => `.rq${k}{--q1:${REQ[k].c[0]}!important;--q2:${REQ[k].c[1]}!important}`).join(""); document.head.appendChild(st); }
+function reqSpark(x, y, q, n, big) {
+  for (let i = 0; i < n; i++) { const a = rnd(0, 6.283), r = rnd(.6, 1) * (q.spd + (big ? 60 : 0)); fxPart(x, y, q.sh[rint(0, q.sh.length - 1)], q.c[rint(0, q.c.length - 1)], rint(big ? 12 : 9, big ? 22 : 17), Math.cos(a) * r, Math.sin(a) * r + q.up, rint(520, 900), rint(-240, 240), q.g); }
+}
 function reqTap(crit) {
   if (!reqOn()) return; const c = $("#coin"); if (!c) return; const q = REQ[+S.eq], b = c.getBoundingClientRect(), x = b.left + b.width / 2, y = b.top + b.height / 2;
-  try { fxRing(x, y, crit ? "#ffd54f" : q.c[0], crit ? q.ring + 90 : q.ring, crit ? 620 : 420); fxBurst(x, y, crit ? q.bn * 2 : q.bn, q.c, crit ? q.spd + 50 : q.spd); } catch (e) {}
+  try {
+    fxRing(x, y, q.c[0], crit ? q.ring + 100 : q.ring, crit ? 640 : 420); setTimeout(() => fxRing(x, y, q.c[1], (crit ? q.ring + 100 : q.ring) * .7, 420), 90);
+    reqSpark(x, y, q, crit ? q.bn * 2 : q.bn, crit);
+    if (crit) c.animate([{transform: "scale(1)"}, {transform: "scale(1.07)"}, {transform: "scale(1)"}], {duration: 220});
+  } catch (e) {}
 }
+setInterval(() => { try { if (document.hidden || tab !== 0 || !reqOn()) return; const c = $("#coin"); if (!c) return; const q = REQ[+S.eq], b = c.getBoundingClientRect(), a = rnd(0, 6.283), R = b.width / 2 + 4; fxPart(b.left + b.width / 2 + Math.cos(a) * R, b.top + b.height / 2 + Math.sin(a) * R, q.sh[rint(0, q.sh.length - 1)], q.c[rint(0, 1)], rint(7, 13), Math.cos(a) * 18, Math.sin(a) * 18 + q.up * .6, rint(900, 1500), rint(-120, 120), q.g * .6); } catch (e) {} }, 260);
 const reqCls = i => reqDone(i) ? " rq rq" + i : reqOk(i) ? " rqp" : "";
 const reqTag = i => !reqOk(i) ? "" : reqDone(i) ? `<span class="rqt on">${ic("sparkle", 10)}Реквием</span>` : `<span class="rqt">Ур. ${reqLv(i)}</span>`;
 function reqInfo(i) {
