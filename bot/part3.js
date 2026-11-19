@@ -1389,7 +1389,7 @@ function drwFill() {
   const it = (icon, label, k) => `<button class="dri" data-a="drwgo" data-k="${k}">${ic(icon, 26)}<span>${label}</span></button>`;
   drwEl.querySelector(".drp").innerHTML = `<div class="drh"><div class="dra">${av}</div><button class="drt" data-a="ltheme" aria-label="Тема">${ic(lt ? "moon" : "sun", 26)}</button></div>
     <div class="drn">${nm(me.name, myBadges)}</div><div class="dru">${u.username ? "@" + esc(u.username) : "ID " + me.id}</div>
-    <div class="drl"><button class="dri" data-a="dlyopen">${ic("box", 26)}<span>Ежедневная награда</span>${DLY && DLY.can ? '<i class="dtd"></i>' : ""}</button>${it("podium", "Сообщество", "com")}${it("ghost", "Кот-призрак", "gh")}${it("cat", "Энциклопедия", "enc")}${it("cube", "Мастерская", "ws")}<div class="drd"></div>${it("tune", "Настройки", "set")}${it("check", "Информация", "info")}${isAdm ? it("crown", "Админка", "adm") : ""}</div>
+    <div class="drl">${it("podium", "Сообщество", "com")}${it("cat", "Энциклопедия", "enc")}${it("cube", "Мастерская", "ws")}<div class="drd"></div>${it("tune", "Настройки", "set")}${it("check", "Информация", "info")}${isAdm ? it("crown", "Админка", "adm") : ""}</div>
     ${isApp() ? "" : `<button class="adc" data-a="adweb"><div class="adm"></div><div><b>Скачай приложение</b><span>Играй без Telegram, на весь экран</span></div></button>`}
     <div class="drv">MDMelonClicker v${CHANGES[0][0]}</div>`;
 }
@@ -1815,7 +1815,7 @@ A.dlyget = async function () {
 };
 A.refshare = function () { const u = "https://t.me/share/url?url=" + encodeURIComponent(REFLINK()) + "&text=" + encodeURIComponent("Играю в MDMelonClicker, заходи: коты, кейсы и кланы"); try { if (tg && tg.openTelegramLink) return tg.openTelegramLink(u); } catch (e) {} window.open(u, "_blank"); };
 A.refcopy = async function () { try { await navigator.clipboard.writeText(REFLINK()); toast("Ссылка скопирована"); } catch (e) { const t = document.createElement("textarea"); t.value = REFLINK(); document.body.appendChild(t); t.select(); try { document.execCommand("copy"); toast("Ссылка скопирована"); } catch (x) { toast(REFLINK()); } t.remove(); } };
-setTimeout(async () => { await dlyLoad(); dlyDot(); }, 2500);
+
 function dlyDot() { const b = document.querySelector('#nav [data-a="drw"]'); if (b) b.classList.toggle("dd", !!(DLY && DLY.can)); }
 A.dlyopen = async function () { drwOpen(false); await dlyLoad(); dlyDot(); if (!DLY) return toast("Нет связи"); modal(dlyCard()); };
 
@@ -2413,7 +2413,7 @@ tMore = function () {
   if (moreSub === 6) return mback + encPage();
   const h = _tMoreX(); if (moreSub !== 0) return h;
   const k = h.indexOf(mbtn("cube", "Мастерская", "ws")); if (k < 0) return h;
-  return h.slice(0, k) + mbtn("ghost", "Кот-призрак", "gh") + mbtn("cat", "Энциклопедия котов", "enc") + h.slice(k);
+  return h.slice(0, k) + mbtn("cat", "Энциклопедия котов", "enc") + h.slice(k);
 };
 
 // ---------- Арена: дуэли тапов, клановые рейды, события на поле
@@ -2534,7 +2534,7 @@ setInterval(feTick, 75000);
 { const _t = tMore; tMore = function () {
   if (moreSub === 8) return mback + crPage();
   const h = _t(); if (moreSub !== 0) return h;
-  const k = h.indexOf(mbtn("ghost", "Кот-призрак", "gh")); if (k < 0) return h;
+  const k = h.indexOf(mbtn("cat", "Энциклопедия котов", "enc")); if (k < 0) return h;
   return h.slice(0, k) + mbtn("shield", "Клановые рейды", "cr") + h.slice(k);
 }; }
 
