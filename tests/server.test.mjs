@@ -676,3 +676,21 @@ test("помощник админа: урезанные права, назнач
   assert.equal((await call(A, "auth", {})).mod, false);
   assert.equal((await call(A, "adm_ban", { uid: 1002, on: false })).error, "Нет доступа");
 });
+
+test("ведущий модератор: выдаёт только себе монеты и котов, делает рассылки", async () => {
+  const { call } = await makeEnv();
+  await call(A, "save", { rev: 0, state: baseState({}) }); await call(B, "save", { rev: 0, state: baseState({}) });
+  await call(ADMIN, "adm_mod", { uid: 1001, on: true });
+  assert.equal((await call(A, "adm_give", { kind: "pts", a: 5 })).error, "Нет доступа");
+  await call(ADMIN, "adm_mod", { uid: 1001, on: true, senior: true });
+  assert.equal((await call(A, "auth", {})).smod, true);
+  assert.ok((await call(A, "adm_give", { kind: "pts", a: 5 })).ok);
+  assert.ok((await call(A, "adm_give", { kind: "cat", a: 3, b: 1 })).ok);
+  assert.equal((await call(A, "adm_give", { kind: "pts", a: 5, target: 1002 })).error, "Ведущий модератор выдаёт только себе");
+  assert.equal((await call(A, "adm_give", { kind: "gems", a: 5 })).error, "Недоступно");
+  assert.equal((await call(A, "adm_give", { kind: "takepts", a: 5 })).error, "Недоступно");
+  assert.ok((await call(A, "adm_bcast", { text: "привет" })).ok);
+  assert.equal((await call(A, "adm_resetall", {})).error, "Нет доступа");
+  await call(ADMIN, "adm_mod", { uid: 1001, on: true });
+  assert.equal((await call(A, "adm_bcast", { text: "привет" })).error, "Нет доступа");
+});
