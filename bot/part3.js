@@ -1,9 +1,9 @@
 // ============ PART 3: админка, промокоды, чат, профили, значки, MD3-формы ============
-let isAdm = false, myId = 0, myBadges = "", lastBc = 0, onlineN = 0;
+let isMod = false, isAdm = false, myId = 0, myBadges = "", lastBc = 0, onlineN = 0;
 const _api0 = api;
 api = async function (path, body) {
   const r = await _api0(path, body);
-  if (path === "auth" && r && !r.error) { isAdm = !!r.admin; myId = r.id || 0; myBadges = r.badges || ""; }
+  if (path === "auth" && r && !r.error) { isAdm = !!r.admin; isMod = !!r.mod; myId = r.id || 0; myBadges = r.badges || ""; }
   if (r && typeof r === "object") for (const k of ["rows", "friends", "members", "inc"]) if (Array.isArray(r[k])) r[k].forEach(x => { if (x && x.ph) PH[x.id !== undefined ? x.id : x.uid] = x.ph; });
   return r;
 };
@@ -93,13 +93,13 @@ function chatHtml() {
   if (!chatRows.length) return `<div class="t2" style="text-align:center;margin:30px">Пока тихо. Напиши первым!</div>`;
   return chatRows.map(m => {
     const mine = m.uid === me.id, t = new Date(m.ts * 1000);
-    return `<div class="msg ${mine ? "me" : ""}">${av(m.name, m.uid, 36)}<div class="mb"><div class="mh">${nm(m.name, m.badges)}<span class="t2" style="margin:0 0 0 6px;font-size:11px">${String(t.getHours()).padStart(2, "0")}:${String(t.getMinutes()).padStart(2, "0")}</span>${isAdm ? `<button class="mx" data-a="cdel" data-i="${m.id}">${ic("close", 14)}</button>` : ""}</div><div class="mt">${esc(m.text)}</div></div></div>`;
+    return `<div class="msg ${mine ? "me" : ""}">${av(m.name, m.uid, 36)}<div class="mb"><div class="mh">${nm(m.name, m.badges)}<span class="t2" style="margin:0 0 0 6px;font-size:11px">${String(t.getHours()).padStart(2, "0")}:${String(t.getMinutes()).padStart(2, "0")}</span>${(isAdm || isMod) ? `<button class="mx" data-a="cdel" data-i="${m.id}">${ic("close", 14)}</button>` : ""}</div><div class="mt">${esc(m.text)}</div></div></div>`;
   }).join("");
 }
 async function chatLoad() {
   if (tab !== 4 || sub !== 2) return;
   const r = await api("chat", {since: 0}); if (!r.rows) return;
-  const sig = r.rows.map(x => x.id).join(",") + "|" + isAdm; if (sig === chatSig) return; chatSig = sig; chatRows = r.rows;
+  const sig = r.rows.map(x => x.id).join(",") + "|" + isAdm + isMod; if (sig === chatSig) return; chatSig = sig; chatRows = r.rows;
   const l = $("#chatlist"); if (!l) return; const near = l.scrollHeight - l.scrollTop - l.clientHeight < 80;
   l.innerHTML = chatHtml(); if (near) l.scrollTop = l.scrollHeight;
 }
@@ -122,6 +122,7 @@ A.prof = async function (e) {
   const bl = String(r.badges || "").split("").filter(c => BADGES[c]).map(c => `<div style="display:flex;align-items:center;gap:8px;font-size:13px;margin-top:4px">${bdg(c, 18)}<span>${BADGES[c][0]}</span></div>`).join("");
   let adm = "";
   if (isAdm) adm = `<div class="sec" style="margin:14px 0 6px">Админ</div><div style="display:flex;gap:6px;flex-wrap:wrap">${uid !== me.id ? (r.ban === 2 ? "" : btn(r.banned ? "Размутить в чате" : "Мут в чате", "pban", `data-i="${uid}" data-on="${r.banned ? 0 : 1}"`, "o")) + btn(r.ban === 2 ? ic("check", 16) + " Снять бан" : ic("ban", 16) + " Забанить полностью", "pfban", `data-i="${uid}" data-on="${r.ban === 2 ? 0 : 1}"`, "o") + btn("Выдать", "pgive", `data-i="${uid}"`, "o") : ""}${btn("Сбросить прогресс", "preset", `data-i="${uid}"`, "o")}</div><div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">${Object.keys(BADGES).map(c => `<button class="chip ${String(r.badges).includes(c) ? "p" : ""}" style="border:0;font-family:inherit" data-a="pbadge" data-i="${uid}" data-c="${c}" data-cur="${r.badges}">${BADGES[c][0].split(" ")[0]}</button>`).join("")}</div>`;
+  else if (isMod && uid !== me.id) adm = `<div class="sec" style="margin:14px 0 6px">Помощник</div><div style="display:flex;gap:6px;flex-wrap:wrap">${r.ban === 2 ? "" : btn(r.banned ? "Размутить в чате" : "Мут в чате", "pban", `data-i="${uid}" data-on="${r.banned ? 0 : 1}"`, "o")}</div>`;
   const own = uid === me.id, bn = own && Number.isInteger(S.bn) ? S.bn : (r.bn || 0), now0 = Date.now() / 1000;
   const eq = r.eq >= 0 ? catEl(r.eq, 96, {}) : catEl("coin", 96, {});
   const tgp = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.photo_url) || "";
@@ -139,7 +140,7 @@ A.prof = async function (e) {
   const stt = `<div class="t2" style="margin:2px 0 0;font-size:12px;color:${on ? "var(--good)" : "var(--out)"}">${on ? "● в игре сейчас" : (r.seen ? "был(а) " + agoS(r.seen) : "не в сети")}${r.ban === 2 ? ' · <span style="color:#ff5252">забанен</span>' : r.banned ? ' · <span style="color:#ff5252">мут в чате</span>' : ""}</div>`;
   const ex = (pf.bio ? `<div class="t2" style="margin:10px 8px 0;font-style:italic;color:var(--on)">«${esc(pf.bio)}»</div>` : "") + (fav.length ? `<div class="sec" style="margin:16px 0 8px;text-align:center">Витрина</div><div style="display:flex;gap:12px;justify-content:center">${fav.map(k => catEl(+k, 68, {})).join("")}</div>` : "") + ((r.achs || []).length ? `<div class="sec" style="margin:16px 0 8px;text-align:center">Достижения · ${r.achs.length}</div><div style="display:flex;flex-wrap:wrap;gap:5px;justify-content:center">${r.achs.map(id => { const a = ACH.find(x => x[0] === id); return a ? `<span style="font-size:11px;background:var(--sch);border-radius:10px;padding:3px 8px" title="${esc(a[2])}">${ic("cup", 12)} ${esc(a[1])}</span>` : ""; }).join("")}</div>` : "");
   const grid = `<div class="cgrid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px">${rows.map(x => `<div style="background:var(--sch);border-radius:16px;padding:10px 6px;text-align:center"><div style="font-size:16px;font-weight:800">${x[1]}</div><div class="t2" style="font-size:11px;margin:2px 0 0">${x[0]}</div></div>`).join("")}</div>`;
-  const adm2 = isAdm && r.bnimg ? `<div style="margin-top:8px">${btn("Убрать баннер игрока", "admbn", `data-i="${uid}"`, "o")}</div>` : "";
+  const adm2 = (isAdm || isMod) && r.bnimg ? `<div style="margin-top:8px">${btn("Убрать баннер игрока", "admbn", `data-i="${uid}"`, "o")}</div>` : "";
   modal(bnr + `<div class="pfc">${wProf(wdOf(r))}${avh}<div class="t1" style="font-size:22px">${nm(r.name, r.badges)}</div>${plChip(r.pl)}<div class="t2" style="margin:2px 0 0">ID ${r.id}${isAdm ? " · " + (r.un ? `<a href="https://t.me/${r.un}" target="_blank" style="color:var(--pri)">@${esc(r.un)}</a>` : "без юзернейма") : ""}${r.clan ? ` · <span ${r.clanid ? `data-a="clview" data-i="${r.clanid}" style="cursor:pointer;color:var(--pri)"` : ""}><span style="${nsCss("~" + (r.clanst || ""))}">${esc(r.clan)}</span>${cbdg(r.clanb, 13)}</span>` : ""}</div>${stt}${r.eq >= 0 ? `<div class="t2" style="margin:6px 0 0;font-size:12px">Сейчас с котом: <span class="rar${ITEMS[r.eq][2]}">${esc(ITEMS[r.eq][1])}</span></div>` : ""}${bnc}<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:8px">${bch}</div>${ex}${tr}${frb}${own ? wSel() : ""}${invh}${grid}${adm2}${adm}<div style="margin-top:16px;text-align:center">${btn("Закрыть", "mclose", "", "t")}</div></div>`);
 };
 const BNR = ["linear-gradient(135deg,#ff9a3c,#ff3d6e)", "linear-gradient(135deg,#43e97b,#38f9d7)", "linear-gradient(135deg,#4facfe,#7b5cff)", "linear-gradient(135deg,#f6d365,#fda085)", "linear-gradient(135deg,#a18cd1,#fbc2eb)", "linear-gradient(135deg,#232526,#5a5f66)", "linear-gradient(135deg,#00c6ff,#0072ff)", "linear-gradient(135deg,#f953c6,#b91d73)"];
@@ -286,6 +287,7 @@ const admCard = () => {
   if (KEEP.tgc === undefined) KEEP.tgc = "Вышло обновление v" + CHANGES[0][0] + " «" + CHANGES[0][2] + "»:\n" + CHANGES[0][1].map(x => "• " + x).join("\n");
   h += `<div class="card col"><div class="t1" style="color:var(--pri)">Сообщение во все чаты бота</div><div class="t2" style="font-size:12px;margin:0">Придёт каждому игроку в личку от бота, с кнопкой «Играть». Уходит порциями, пока игроки заходят в игру.</div><textarea data-keep="tgc" rows="3" maxlength="1000" placeholder="Текст сообщения"></textarea><div id="tgst" class="t2" style="font-size:12px;margin:0">${tgStat ? tgStat : ""}</div>${btn("Отправить в чаты", "admtg", 'style="width:100%;justify-content:center"', "o")}</div>`;
   if (!tgStat) setTimeout(tgRefresh, 50);
+  h += modsCard();
   h += banCard();
   h += `<div class="card col"><div class="t1" style="color:var(--pri)">Технический перерыв</div><div class="t2" style="font-size:12px;margin:0">Закрывает игру у всех игроков сразу, без перезагрузки страницы. Ты (админ) играть можешь. Когда выключишь, игра откроется сама.</div>${maintA ? `<div class="t2" style="color:var(--err,#ff5252);font-weight:700;margin:0">Сейчас игра закрыта: ${esc(maintA)}</div>` : ""}<textarea data-keep="mt" rows="2" placeholder="Что написать игрокам (необязательно)"></textarea>${btn(maintA ? "✅ Открыть игру" : "🛠 Закрыть на перерыв", "admmaint", 'style="width:100%;justify-content:center"', maintA ? "" : "o")}</div>`;
   h += `<div class="card col"><div class="t1" style="color:var(--pri)">Событие (множитель дохода)</div><input data-keep="evn" placeholder="Название, напр. Арбузная лихорадка"><input data-keep="evm" inputmode="decimal" placeholder="Множитель, напр. 2"><input data-keep="evt" inputmode="numeric" placeholder="Минут, напр. 60"><input data-keep="evc" inputmode="numeric" placeholder="ID кота-подарка (необязательно)">${btn("Запустить", "admev")}${btn("Остановить", "admevs")}</div>`;
@@ -533,8 +535,9 @@ const _tTopOld = tTop; tTop = function () { return mback + _tTopOld(); };
 const _tab0 = A.tab; A.tab = function (e) { moreSub = 0; return _tab0(e); };
 tMore = function () {
   const head = `<div class="card"><div class="grow"><div class="t1">${nm(me.name, myBadges)}</div><div class="t2">ID ${me.id}</div></div></div>`;
-  if (moreSub === 0) return head + `<div class="t2" style="margin:12px 4px 0;font-weight:700">Сообщество</div>` + mbtn("podium", "Сообщество", "com") + mbtn("cube", "Мастерская", "ws") + `<div style="height:10px"></div>` + mbtn("tune", "Настройки", "set") + mbtn("check", "Информация", "info") + (isAdm ? mbtn("crown", "Админка", "adm", "adm") : "");
+  if (moreSub === 0) return head + `<div class="t2" style="margin:12px 4px 0;font-weight:700">Сообщество</div>` + mbtn("podium", "Сообщество", "com") + mbtn("cube", "Мастерская", "ws") + `<div style="height:10px"></div>` + mbtn("tune", "Настройки", "set") + mbtn("check", "Информация", "info") + (isAdm ? mbtn("crown", "Админка", "adm", "adm") : isMod ? mbtn("crown", "Модерация", "adm", "adm") : "");
   if (moreSub === 4) return mback + tWorkshop();
+  if (moreSub === 3 && !isAdm && isMod) return mback + modCard();
   if (moreSub === 3 && isAdm) { if (!promoList) loadPromos(); return mback + admCard(); }
   if (moreSub === 2) {
     const st = [["Всего тапов", fmt(S.taps)], ["Накоплено за всё время", fmt(S.total)], ["За текущий забег", fmt(S.run)], ["Генераторов", owned()], ["Самоцветов", S.gems], ["Перерождений", S.prest], ["Звёзд поймано", S.stars], ["Лихорадок", S.fevers], ["Общий множитель", "x" + baseMult().toFixed(2)]];
@@ -1389,7 +1392,7 @@ function drwFill() {
   const it = (icon, label, k) => `<button class="dri" data-a="drwgo" data-k="${k}">${ic(icon, 26)}<span>${label}</span></button>`;
   drwEl.querySelector(".drp").innerHTML = `<div class="drh"><div class="dra">${av}</div><button class="drt" data-a="ltheme" aria-label="Тема">${ic(lt ? "moon" : "sun", 26)}</button></div>
     <div class="drn">${nm(me.name, myBadges)}</div><div class="dru">${u.username ? "@" + esc(u.username) : "ID " + me.id}</div>
-    <div class="drl">${it("podium", "Сообщество", "com")}${it("cat", "Энциклопедия", "enc")}${it("cube", "Мастерская", "ws")}<div class="drd"></div>${it("tune", "Настройки", "set")}${it("check", "Информация", "info")}${isAdm ? it("crown", "Админка", "adm") : ""}</div>
+    <div class="drl">${it("podium", "Сообщество", "com")}${it("cat", "Энциклопедия", "enc")}${it("cube", "Мастерская", "ws")}<div class="drd"></div>${it("tune", "Настройки", "set")}${it("check", "Информация", "info")}${isAdm ? it("crown", "Админка", "adm") : isMod ? it("crown", "Модерация", "adm") : ""}</div>
     ${isApp() ? "" : `<button class="adc" data-a="adweb"><div class="adm"></div><div><b>Скачай приложение</b><span>Играй без Telegram, на весь экран</span></div></button>`}
     <div class="drv">MDMelonClicker v${CHANGES[0][0]}</div>`;
 }
@@ -2552,3 +2555,16 @@ const frzShow = () => {
   try { modal(`<div style="text-align:center"><div class="circ" style="margin:0 auto 12px;width:64px;height:64px">${ic("flake", 32)}</div><div class="t1" style="font-size:20px;margin-bottom:8px">Игра заморожена</div><div class="t2" style="font-size:14px;line-height:1.45;margin:0 0 14px">На данный момент обновления выходить не будут: автор работает над другим проектом. Вся информация здесь: <b>@tmfqp</b></div><div class="card col" style="margin:0 0 12px;text-align:left"><div class="t1" style="display:flex;align-items:center;gap:8px;color:var(--pri);font-size:15px">${ic("tap", 18)} ×10 к тапу</div><div class="t2" style="margin:0;font-size:12px;line-height:1.4">Пока игра заморожена, сила тапа увеличена в 10 раз для всех.</div></div><div class="t2" style="font-size:13px;line-height:1.45;margin:0 0 14px">Хочешь помочь игре? Выкладывай видео по ней и приглашай друзей. Когда автор закончит с другим проектом, он вернётся и продолжит делать игру.</div><div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">${btn(ic("tg", 16) + " @tmfqp", "frzlink")}${btn("Понятно", "mclose", "", "o")}</div></div>`); } catch (e) {}
 };
 const frzIv = setInterval(() => { if (document.querySelector(".mdl, .tdov, .ann")) return; clearInterval(frzIv); frzShow(); }, 900);
+
+// ---------- помощники админа (урезанные права)
+let modList = null;
+async function loadMods() { const r = await api("adm_mods", {}); modList = r.rows || []; if (tab === 5) render(); }
+function modsCard() {
+  if (!modList) { setTimeout(loadMods, 30); return `<div class="card col"><div class="t1" style="color:var(--pri)">Помощники</div><div class="t2">Загрузка…</div></div>`; }
+  return `<div class="card col"><div class="t1" style="color:var(--pri);display:flex;align-items:center;gap:8px">${ic("crown", 18)}Помощники</div><div class="t2" style="font-size:12px;margin:0">Помощник может мутить игроков, удалять сообщения в чате и убирать баннеры. Выдачи, сбросы, баны, рассылки и остальное ему недоступны. Забрать права можно в любой момент.</div><input data-keep="modid" inputmode="numeric" placeholder="ID игрока">${btn("Назначить помощником", "admmod", 'data-on="1" style="width:100%;justify-content:center"')}${modList.map(x => `<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-top:1px solid rgba(255,255,255,.07)"><div class="grow" data-a="prof" data-i="${x.id}" style="cursor:pointer;min-width:0"><div class="t1" style="font-size:15px">${esc(x.name)}</div><div class="t2" style="margin:0;font-size:11px">ID ${x.id}</div></div>${btn("Забрать", "admmod", `data-on="0" data-i="${x.id}"`, "o")}</div>`).join("")}</div>`;
+}
+A.admmod = async function (e) {
+  const on = e.dataset.on === "1", uid = on ? +(KEEP.modid || "").trim() : +e.dataset.i; if (!uid) return toast("Введи ID игрока");
+  const r = await api("adm_mod", {uid, on}); if (r && r.error) return toast(r.error); toast(on ? "Помощник назначен" : "Права забраны"); if (on) KEEP.modid = ""; loadMods();
+};
+const modCard = () => `<div class="card col"><div class="t1" style="color:var(--pri);display:flex;align-items:center;gap:8px">${ic("crown", 18)}Модерация</div><div class="t2" style="font-size:13px;line-height:1.45;margin:0">Тебе выдали права помощника. Что можно:<br>• в чате удалять сообщения (крестик у сообщения);<br>• открыть профиль игрока и замутить или размутить его в чате;<br>• убрать неподходящий баннер игрока в его профиле.<br>Остальное доступно только владельцу.</div></div>`;

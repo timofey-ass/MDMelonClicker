@@ -122,6 +122,8 @@ function tidy(s) { if (Array.isArray(s.holo)) s.holo = s.holo.filter(i => (i + "
 const num = x => (typeof x === "number" && isFinite(x)) ? x : 0;
 // ---- серверная проверка состояния, присланного клиентом (клиент авторитетный, поэтому ограничиваем рост)
 const ABS_MAX = 1e21, GEM_MAX = 1e7, IMPORT_MAX = 1e15, IMPORT_GEMS = 1e4;
+async function modIdsOf(db) { try { const r = await db.prepare("SELECT v FROM kv WHERE k='mods'").first(); const l = r ? JSON.parse(r.v) : []; return Array.isArray(l) ? l.map(Number) : []; } catch (e) { return []; } }
+const MODP = new Set(["adm_del", "adm_ban", "adm_bn_del"]);
 const fin = (x, mx) => { x = Number(x); return Number.isFinite(x) ? Math.min(mx, Math.max(0, x)) : 0; };
 function clean(s, prev, dt, al, adm) {
   if (!s || typeof s !== "object" || Array.isArray(s)) return null;
@@ -358,10 +360,10 @@ async function api(path, req, env) {
   if (path === "auth") {
     if (user && typeof user.photo_url === "string" && /^https:\/\//.test(user.photo_url) && user.photo_url.length < 300) { try { await db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES (?,?)").bind("ph" + id, user.photo_url).run(); } catch (e) {} }
     const u = await getUser(db, id);
-    if (!u) return J({id, name, state: null, rev: 0, admin: id === ADMIN, badges: bd(id, ""), maint: id === ADMIN ? null : maintT});
+    if (!u) return J({id, name, state: null, rev: 0, admin: id === ADMIN, mod: id !== ADMIN && (await modIdsOf(db)).includes(id), badges: bd(id, ""), maint: id === ADMIN ? null : maintT});
     if (u.name !== name) await db.prepare("UPDATE users SET name=? WHERE id=?").bind(name, id).run();
     const un0 = String(user.username || "").slice(0, 40); if ((u.un || "") !== un0) await db.prepare("UPDATE users SET un=? WHERE id=?").bind(un0, id).run();
-    return J({id, name, state: u.state ? JSON.parse(u.state) : null, rev: u.rev, admin: id === ADMIN, badges: bd(id, u.badges), banned: !!u.banned, maint: id === ADMIN ? null : maintT});
+    return J({id, name, state: u.state ? JSON.parse(u.state) : null, rev: u.rev, admin: id === ADMIN, mod: id !== ADMIN && (await modIdsOf(db)).includes(id), badges: bd(id, u.badges), banned: !!u.banned, maint: id === ADMIN ? null : maintT});
   }
   if (path === "save") {
     const u = await getUser(db, id);
@@ -1666,7 +1668,21 @@ async function api(path, req, env) {
     return J({kind: p.kind, a: p.a, b: p.b});
   }
   if (path.startsWith("adm_")) {
-    if (!adm) return J({error: "Нет доступа"}, 403);
+    if (!adm) {
+      if (!MODP.has(path) || !(await modIdsOf(db)).includes(id)) return J({error: "Нет доступа"}, 403);
+      const tu = Number(b.uid); if (path !== "adm_del" && (!tu || tu === ADMIN || (await modIdsOf(db)).includes(tu))) return J({error: "Нельзя"});
+    }
+    if (path === "adm_mod") {
+      const uid = Number(b.uid); if (!uid || uid === ADMIN) return J({error: "Неверный ID"});
+      const l = (await modIdsOf(db)).filter(x => x !== uid); if (b.on) l.push(uid);
+      await db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES ('mods',?)").bind(JSON.stringify(l.slice(0, 20))).run();
+      if (b.on) tg0(uid, "Тебя назначили помощником в MDMelonClicker: теперь ты можешь мутить игроков и удалять сообщения в чате.");
+      return J({ok: true});
+    }
+    if (path === "adm_mods") {
+      const l = await modIdsOf(db), rows = []; for (const u of l) { const r = await getUser(db, u); rows.push({id: u, name: r ? r.name : "?"}); }
+      return J({rows});
+    }
     if (path === "adm_give") {
       const t = Number(b.target) || id, kind = String(b.kind);
       if (!["pts", "gems", "cat", "allcats", "takepts", "takecat", "takegems"].includes(kind)) return J({error: "Неверный тип"});

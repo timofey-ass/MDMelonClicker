@@ -658,3 +658,21 @@ test("защита от автокликера: быстрый ритм трем
   const c2 = await call(A, "td_create", { stake: 1000 }); sq.prepare("UPDATE td SET s1=? WHERE id=?").run(Date.now() - 20500, c2.id);
   assert.equal((await call(A, "td_end", { id: c2.id, taps: Array.from({ length: 300 }, (_, i) => 50 + i * 20) })).cheat, true);
 });
+
+test("помощник админа: урезанные права, назначить и забрать", async () => {
+  const { call } = await makeEnv();
+  await call(A, "save", { rev: 0, state: baseState({}) }); await call(B, "save", { rev: 0, state: baseState({}) });
+  assert.equal((await call(A, "auth", {})).mod, false);
+  assert.equal((await call(A, "adm_mod", { uid: 1001, on: true })).error, "Нет доступа");
+  assert.ok((await call(ADMIN, "adm_mod", { uid: 1001, on: true })).ok);
+  assert.equal((await call(A, "auth", {})).mod, true);
+  assert.deepEqual((await call(ADMIN, "adm_mods", {})).rows.map(x => x.id), [1001]);
+  assert.ok((await call(A, "adm_ban", { uid: 1002, on: true })).ok);
+  assert.equal((await call(A, "adm_ban", { uid: ADMIN_ID, on: true })).error, "Нельзя");
+  assert.equal((await call(A, "adm_give", { uid: 1002, kind: "pts", a: 5 })).error, "Нет доступа");
+  assert.equal((await call(A, "adm_resetall", {})).error, "Нет доступа");
+  assert.equal((await call(A, "adm_mod", { uid: 1002, on: true })).error, "Нет доступа");
+  assert.ok((await call(ADMIN, "adm_mod", { uid: 1001, on: false })).ok);
+  assert.equal((await call(A, "auth", {})).mod, false);
+  assert.equal((await call(A, "adm_ban", { uid: 1002, on: false })).error, "Нет доступа");
+});
