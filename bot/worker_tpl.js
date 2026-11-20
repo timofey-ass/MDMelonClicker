@@ -1624,7 +1624,7 @@ async function api(path, req, env) {
       return J({ok: true, name: u.name});
     }
     if (path === "adm_tgcast") {
-      const text = String(b.text || "").trim().slice(0, 1000); if (text.length < 3) return J({error: "Слишком короткое сообщение"});
+      const raw = String(b.text || "").trim().slice(0, 1000); if (raw.length < 3) return J({error: "Слишком короткое сообщение"}); const text = raw + "\n\n— " + name;
       const act = await db.prepare("SELECT v FROM kv WHERE k='tgact'").first(); if (act && act.v === "1") return J({error: "Прошлая рассылка ещё идёт"});
       for (const [k, v] of [["tgtext", text], ["tgpos", "0"], ["tgsent", "0"], ["tgact", "1"], ["tglock", "0"]]) await db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES (?,?)").bind(k, v).run();
       const tot = await db.prepare("SELECT COUNT(*) c FROM users WHERE banned=0").first();
@@ -1636,7 +1636,7 @@ async function api(path, req, env) {
       return J({active: (await get("tgact")) === "1", sent: Number(await get("tgsent")) || 0, total: tot.c});
     }
     if (path === "adm_bcast") {
-      const text = String(b.text || "").trim().slice(0, 300); if (!text) return J({error: "Пусто"});
+      const raw = String(b.text || "").trim().slice(0, 300); if (!raw) return J({error: "Пусто"}); const text = (raw + " — " + name).slice(0, 400);
       await db.prepare("INSERT INTO bcast (text,ts) VALUES (?,?)").bind(text, now).run();
       return J({ok: true});
     }
