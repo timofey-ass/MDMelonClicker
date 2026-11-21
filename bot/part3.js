@@ -2663,3 +2663,13 @@ A.admhard = async function (e) {
   const r = await api("adm_hard", body); if (r && r.error) return toast(r.error);
   toast(k === "steal" ? "Ограблен " + r.name + ": +" + fmt(r.x) : k === "rain" ? "Дождь пошёл" : "Котопад пошёл");
 };
+
+// золотой дождь: только эффект, ничего не даёт
+setInterval(() => {
+  let g = document.getElementById("grain");
+  if (!isAn) { if (g) g.remove(); return; }
+  if (g) return;
+  g = document.createElement("div"); g.id = "grain";
+  g.innerHTML = Array.from({length: 26}, (_, i) => `<i style="left:${(i * 37 + Math.random() * 20) % 100}%;width:${6 + Math.random() * 8}px;height:${6 + Math.random() * 8}px;animation-duration:${3 + Math.random() * 4}s;animation-delay:${-Math.random() * 7}s"></i>`).join("");
+  document.body.appendChild(g);
+}, 1000);
