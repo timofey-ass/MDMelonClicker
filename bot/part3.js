@@ -193,6 +193,19 @@ A.fbid = function () {
   A.pfban({dataset: {i: v, on: 1}, textContent: ""}); if (fbArm === v) { toast("Нажми «Забанить по ID» ещё раз"); }
 };
 A.fbun = async function (e) { const r = await api("adm_fban", {uid: +e.dataset.i, on: 0}); if (r.error) return toast(r.error); toast("Бан снят"); banList = null; render(); };
+let logData = null, logActor = 0, logOff = 0;
+async function loadLog(more) { if (!more) logOff = 0; const r = await api("adm_log", {actor: logActor, off: logOff}); if (!r || !r.rows) { toast((r && r.error) || "Не удалось загрузить журнал"); return; } if (more && logData) { logData.rows = logData.rows.concat(r.rows); logData.more = r.more; logData.actors = r.actors; } else logData = r; if (tab === 5) render(); }
+A.logrf = () => { logData = null; loadLog(false); render(); };
+A.logmore = () => { logOff += 40; loadLog(true); };
+A.logact = e => { logActor = +e.dataset.i || 0; logData = null; loadLog(false); render(); };
+function logCard() {
+  if (!logData) { setTimeout(() => loadLog(false), 30); return `<div class="card col"><div class="t1" style="color:var(--pri)">📜 Журнал действий</div><div class="t2">Загрузка…</div></div>`; }
+  const ROL = {admin: "👑", smod: "🛡", mod: "🔹"};
+  const ch = (id, nm) => `<button class="chip" data-a="logact" data-i="${id}" style="border:0;cursor:pointer;${logActor === id ? "background:var(--prc);color:var(--onprc)" : ""}">${nm}</button>`;
+  const fm = ts => { const d = new Date(ts * 1000); return d.toLocaleDateString("ru-RU", {day: "2-digit", month: "2-digit"}) + " " + d.toLocaleTimeString("ru-RU", {hour: "2-digit", minute: "2-digit"}); };
+  const row = x => `<div style="padding:7px 0;border-top:1px solid rgba(255,255,255,.07)"><div style="font-size:13px"><b>${ROL[x.role] || ""} ${esc(x.an || "?")}</b> ${esc(x.act)}${x.tgt ? ` → <span data-a="prof" data-i="${x.tgt}" style="color:var(--pri);cursor:pointer">${esc(x.tn || "ID " + x.tgt)}</span>` : ""}${x.info ? ` <span style="color:var(--onv)">(${esc(x.info)})</span>` : ""}</div><div class="t2" style="font-size:11px;margin:1px 0 0">${fm(x.ts)}${x.tgt ? " · ID " + x.tgt : ""}</div></div>`;
+  return `<div class="card col"><div style="display:flex;align-items:center;gap:8px"><div class="t1 grow" style="color:var(--pri)">📜 Журнал действий</div>${btn("Обновить", "logrf", "", "o")}</div><div class="t2" style="font-size:12px;margin:0">Что делали админ и модераторы: баны, мут, выдачи, рассылки, мастерская. Хранятся последние 1000 записей.</div><div style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0">${ch(0, "Все")}${(logData.actors || []).map(a => ch(a.actor, (ROL[a.role] || "") + " " + esc(a.an || "?") + " · " + a.c)).join("")}</div>${logData.rows.length ? logData.rows.map(row).join("") : '<div class="t2" style="font-size:12px">Пока пусто</div>'}${logData.more ? btn("Показать ещё", "logmore", 'style="width:100%;justify-content:center;margin-top:8px"', "o") : ""}</div>`;
+}
 let banList = null;
 async function loadBans() { const r = await api("adm_banlist", {}); banList = r && r.rows ? r : { rows: [], days: 7 }; if (tab === 5 && moreSub === 3) render(); }
 function banCard() {
@@ -289,6 +302,7 @@ const admCard = (lite) => {
   if (!tgStat) setTimeout(tgRefresh, 50);
   if (!lite) h += modsCard();
   if (!lite) h += banCard();
+  if (!lite) h += logCard();
   if (!lite) h += `<div class="card col"><div class="t1" style="color:var(--pri)">Технический перерыв</div><div class="t2" style="font-size:12px;margin:0">Закрывает игру у всех игроков сразу, без перезагрузки страницы. Ты (админ) играть можешь. Когда выключишь, игра откроется сама.</div>${maintA ? `<div class="t2" style="color:var(--err,#ff5252);font-weight:700;margin:0">Сейчас игра закрыта: ${esc(maintA)}</div>` : ""}<textarea data-keep="mt" rows="2" placeholder="Что написать игрокам (необязательно)"></textarea>${btn(maintA ? "✅ Открыть игру" : "🛠 Закрыть на перерыв", "admmaint", 'style="width:100%;justify-content:center"', maintA ? "" : "o")}</div>`;
   if (!lite) h += `<div class="card col"><div class="t1" style="color:var(--pri)">Событие (множитель дохода)</div><input data-keep="evn" placeholder="Название, напр. Арбузная лихорадка"><input data-keep="evm" inputmode="decimal" placeholder="Множитель, напр. 2"><input data-keep="evt" inputmode="numeric" placeholder="Минут, напр. 60"><input data-keep="evc" inputmode="numeric" placeholder="ID кота-подарка (необязательно)">${btn("Запустить", "admev")}${btn("Остановить", "admevs")}</div>`;
   h += `<div class="card col"><div class="t1" style="color:var(--pri)">Сообщение всем в игре</div><textarea data-keep="bc" rows="2" placeholder="Текст сообщения"></textarea>${btn("Показать всем", "admbc")}</div>`;

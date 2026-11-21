@@ -52,6 +52,7 @@ async function init(db) {
     db.prepare("CREATE TABLE IF NOT EXISTS chg (id INTEGER PRIMARY KEY AUTOINCREMENT, p1 INTEGER, n1 TEXT, p2 INTEGER, n2 TEXT, stake REAL, status TEXT DEFAULT 'wait', s TEXT, t1 INTEGER DEFAULT 300000, t2 INTEGER DEFAULT 300000, last INTEGER DEFAULT 0, lm TEXT, res TEXT, c1 INTEGER DEFAULT 0, c2 INTEGER DEFAULT 0, ts INTEGER)"),
     db.prepare("CREATE TABLE IF NOT EXISTS ideas (id INTEGER PRIMARY KEY AUTOINCREMENT, uid INTEGER, uname TEXT, text TEXT, status TEXT DEFAULT 'new', ts INTEGER)"),
     db.prepare("CREATE TABLE IF NOT EXISTS kv (k TEXT PRIMARY KEY, v TEXT)"),
+    db.prepare("CREATE TABLE IF NOT EXISTS alog (id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER, actor INTEGER, an TEXT, role TEXT, act TEXT, tgt INTEGER DEFAULT 0, tn TEXT DEFAULT '', info TEXT DEFAULT '')"),
     db.prepare("CREATE TABLE IF NOT EXISTS bans (id INTEGER PRIMARY KEY, name TEXT, un TEXT, at INTEGER, st TEXT DEFAULT 'ban', endt INTEGER DEFAULT 0, why TEXT DEFAULT '')"),
     db.prepare("CREATE TABLE IF NOT EXISTS chat (id INTEGER PRIMARY KEY AUTOINCREMENT, uid INTEGER, name TEXT, text TEXT, ts INTEGER)"),
   ]);
@@ -118,6 +119,31 @@ const num = x => (typeof x === "number" && isFinite(x)) ? x : 0;
 const ABS_MAX = 1e21, GEM_MAX = 1e7, IMPORT_MAX = 1e15, IMPORT_GEMS = 1e4;
 async function modIdsOf(db) { try { const r = await db.prepare("SELECT v FROM kv WHERE k='mods'").first(); const l = r ? JSON.parse(r.v) : []; return Array.isArray(l) ? l.map(Number) : []; } catch (e) { return []; } }
 async function smodIdsOf(db) { try { const r = await db.prepare("SELECT v FROM kv WHERE k='smods'").first(); const l = r ? JSON.parse(r.v) : []; return Array.isArray(l) ? l.map(Number) : []; } catch (e) { return []; } }
+const AUDT = {
+  adm_ban: b => b.on ? "мут в чате" : "снял мут в чате", adm_fban: b => b.on ? "ЗАБАНИЛ игрока" : "снял бан", adm_del: () => "удалил сообщение из чата", adm_bn_del: () => "удалил баннер",
+  adm_give: b => ({pts: "выдал монеты", gems: "выдал самоцветы", cat: "выдал кота", allcats: "выдал всех котов", takepts: "забрал монеты", takecat: "забрал кота", takegems: "забрал самоцветы"})[String(b.kind)] || "выдача/изъятие",
+  adm_mod: b => b.on ? (b.senior ? "назначил ведущим модератором" : "назначил помощником") : "снял с модераторов", adm_maint: b => b.on ? "включил техперерыв" : "выключил техперерыв",
+  adm_bcast: () => "сообщение всем в игре", adm_tgcast: () => "рассылка во все чаты бота", adm_reset: () => "сбросил прогресс игроку", adm_resetall: () => "СБРОС ПРОГРЕССА ВСЕМ", adm_gemset: () => "сбросил самоцветы",
+  adm_badges: () => "изменил значки игрока", adm_promo_new: () => "создал промокод", adm_promo_del: () => "удалил промокод", adm_skiploan: () => "пропустил срок кредита", adm_evt: () => "запустил событие", adm_evt_stop: () => "остановил событие",
+  adm_clan_del: () => "удалил клан", adm_clan_invite: () => "изменил приглашение в клан", adm_clan_badge: () => "изменил значок клана",
+  uc_approve: () => "одобрил кота мастерской", uc_reject: () => "отклонил кота мастерской", uc_del: () => "удалил кота мастерской", uc_setrar: () => "сменил редкость кота", idea_ok: () => "одобрил идею", idea_rej: () => "отклонил идею"
+};
+async function auditLog(db, id, name, role, path, b, now) {
+  try {
+    const f = AUDT[path]; if (!f) return;
+    const tgt = Number(b.uid || b.target) || 0; let tn = "";
+    if (tgt) { const u = await db.prepare("SELECT name FROM users WHERE id=?").bind(tgt).first(); tn = u ? u.name || "" : ""; }
+    let info = "";
+    if (path === "adm_give" || path === "adm_gemset") info = [b.a, b.b].filter(x => x !== undefined && x !== "" && x !== null).join(" ×");
+    else if (path === "adm_bcast" || path === "adm_tgcast" || path === "adm_maint") info = String(b.text || "");
+    else if (path === "adm_promo_new" || path === "adm_promo_del") info = String(b.code || "");
+    else if (path === "adm_reset" || path === "adm_fban") info = String(b.why || "");
+    await db.batch([
+      db.prepare("INSERT INTO alog (ts,actor,an,role,act,tgt,tn,info) VALUES (?,?,?,?,?,?,?,?)").bind(now, id, String(name || "").slice(0, 30), role, f(b), tgt, tn.slice(0, 30), info.replace(/\s+/g, " ").slice(0, 90)),
+      db.prepare("DELETE FROM alog WHERE id <= (SELECT MAX(id) FROM alog) - 1000"),
+    ]);
+  } catch (e) {}
+}
 const MODP = new Set(["adm_del", "adm_ban", "adm_bn_del"]), SMODP = new Set(["adm_give", "adm_tgcast", "adm_tgstat", "adm_bcast"]);
 const fin = (x, mx) => { x = Number(x); return Number.isFinite(x) ? Math.min(mx, Math.max(0, x)) : 0; };
 function clean(s, prev, dt, al, adm) {
@@ -360,6 +386,7 @@ async function api(path, req, env) {
   }
   const adm = id === ADMIN;
   const adm0 = id === ADMIN;
+  if (adm0 && AUDT[path]) await auditLog(db, id, name, "admin", path, b, now);
   const tg0 = (uid, text) => env.BOT_TOKEN ? tgcall(env, "sendMessage", {chat_id: uid, text}).catch(() => {}) : null;
   // ---------- казино
   const crnd = n => { const a = new Uint32Array(1); crypto.getRandomValues(a); return a[0] % n; };
@@ -1588,6 +1615,13 @@ async function api(path, req, env) {
         if (!MODP.has(path) || !(await modIdsOf(db)).includes(id)) return J({error: "Нет доступа"}, 403);
         const tu = Number(b.uid); if (path !== "adm_del" && (!tu || tu === ADMIN || (await modIdsOf(db)).includes(tu))) return J({error: "Нельзя"});
       }
+    }
+    if (!adm) await auditLog(db, id, name, (await smodIdsOf(db)).includes(id) ? "smod" : "mod", path, b, now);
+    if (path === "adm_log") {
+      const act = Number(b.actor) || 0, off = Math.max(0, Math.floor(Number(b.off)) || 0);
+      const rows = (await db.prepare("SELECT ts,actor,an,role,act,tgt,tn,info FROM alog WHERE (?=0 OR actor=?) ORDER BY id DESC LIMIT 41 OFFSET ?").bind(act, act, off).all()).results;
+      const actors = (await db.prepare("SELECT actor,MAX(an) AS an,MAX(role) AS role,COUNT(*) AS c FROM alog GROUP BY actor ORDER BY MAX(id) DESC LIMIT 12").all()).results;
+      return J({rows: rows.slice(0, 40), more: rows.length > 40, actors});
     }
     if (path === "adm_mod") {
       const uid = Number(b.uid); if (!uid || uid === ADMIN) return J({error: "Неверный ID"});
