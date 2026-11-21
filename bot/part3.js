@@ -305,7 +305,7 @@ const admCard = (lite) => {
   if (!lite) h += logCard();
   if (!lite) h += `<div class="card col"><div class="t1" style="color:var(--pri)">Технический перерыв</div><div class="t2" style="font-size:12px;margin:0">Закрывает игру у всех игроков сразу, без перезагрузки страницы. Ты (админ) играть можешь. Когда выключишь, игра откроется сама.</div>${maintA ? `<div class="t2" style="color:var(--err,#ff5252);font-weight:700;margin:0">Сейчас игра закрыта: ${esc(maintA)}</div>` : ""}<textarea data-keep="mt" rows="2" placeholder="Что написать игрокам (необязательно)"></textarea>${btn(maintA ? "✅ Открыть игру" : "🛠 Закрыть на перерыв", "admmaint", 'style="width:100%;justify-content:center"', maintA ? "" : "o")}</div>`;
   if (!lite || lite === 2) h += `<div class="card col"><div class="t1" style="color:var(--pri)">Событие (множитель дохода)</div><input data-keep="evn" placeholder="Название, напр. Арбузная лихорадка"><input data-keep="evm" inputmode="decimal" placeholder="Множитель, напр. 2"><input data-keep="evt" inputmode="numeric" placeholder="Минут, напр. 60"><input data-keep="evc" inputmode="numeric" placeholder="ID кота-подарка (необязательно)">${btn("Запустить", "admev")}${btn("Остановить", "admevs")}</div>`;
-  h += wallCard() + floatCard() + chaosCard();
+  h += hardCard() + wallCard() + floatCard() + chaosCard();
   h += `<div class="card col"><div class="t1" style="color:var(--pri)">Сообщение всем в игре</div><textarea data-keep="bc" rows="2" placeholder="Текст сообщения"></textarea>${btn("Показать всем", "admbc")}</div>`;
   if (!lite) h += `<div class="card col"><div class="t1" style="color:var(--pri)">Промокоды</div><input data-keep="pcode" placeholder="Код, например NEWYEAR" style="text-transform:uppercase"><div class="buyrow4">${[["Монеты", "pts"], ["Самоцветы", "gems"], ["Кот", "cat"]].map(x => `<button class="chip ${admKind === x[1] ? "p" : ""}" style="border:0;font-family:inherit;justify-content:center" data-a="admkind" data-v="${x[1]}">${x[0]}</button>`).join("")}</div><input data-keep="pa" inputmode="decimal" placeholder="${admKind === "cat" ? "Номер кота 0–62" : "Сколько"}">${admKind === "cat" ? `<input data-keep="pb" inputmode="numeric" placeholder="Сколько котов (1)">` : ""}<input data-keep="pmx" inputmode="numeric" placeholder="Сколько человек смогут ввести (0 = без лимита)">${btn("Создать промокод", "admpromo")}`;
   if (promoList) if (!lite) h += promoList.map(p => `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid rgba(255,255,255,.06)"><div class="grow"><div class="t1" style="font-size:14px">${esc(p.code)}</div><div class="t2" style="font-size:11px">${rewTxt(p.kind, p.a, p.b)} · использовано ${p.used}${p.mx ? "/" + p.mx : ""}</div></div>${btn(ic("close", 16), "admpdel", `data-v="${esc(p.code)}"`, "t")}</div>`).join("");
@@ -2587,7 +2587,7 @@ A.admmod = async function (e) {
 const modCard = () => `<div class="card col"><div class="t1" style="color:var(--pri);display:flex;align-items:center;gap:8px">${ic("crown", 18)}Модерация</div><div class="t2" style="font-size:13px;line-height:1.45;margin:0">Тебе выдали права помощника. Что можно:<br>• в чате удалять сообщения (крестик у сообщения);<br>• открыть профиль игрока и замутить или размутить его в чате;<br>• убрать неподходящий баннер игрока в его профиле.<br>Остальное доступно только владельцу.</div></div>`;
 
 // ---------- АНАРХИЯ
-const CH_N = {disco: "Диско", flip: "Вверх ногами", gold: "Золотой век", tiny: "Мелкий шрифт", night: "Ночь"};
+const CH_N = {disco: "Диско", flip: "Вверх ногами", gold: "Золотой век", tiny: "Мелкий шрифт", night: "Ночь", shake: "Землетрясение", invert: "Негатив", blur: "Туман", mirror: "Зеркало", spin: "Карусель"};
 let chaosCur = "";
 function applyChaos(c) {
   const l = Array.isArray(c) ? c : c && c.mode ? [c] : [], ms = l.map(x => x.mode).sort().join(","); if (ms === chaosCur) return;
@@ -2654,3 +2654,12 @@ A.anarch = async function (e) {
 };
 A.anopen = function () { closeModal(); tab = 5; moreSub = 3; render(); };
 setInterval(() => document.body.classList.toggle("an-casino", !!isAn && tab === 6), 400);
+
+function hardCard() {
+  return `<div class="card col" style="border:1px solid #e53935"><div class="t1" style="color:#ef5350">Жёсткая анархия</div><div class="t2" style="font-size:12px;margin:0">Действует на всех игроков. Дождь и котопад раз в 10 минут, грабёж раз в 2 минуты.</div>${btn("Золотой дождь: всем по 1 трлн", "admhard", 'data-k="rain" style="width:100%;justify-content:center"')}${btn("Котопад: всем по случайному коту", "admhard", 'data-k="catrain" style="width:100%;justify-content:center"', "o")}<input data-keep="stl" inputmode="numeric" placeholder="ID жертвы (смотри в топе или профиле)">${btn("Ограбить: забрать половину монет", "admhard", 'data-k="steal" style="width:100%;justify-content:center"', "o")}</div>`;
+}
+A.admhard = async function (e) {
+  const k = e.dataset.k, body = {kind: k}; if (k === "steal") { body.uid = +(KEEP.stl || 0); if (!body.uid) return toast("Впиши ID жертвы"); }
+  const r = await api("adm_hard", body); if (r && r.error) return toast(r.error);
+  toast(k === "steal" ? "Ограблен " + r.name + ": +" + fmt(r.x) : k === "rain" ? "Дождь пошёл" : "Котопад пошёл");
+};

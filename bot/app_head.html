@@ -751,3 +751,10 @@ body.ch-night #app{filter:brightness(.45) contrast(1.15)}
 body.an-casino .rwrap,body.an-casino .cz{}
 body.an-casino #view{background:linear-gradient(160deg,#4a3500,#b8860b 45%,#ffd54a 70%,#6b4a00)!important}
 </style>
+<style>
+body.ch-shake #app{animation:chshake .25s linear infinite}@keyframes chshake{0%{transform:translate(2px,1px)}25%{transform:translate(-2px,2px)}50%{transform:translate(2px,-2px)}75%{transform:translate(-1px,-1px)}}
+body.ch-invert #app{filter:invert(1) hue-rotate(180deg)}
+body.ch-blur #app{filter:blur(2.5px)}
+body.ch-mirror #app{transform:scaleX(-1)}
+body.ch-spin #app{animation:chspin 20s linear infinite}@keyframes chspin{to{transform:rotate(360deg)}}
+</style>

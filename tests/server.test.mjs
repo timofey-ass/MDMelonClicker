@@ -706,7 +706,7 @@ test("АНАРХИЯ: копия, права среднего модератор
   assert.ok((await call(A, "adm_give", { kind: "pts", a: 1e6 })).ok);
   assert.ok((await call(A, "adm_give", { kind: "cat", a: 5, b: 2 })).ok);
   assert.match((await call(A, "adm_give", { kind: "cat", a: 70, b: 1 })).error, /Админских/);
-  assert.match((await call(A, "adm_give", { kind: "pts", a: 1e16 })).error, /Не больше/);
+  assert.match((await call(A, "adm_give", { kind: "pts", a: 1e19 })).error, /Не больше/);
   assert.match((await call(A, "adm_give", { kind: "pts", a: 5, target: 1002 })).error, /только себе/);
   assert.match((await call(A, "adm_give", { kind: "gems", a: 5 })).error, /Недоступно/);
   assert.equal((await call(A, "adm_resetall", {})).error, "Нет доступа");
@@ -718,7 +718,7 @@ test("АНАРХИЯ: копия, права среднего модератор
   assert.equal((await call(A, "adm_chaos", { mode: "off" })).error, "Только владелец");
   assert.ok((await call(A, "adm_wall", { text: "привет анархия" })).ok);
   assert.equal((await call(B, "adm_wall", { list: true })).rows[0].text, "привет анархия");
-  assert.ok((await call(B, "adm_evt", { name: "Хаос", mult: 9, mins: 999 })).evt.mult <= 3);
+  assert.ok((await call(B, "adm_evt", { name: "Хаос", mult: 99, mins: 999 })).evt.mult <= 50);
   // изменим прогресс во время анархии
   await call(A, "save", { rev: 1, state: baseState({ pts: 700, total: 700 }) });
   const rs = await call(ADMIN, "adm_anarchy_restore", {}); assert.ok(rs.ok);
@@ -740,4 +740,17 @@ test("АНАРХИЯ: стак режимов, надписи (10), джекпо
   assert.equal((await call(A, "cz_info", {})).jp, 999e15);
   const r = await call(A, "cz_roulette", { bet: 100, pick: "r" });
   assert.equal(r.jackpot, true); assert.ok(r.payout > 9e17);
+});
+
+test("АНАРХИЯ: жёсткие функции (дождь, котопад, грабёж)", async () => {
+  const { call } = await makeEnv();
+  await call(A, "save", { rev: 0, state: baseState({ pts: 1000, total: 1000 }) }); await call(B, "save", { rev: 0, state: baseState({ pts: 800, total: 800 }) });
+  assert.equal((await call(A, "adm_hard", { kind: "rain" })).error, "Нет доступа");
+  await call(ADMIN, "adm_anarchy_on", {});
+  assert.ok((await call(A, "adm_hard", { kind: "rain" })).ok);
+  assert.ok((await call(B, "adm_hard", { kind: "catrain" })).ok);
+  const s = await call(A, "adm_hard", { kind: "steal", uid: 1002 }); assert.ok(s.ok); assert.equal(s.x, 400);
+  assert.ok((await call(A, "adm_hard", { kind: "steal", uid: 1002 })).error);
+  assert.ok((await call(B, "adm_hard", { kind: "steal", uid: 1001 })).ok);
+  assert.ok((await call(A, "adm_hard", { kind: "steal", uid: 1 })).error);
 });

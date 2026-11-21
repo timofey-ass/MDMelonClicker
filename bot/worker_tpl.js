@@ -145,7 +145,7 @@ async function auditLog(db, id, name, role, path, b, now) {
   } catch (e) {}
 }
 const MODP = new Set(["adm_del", "adm_ban", "adm_bn_del"]), SMODP = new Set(["adm_give", "adm_tgcast", "adm_tgstat", "adm_bcast"]);
-const MIDP = new Set(["adm_give", "adm_tgcast", "adm_tgstat", "adm_bcast", "adm_evt", "adm_wall", "adm_chaos", "adm_float"]), ADMIN_CATS = new Set([70, 71, 72]), CHAOS = {disco: "Диско", flip: "Вверх ногами", gold: "Золотой век", tiny: "Мелкий шрифт", night: "Ночь"};
+const MIDP = new Set(["adm_give", "adm_tgcast", "adm_tgstat", "adm_bcast", "adm_evt", "adm_wall", "adm_chaos", "adm_float", "adm_hard"]), ADMIN_CATS = new Set([70, 71, 72]), CHAOS = {disco: "Диско", flip: "Вверх ногами", gold: "Золотой век", tiny: "Мелкий шрифт", night: "Ночь", shake: "Землетрясение", invert: "Негатив", blur: "Туман", mirror: "Зеркало", spin: "Карусель"};
 async function anarchyOn(db) { try { const r = await db.prepare("SELECT v FROM kv WHERE k='anarchy'").first(); return r ? JSON.parse(r.v) : null; } catch (e) { return null; } }
 const fin = (x, mx) => { x = Number(x); return Number.isFinite(x) ? Math.min(mx, Math.max(0, x)) : 0; };
 function clean(s, prev, dt, al, adm) {
@@ -1617,13 +1617,14 @@ async function api(path, req, env) {
       if (an && MIDP.has(path)) {
         if (path === "adm_give") {
           const t = Number(b.target) || id, kind = String(b.kind); if (t !== id) return J({error: "Выдавать можно только себе"});
-          if (kind === "pts") { const a = Number(b.a); if (!(a > 0) || a > 1e15) return J({error: "Не больше 1Qa за раз"}); }
+          if (kind === "pts") { const a = Number(b.a); if (!(a > 0) || a > 1e18) return J({error: "Не больше 1Qi за раз"}); }
           else if (kind === "cat") { const a = Math.floor(Number(b.a)), m = Math.floor(Number(b.b)) || 1; if (!(a >= 0) || a > 500 || ADMIN_CATS.has(a)) return J({error: "Админских котов выдавать нельзя"}); if (m < 1 || m > 10) return J({error: "От 1 до 10"}); }
           else return J({error: "Недоступно"});
         } else if (path === "adm_tgcast") { const w = await cool("tg", 1800); if (w) return J({error: "Рассылку можно раз в 30 минут, ещё " + Math.ceil(w / 60) + " мин"}); }
         else if (path === "adm_bcast") { const w = await cool("bc", 60); if (w) return J({error: "Подожди " + w + " с"}); }
-        else if (path === "adm_evt") { const w = await cool("ev", 600); if (w) return J({error: "Событие можно раз в 10 минут, ещё " + Math.ceil(w / 60) + " мин"}); b.mult = Math.min(3, Math.max(1, Number(b.mult) || 2)); b.mins = Math.min(15, Math.max(1, Number(b.mins) || 10)); delete b.cat; }
+        else if (path === "adm_evt") { const w = await cool("ev", 600); if (w) return J({error: "Событие можно раз в 10 минут, ещё " + Math.ceil(w / 60) + " мин"}); b.mult = Math.min(50, Math.max(1, Number(b.mult) || 2)); b.mins = Math.min(30, Math.max(1, Number(b.mins) || 10)); delete b.cat; }
         else if (path === "adm_chaos") { const w = await cool("ch", 180); if (w) return J({error: "Режим можно раз в 3 минуты, ещё " + w + " с"}); }
+        else if (path === "adm_hard") { const hk = String(b.kind); const w = await cool("hd" + hk, hk === "steal" ? 120 : 600); if (w) return J({error: "Подожди ещё " + w + " с"}); }
         else if (path === "adm_float") { const w = await cool("fl", 15); if (w) return J({error: "Подожди " + w + " с"}); }
         else if (path === "adm_wall") { if (!b.list) { const w = await cool("wl", 20); if (w) return J({error: "Подожди " + w + " с"}); } }
       } else if (sm && SMODP.has(path)) {
@@ -1646,6 +1647,27 @@ async function api(path, req, env) {
       if (b.del && adm) { w = w.filter(x => x.ts !== Number(b.del)); await db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES ('wall',?)").bind(JSON.stringify(w)).run(); return J({ok: true}); }
       const text = String(b.text || "").trim().replace(/\s+/g, " ").slice(0, 80); if (text.length < 2) return J({error: "Слишком коротко"});
       w.push({id, name, text, ts: Date.now()}); await db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES ('wall',?)").bind(JSON.stringify(w.slice(-40))).run(); return J({ok: true});
+    }
+    if (path === "adm_hard") {
+      const kind = String(b.kind), ids = (await db.prepare("SELECT id FROM users WHERE state IS NOT NULL ORDER BY upd DESC LIMIT 500").all()).results.map(r => r.id);
+      if (kind === "rain") {
+        for (const u of ids) { await db.prepare("INSERT INTO grants (uid,kind,a,b,ts) VALUES (?,?,?,?,?)").bind(u, "pts", 1e12, 1, now).run(); await allowAdd(db, u, 1e12, 0); }
+        await db.prepare("INSERT INTO bcast (text,ts) VALUES (?,?)").bind("Золотой дождь! " + name + " раздал всем по 1 трлн монет", now).run(); return J({ok: true, n: ids.length});
+      }
+      if (kind === "catrain") {
+        for (const u of ids) await db.prepare("INSERT INTO grants (uid,kind,a,b,ts) VALUES (?,?,?,?,?)").bind(u, "cat", crnd(70), 1, now).run();
+        await db.prepare("INSERT INTO bcast (text,ts) VALUES (?,?)").bind("Котопад! " + name + " раздал всем по случайному коту", now).run(); return J({ok: true, n: ids.length});
+      }
+      if (kind === "steal") {
+        const t = Number(b.uid); if (!t || t === id || t === ADMIN) return J({error: "Нельзя ограбить этого игрока"});
+        const u = await getUser(db, t); if (!u) return J({error: "Игрок не найден"});
+        let x = 0; const r = await mutate(db, t, s => { x = Math.floor(num(s.pts) * 0.5); s.pts = Math.max(0, num(s.pts) - x); s.tk = (s.tk || 0) + 1; s.tkm = "ограбление"; });
+        if (r.error) return J({error: r.error});
+        if (x > 0) { await db.prepare("INSERT INTO grants (uid,kind,a,b,ts) VALUES (?,?,?,?,?)").bind(id, "pts", x, 1, now).run(); await allowAdd(db, id, x, 0); }
+        await db.prepare("INSERT INTO bcast (text,ts) VALUES (?,?)").bind(name + " ограбил " + u.name + " на половину монет", now).run();
+        return J({ok: true, name: u.name, x});
+      }
+      return J({error: "Неверный тип"});
     }
     if (path === "adm_float") {
       let w = []; try { const r = await db.prepare("SELECT v FROM kv WHERE k='floats'").first(); w = r ? JSON.parse(r.v) : []; } catch (e) {}
