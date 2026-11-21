@@ -2609,9 +2609,9 @@ let catT = 0;
 function catSay() {
   let c = document.getElementById("brcat");
   if (!isAn) { if (c) c.remove(); return; }
-  if (!c) { c = document.createElement("div"); c.id = "brcat"; c.innerHTML = `<div class="brb"></div><div class="bri"></div>`; c.querySelector(".bri").style.backgroundImage = `url(${MAS_URL})`; c.onclick = () => { c.classList.remove("on"); }; document.body.appendChild(c); }
+  if (!c) { c = document.createElement("div"); c.id = "brcat"; c.innerHTML = `<div class="brb"></div><div class="bri"></div>`; c.querySelector(".bri").style.cssText = `background:url(${MAS_URL}) 0 0/256px 68px no-repeat`; c.onclick = () => { c.classList.remove("on"); }; document.body.appendChild(c); }
   c.style.left = (4 + Math.random() * 62) + "%"; c.style.top = (10 + Math.random() * 72) + "%";
-  c.querySelector(".brb").textContent = BREDS[Math.floor(Math.random() * BREDS.length)]; c.classList.add("on");
+  c.querySelector(".bri").style.backgroundPositionX = -64 * Math.floor(Math.random() * 4) + "px"; c.querySelector(".brb").textContent = BREDS[Math.floor(Math.random() * BREDS.length)]; c.classList.add("on");
   setTimeout(() => c.classList.remove("on"), 5000);
 }
 setInterval(() => { if (isAn && Math.random() < .6) catSay(); }, 9000);

@@ -746,7 +746,7 @@ body.ch-night #app{filter:brightness(.45) contrast(1.15)}
 .flt{position:absolute;max-width:46%;padding:4px 9px;border-radius:10px;background:rgba(0,0,0,.55);color:#fff;font-size:13px;font-weight:700;backdrop-filter:blur(3px);word-break:break-word}
 #brcat{position:fixed;z-index:61;width:70px;opacity:0;transform:scale(.4);transition:opacity .25s,transform .3s cubic-bezier(.2,1.4,.4,1);pointer-events:none}
 #brcat.on{opacity:1;transform:scale(1);pointer-events:auto}
-#brcat .bri{width:64px;height:64px;background:center/contain no-repeat}
+#brcat .bri{width:64px;height:68px}
 #brcat .brb{position:absolute;bottom:68px;left:-40px;width:150px;padding:6px 9px;border-radius:12px;background:#fff;color:#222;font-size:12px;font-weight:700;text-align:center}
 body.an-casino .rwrap,body.an-casino .cz{}
 body.an-casino #view{background:linear-gradient(160deg,#4a3500,#b8860b 45%,#ffd54a 70%,#6b4a00)!important}
@@ -4248,9 +4248,9 @@ let catT = 0;
 function catSay() {
   let c = document.getElementById("brcat");
   if (!isAn) { if (c) c.remove(); return; }
-  if (!c) { c = document.createElement("div"); c.id = "brcat"; c.innerHTML = `<div class="brb"></div><div class="bri"></div>`; c.querySelector(".bri").style.backgroundImage = `url(${MAS_URL})`; c.onclick = () => { c.classList.remove("on"); }; document.body.appendChild(c); }
+  if (!c) { c = document.createElement("div"); c.id = "brcat"; c.innerHTML = `<div class="brb"></div><div class="bri"></div>`; c.querySelector(".bri").style.cssText = `background:url(${MAS_URL}) 0 0/256px 68px no-repeat`; c.onclick = () => { c.classList.remove("on"); }; document.body.appendChild(c); }
   c.style.left = (4 + Math.random() * 62) + "%"; c.style.top = (10 + Math.random() * 72) + "%";
-  c.querySelector(".brb").textContent = BREDS[Math.floor(Math.random() * BREDS.length)]; c.classList.add("on");
+  c.querySelector(".bri").style.backgroundPositionX = -64 * Math.floor(Math.random() * 4) + "px"; c.querySelector(".brb").textContent = BREDS[Math.floor(Math.random() * BREDS.length)]; c.classList.add("on");
   setTimeout(() => c.classList.remove("on"), 5000);
 }
 setInterval(() => { if (isAn && Math.random() < .6) catSay(); }, 9000);
