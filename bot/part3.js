@@ -1,9 +1,9 @@
 // ============ PART 3: админка, промокоды, чат, профили, значки, MD3-формы ============
-let isSMod = false, isMod = false, isAdm = false, myId = 0, myBadges = "", lastBc = 0, onlineN = 0;
+let isAn = false, isSMod = false, isMod = false, isAdm = false, myId = 0, myBadges = "", lastBc = 0, onlineN = 0;
 const _api0 = api;
 api = async function (path, body) {
   const r = await _api0(path, body);
-  if (path === "auth" && r && !r.error) { isAdm = !!r.admin; isMod = !!r.mod; isSMod = !!r.smod; myId = r.id || 0; myBadges = r.badges || ""; }
+  if (path === "auth" && r && !r.error) { isAdm = !!r.admin; isMod = !!r.mod; isSMod = !!r.smod; isAn = !!r.an; myId = r.id || 0; myBadges = r.badges || ""; }
   if (r && typeof r === "object") for (const k of ["rows", "friends", "members", "inc"]) if (Array.isArray(r[k])) r[k].forEach(x => { if (x && x.ph) PH[x.id !== undefined ? x.id : x.uid] = x.ph; });
   return r;
 };
@@ -70,7 +70,7 @@ async function pollNow() {
   try {
     const r = await api("poll", {bc: lastBc});
     if (r && !r.error) {
-      EVT = r.evt || null; CLB = r.clb || 0; evtBar();
+      EVT = r.evt || null; CLB = r.clb || 0; evtBar(); if (r.an !== undefined) isAn = !!r.an; applyChaos(r.chaos);
       maintA = r.maintA || null;       onlineN = r.online || 0; if (r.uc !== undefined && r.uc !== ucN) { try { await loadUcats(); } catch (e) {} } if (r.badges !== undefined) myBadges = r.badges;
       if (r.rev && r.rev > rev && !saving && !(r.grants && r.grants.length)) { dirty = true; save(true); }
       for (const g of r.grants || []) {
@@ -286,11 +286,11 @@ const admCard = (lite) => {
   const it = ITEMS[admIdx], rc = RC[it[2]];
   const chips3 = (arr, a) => `<div class="buyrow3">${arr.map(x => btn(x[0], a, `data-v="${x[1]}"`, "o")).join("")}</div>`;
   const chips = (arr, a) => `<div class="buyrow4">${arr.map(x => btn(x[0], a, `data-v="${x[1]}"`, "o")).join("")}</div>`;
-  let h = `<div class="card col"><div class="t1" style="color:var(--pri);display:flex;align-items:center;gap:8px">${ic("tune", 18)}${lite ? "Ведущий модератор" : "Админ-панель"}</div><div class="t2">Выдача приходит игроку в течение нескольких секунд, если у него открыта игра. Пусто в поле ID = себе.</div><input data-keep="admid" inputmode="numeric" placeholder="ID игрока">`;
+  let h = `<div class="card col"><div class="t1" style="color:var(--pri);display:flex;align-items:center;gap:8px">${ic("tune", 18)}${lite === 2 ? "Админка анархии" : lite ? "Ведущий модератор" : "Админ-панель"}</div><div class="t2">Выдача приходит игроку в течение нескольких секунд, если у него открыта игра. Пусто в поле ID = себе.</div><input data-keep="admid" inputmode="numeric" placeholder="ID игрока">`;
   h += `<div style="display:flex;align-items:center;gap:10px;margin-top:6px">${catEl(admIdx, 46, {})}<div class="grow t1" style="color:${rc};font-size:14px">${it[1]} · ${RARS[it[2]][0]} ×${admQty}</div></div>`;
   h += chips3([["−", -1], ["+", 1], ["+5", 5]], "admidx") + chips3([["×1", 1], ["×5", 5], ["×10", 10]], "admqty");
   h += btn("Выдать котика", "admcat", 'style="width:100%;justify-content:center"');
-  h += btn("Выдать ВСЕХ котов ×" + admQty, "admallcats", 'style="width:100%;justify-content:center"', "o");
+  if (lite !== 2) h += btn("Выдать ВСЕХ котов ×" + admQty, "admallcats", 'style="width:100%;justify-content:center"', "o");
   h += chips3([["+1M", 1e6], ["+1B", 1e9], ["+1T", 1e12]], "admpts");
   if (!lite) h += `<div class="buyrow">${btn(ic("gem", 14) + "+10", "admgem", 'data-v="10"', "o")}${btn(ic("gem", 14) + "+100", "admgem", 'data-v="100"', "o")}</div>`;
   if (!lite) h += `<div class="t1" style="color:var(--err,#ff5252);margin-top:10px">Забрать у игрока</div><div class="t2">Нужен ID игрока в поле выше (себе тоже можно)</div>`;
@@ -304,7 +304,8 @@ const admCard = (lite) => {
   if (!lite) h += banCard();
   if (!lite) h += logCard();
   if (!lite) h += `<div class="card col"><div class="t1" style="color:var(--pri)">Технический перерыв</div><div class="t2" style="font-size:12px;margin:0">Закрывает игру у всех игроков сразу, без перезагрузки страницы. Ты (админ) играть можешь. Когда выключишь, игра откроется сама.</div>${maintA ? `<div class="t2" style="color:var(--err,#ff5252);font-weight:700;margin:0">Сейчас игра закрыта: ${esc(maintA)}</div>` : ""}<textarea data-keep="mt" rows="2" placeholder="Что написать игрокам (необязательно)"></textarea>${btn(maintA ? "✅ Открыть игру" : "🛠 Закрыть на перерыв", "admmaint", 'style="width:100%;justify-content:center"', maintA ? "" : "o")}</div>`;
-  if (!lite) h += `<div class="card col"><div class="t1" style="color:var(--pri)">Событие (множитель дохода)</div><input data-keep="evn" placeholder="Название, напр. Арбузная лихорадка"><input data-keep="evm" inputmode="decimal" placeholder="Множитель, напр. 2"><input data-keep="evt" inputmode="numeric" placeholder="Минут, напр. 60"><input data-keep="evc" inputmode="numeric" placeholder="ID кота-подарка (необязательно)">${btn("Запустить", "admev")}${btn("Остановить", "admevs")}</div>`;
+  if (!lite || lite === 2) h += `<div class="card col"><div class="t1" style="color:var(--pri)">Событие (множитель дохода)</div><input data-keep="evn" placeholder="Название, напр. Арбузная лихорадка"><input data-keep="evm" inputmode="decimal" placeholder="Множитель, напр. 2"><input data-keep="evt" inputmode="numeric" placeholder="Минут, напр. 60"><input data-keep="evc" inputmode="numeric" placeholder="ID кота-подарка (необязательно)">${btn("Запустить", "admev")}${btn("Остановить", "admevs")}</div>`;
+  h += wallCard() + chaosCard();
   h += `<div class="card col"><div class="t1" style="color:var(--pri)">Сообщение всем в игре</div><textarea data-keep="bc" rows="2" placeholder="Текст сообщения"></textarea>${btn("Показать всем", "admbc")}</div>`;
   if (!lite) h += `<div class="card col"><div class="t1" style="color:var(--pri)">Промокоды</div><input data-keep="pcode" placeholder="Код, например NEWYEAR" style="text-transform:uppercase"><div class="buyrow4">${[["Монеты", "pts"], ["Самоцветы", "gems"], ["Кот", "cat"]].map(x => `<button class="chip ${admKind === x[1] ? "p" : ""}" style="border:0;font-family:inherit;justify-content:center" data-a="admkind" data-v="${x[1]}">${x[0]}</button>`).join("")}</div><input data-keep="pa" inputmode="decimal" placeholder="${admKind === "cat" ? "Номер кота 0–62" : "Сколько"}">${admKind === "cat" ? `<input data-keep="pb" inputmode="numeric" placeholder="Сколько котов (1)">` : ""}<input data-keep="pmx" inputmode="numeric" placeholder="Сколько человек смогут ввести (0 = без лимита)">${btn("Создать промокод", "admpromo")}`;
   if (promoList) if (!lite) h += promoList.map(p => `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid rgba(255,255,255,.06)"><div class="grow"><div class="t1" style="font-size:14px">${esc(p.code)}</div><div class="t2" style="font-size:11px">${rewTxt(p.kind, p.a, p.b)} · использовано ${p.used}${p.mx ? "/" + p.mx : ""}</div></div>${btn(ic("close", 16), "admpdel", `data-v="${esc(p.code)}"`, "t")}</div>`).join("");
@@ -317,7 +318,7 @@ async function admGive(kind, a, b) {
   const r = await api("adm_give", {target: t, kind, a, b}); if (r.error) return toast(r.error);
   toast(kind.startsWith("take") ? "Отобрано у " + (r.name || "себя") + (r.now ? ": монеты " + fmt(r.was.pts) + " → " + fmt(r.now.pts) + ", самоцветы " + fmt(r.was.gems) + " → " + fmt(r.now.gems) : " (сервер старый!)") : "Выдано: " + (r.name || "себе")); pollNow();
 }
-A.admidx = function (e) { admIdx = ((admIdx + +e.dataset.v) % ITEMS.length + ITEMS.length) % ITEMS.length; render(); };
+A.admidx = function (e) { const d = +e.dataset.v || 1; let n = 0; do { admIdx = ((admIdx + d) % ITEMS.length + ITEMS.length) % ITEMS.length; } while (!isAdm && [70, 71, 72].includes(admIdx) && ++n < 5); render(); };
 A.admqty = function (e) { admQty = +e.dataset.v; render(); };
 let allCatsArm = 0;
 A.admallcats = function (e) {
@@ -549,10 +550,11 @@ const _tTopOld = tTop; tTop = function () { return mback + _tTopOld(); };
 const _tab0 = A.tab; A.tab = function (e) { moreSub = 0; return _tab0(e); };
 tMore = function () {
   const head = `<div class="card"><div class="grow"><div class="t1">${nm(me.name, myBadges)}</div><div class="t2">ID ${me.id}</div></div></div>`;
-  if (moreSub === 0) return head + `<div class="t2" style="margin:12px 4px 0;font-weight:700">Сообщество</div>` + mbtn("podium", "Сообщество", "com") + mbtn("cube", "Мастерская", "ws") + `<div style="height:10px"></div>` + mbtn("tune", "Настройки", "set") + mbtn("check", "Информация", "info") + (isAdm ? mbtn("crown", "Админка", "adm", "adm") : isMod ? mbtn("crown", "Модерация", "adm", "adm") : "");
+  if (moreSub === 0) return head + `<div class="t2" style="margin:12px 4px 0;font-weight:700">Сообщество</div>` + mbtn("podium", "Сообщество", "com") + mbtn("cube", "Мастерская", "ws") + `<div style="height:10px"></div>` + mbtn("tune", "Настройки", "set") + mbtn("check", "Информация", "info") + (isAdm ? mbtn("crown", "Админка", "adm", "adm") : isAn ? mbtn("crown", "Админка · анархия", "adm", "adm") : isMod ? mbtn("crown", "Модерация", "adm", "adm") : "");
   if (moreSub === 4) return mback + tWorkshop();
   if (moreSub === 3 && !isAdm && isMod) { if (isSMod) { if (!promoList) promoList = []; return mback + modCard() + admCard(true); } return mback + modCard(); }
-  if (moreSub === 3 && isAdm) { if (!promoList) loadPromos(); return mback + admCard(); }
+  if (moreSub === 3 && isAdm) { if (!promoList) loadPromos(); return mback + anOwnerCard() + admCard(); }
+  if (moreSub === 3 && isAn) return mback + anInfo() + admCard(2);
   if (moreSub === 2) {
     const st = [["Всего тапов", fmt(S.taps)], ["Накоплено за всё время", fmt(S.total)], ["За текущий забег", fmt(S.run)], ["Генераторов", owned()], ["Самоцветов", S.gems], ["Перерождений", S.prest], ["Звёзд поймано", S.stars], ["Лихорадок", S.fevers], ["Общий множитель", "x" + baseMult().toFixed(2)]];
     return mback + `<div class="card col" style="gap:0">${st.map(r => `<div style="display:flex;padding:3px 0"><span class="t2 grow" style="font-size:14px;margin:0">${r[0]}</span><span style="font-size:14px;font-weight:700">${r[1]}</span></div>`).join("")}</div>` +
@@ -1406,7 +1408,7 @@ function drwFill() {
   const it = (icon, label, k) => `<button class="dri" data-a="drwgo" data-k="${k}">${ic(icon, 26)}<span>${label}</span></button>`;
   drwEl.querySelector(".drp").innerHTML = `<div class="drh"><div class="dra">${av}</div><button class="drt" data-a="ltheme" aria-label="Тема">${ic(lt ? "moon" : "sun", 26)}</button></div>
     <div class="drn">${nm(me.name, myBadges)}</div><div class="dru">${u.username ? "@" + esc(u.username) : "ID " + me.id}</div>
-    <div class="drl">${it("podium", "Сообщество", "com")}${it("cat", "Энциклопедия", "enc")}${it("cube", "Мастерская", "ws")}<div class="drd"></div>${it("tune", "Настройки", "set")}${it("check", "Информация", "info")}${isAdm ? it("crown", "Админка", "adm") : isMod ? it("crown", "Модерация", "adm") : ""}</div>
+    <div class="drl">${it("podium", "Сообщество", "com")}${it("cat", "Энциклопедия", "enc")}${it("cube", "Мастерская", "ws")}<div class="drd"></div>${it("tune", "Настройки", "set")}${it("check", "Информация", "info")}${isAdm ? it("crown", "Админка", "adm") : isAn ? it("crown", "Админка · анархия", "adm") : isMod ? it("crown", "Модерация", "adm") : ""}</div>
     ${isApp() ? "" : `<button class="adc" data-a="adweb"><div class="adm"></div><div><b>Скачай приложение</b><span>Играй без Telegram, на весь экран</span></div></button>`}
     <div class="drv">MDMelonClicker v${CHANGES[0][0]}</div>`;
 }
@@ -2566,6 +2568,7 @@ setInterval(feTick, 75000);
 // ---------- объявление о заморозке проекта
 A.frzlink = function () { const u = "https://t.me/tmfqp"; try { if (tg && tg.openTelegramLink) return tg.openTelegramLink(u); } catch (e) {} window.open(u, "_blank"); };
 const frzShow = () => {
+  if (isAn) { try { modal(`<div style="text-align:center"><div class="circ" style="margin:0 auto 12px;width:64px;height:64px">${ic("crown", 32)}</div><div class="t1" style="font-size:22px;margin-bottom:8px;color:var(--pri)">АНАРХИЯ</div><div class="t2" style="font-size:14px;line-height:1.45;margin:0 0 14px">Пока игра заморожена, у каждого игрока появилась своя админка! Выдавай себе монеты и котов, пиши во все чаты бота, включай режимы для всех и оставляй надписи на стене. Открой боковое меню → «Админка · анархия».</div><div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">${btn("Открыть админку", "anopen")}${btn("Понятно", "mclose", "", "o")}</div></div>`); } catch (e) {} return; }
   try { modal(`<div style="text-align:center"><div class="circ" style="margin:0 auto 12px;width:64px;height:64px">${ic("flake", 32)}</div><div class="t1" style="font-size:20px;margin-bottom:8px">Игра заморожена</div><div class="t2" style="font-size:14px;line-height:1.45;margin:0 0 14px">На данный момент обновления выходить не будут: автор работает над другим проектом. Вся информация здесь: <b>@tmfqp</b></div><div class="card col" style="margin:0 0 12px;text-align:left"><div class="t1" style="display:flex;align-items:center;gap:8px;color:var(--pri);font-size:15px">${ic("tap", 18)} ×10 к тапу</div><div class="t2" style="margin:0;font-size:12px;line-height:1.4">Пока игра заморожена, сила тапа увеличена в 10 раз для всех.</div></div><div class="t2" style="font-size:13px;line-height:1.45;margin:0 0 14px">Хочешь помочь игре? Выкладывай видео по ней и приглашай друзей. Когда автор закончит с другим проектом, он вернётся и продолжит делать игру.</div><div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">${btn(ic("tg", 16) + " @tmfqp", "frzlink")}${btn("Понятно", "mclose", "", "o")}</div></div>`); } catch (e) {}
 };
 const frzIv = setInterval(() => { if (document.querySelector(".mdl, .tdov, .ann")) return; clearInterval(frzIv); frzShow(); }, 900);
@@ -2582,3 +2585,41 @@ A.admmod = async function (e) {
   const r = await api("adm_mod", {uid, on, senior: e.dataset.s === "1"}); if (r && r.error) return toast(r.error); toast(on ? "Помощник назначен" : "Права забраны"); if (on) KEEP.modid = ""; loadMods();
 };
 const modCard = () => `<div class="card col"><div class="t1" style="color:var(--pri);display:flex;align-items:center;gap:8px">${ic("crown", 18)}Модерация</div><div class="t2" style="font-size:13px;line-height:1.45;margin:0">Тебе выдали права помощника. Что можно:<br>• в чате удалять сообщения (крестик у сообщения);<br>• открыть профиль игрока и замутить или размутить его в чате;<br>• убрать неподходящий баннер игрока в его профиле.<br>Остальное доступно только владельцу.</div></div>`;
+
+// ---------- АНАРХИЯ
+const CH_N = {disco: "Диско", flip: "Вверх ногами", gold: "Золотой век", tiny: "Мелкий шрифт", night: "Ночь"};
+let chaosCur = "";
+function applyChaos(c) {
+  const m = c && c.mode ? c.mode : ""; if (m === chaosCur) return; chaosCur = m;
+  for (const k in CH_N) document.body.classList.toggle("ch-" + k, k === m);
+  if (m) toast("Режим «" + CH_N[m] + "» от " + (c.by || "игрока"));
+}
+let wallList = null;
+async function loadWall() { const r = await api("adm_wall", {list: 1}); wallList = r && r.rows ? r.rows : []; if (tab === 5 && moreSub === 3) render(); }
+function wallCard() {
+  if (!wallList) setTimeout(loadWall, 30);
+  const rows = (wallList || []).map(x => `<div style="display:flex;gap:8px;align-items:flex-start;padding:6px 0;border-top:1px solid rgba(255,255,255,.07)"><div class="grow" style="min-width:0"><div class="t2" style="margin:0;font-size:11px;color:var(--pri)">${esc(x.name)}</div><div style="font-size:14px;word-break:break-word">${esc(x.text)}</div></div>${isAdm ? btn(ic("close", 14), "admwalldel", `data-i="${x.ts}"`, "o") : ""}</div>`).join("");
+  return `<div class="card col"><div class="t1" style="color:var(--pri)">Стена анархии</div><div class="t2" style="font-size:12px;margin:0">Короткая надпись, которую увидят все, у кого есть админка. Раз в 20 секунд.</div><input data-keep="wlt" maxlength="80" placeholder="Что написать на стене">${btn("Написать на стене", "admwall", 'style="width:100%;justify-content:center"')}${wallList && !rows ? '<div class="t2" style="text-align:center">Пока пусто</div>' : rows}</div>`;
+}
+A.admwall = async function () { const text = (KEEP.wlt || "").trim(); if (text.length < 2) return toast("Напиши что-нибудь"); const r = await api("adm_wall", {text}); if (r && r.error) return toast(r.error); KEEP.wlt = ""; toast("Написано"); loadWall(); };
+A.admwalldel = async function (e) { await api("adm_wall", {del: +e.dataset.i}); loadWall(); };
+function chaosCard() {
+  return `<div class="card col"><div class="t1" style="color:var(--pri)">Режим для всех на 2 минуты</div><div class="t2" style="font-size:12px;margin:0">Меняет вид игры у всех игроков. Раз в 3 минуты.</div><div style="display:flex;flex-wrap:wrap;gap:6px">${Object.keys(CH_N).map(k => btn(CH_N[k], "admchaos", `data-m="${k}"`, "o")).join("")}${isAdm ? btn("Выключить", "admchaos", 'data-m="off"') : ""}</div></div>`;
+}
+A.admchaos = async function (e) { const r = await api("adm_chaos", {mode: e.dataset.m}); if (r && r.error) return toast(r.error); toast(e.dataset.m === "off" ? "Режим выключен" : "Режим включён"); };
+const anInfo = () => `<div class="card col" style="border:1px solid var(--pri)"><div class="t1" style="color:var(--pri);display:flex;align-items:center;gap:8px">${ic("crown", 18)}АНАРХИЯ</div><div class="t2" style="font-size:13px;line-height:1.45;margin:0">Пока игра заморожена, у каждого игрока есть админка. Можно выдавать себе монеты (до 1Qa за раз) и любых котов, кроме админских, писать во все чаты бота, запускать события и режимы и оставлять надписи на стене.</div></div>`;
+let anSt = null, anArm = "";
+async function anLoad() { const r = await api("adm_anarchy_state", {}); anSt = r && !r.error ? r : {on: false, snap: 0}; if (tab === 5 && moreSub === 3) render(); }
+function anOwnerCard() {
+  if (!anSt) setTimeout(anLoad, 30); const s = anSt || {on: false, snap: 0};
+  const sure = (k, txt) => anArm === k ? "Точно? Нажми ещё раз" : txt;
+  return `<div class="card col" style="border:1px solid var(--pri)"><div class="t1" style="color:var(--pri);display:flex;align-items:center;gap:8px">${ic("crown", 18)}АНАРХИЯ · ${s.on ? "идёт" : "выключена"}</div><div class="t2" style="font-size:12px;line-height:1.4;margin:0">Запуск делает копию прогресса всех игроков, даёт каждому админку анархии и отправляет рассылку в чаты бота. «Восстановить» возвращает всех к копии (монеты, коты, казны кланов). Копия сейчас: ${s.snap || 0} игроков.</div>${s.on ? btn(sure("off", "Выключить анархию"), "anarch", 'data-k="off"', "o") : btn(sure("on", "Запустить АНАРХИЮ + рассылка"), "anarch", 'data-k="on"')}${btn(sure("restore", "Восстановить игру до Анархии"), "anarch", 'data-k="restore"', "o")}</div>`;
+}
+A.anarch = async function (e) {
+  const k = e.dataset.k; if (anArm !== k) { anArm = k; render(); setTimeout(() => { if (anArm === k) { anArm = ""; if (tab === 5) render(); } }, 4000); return; }
+  anArm = ""; const r = await api(k === "on" ? "adm_anarchy_on" : k === "off" ? "adm_anarchy_off" : "adm_anarchy_restore", k === "on" ? {cast: true} : {});
+  if (r && r.error) toast(r.error); else toast(k === "on" ? "Анархия запущена, копия: " + r.snap + (r.cast ? ", рассылка пошла" : "") : k === "off" ? "Анархия выключена" : "Игра восстановлена: " + r.count);
+  if (k === "restore") { isAn = false; }
+  anSt = null; render();
+};
+A.anopen = function () { closeModal(); tab = 5; moreSub = 3; render(); };

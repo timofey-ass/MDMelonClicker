@@ -694,3 +694,36 @@ test("ведущий модератор: выдаёт только себе мо
   await call(ADMIN, "adm_mod", { uid: 1001, on: true });
   assert.equal((await call(A, "adm_bcast", { text: "привет" })).error, "Нет доступа");
 });
+
+test("АНАРХИЯ: копия, права среднего модератора у всех, хаос, стена, восстановление", async () => {
+  const { call, sq } = await makeEnv();
+  await call(A, "save", { rev: 0, state: baseState({ pts: 500, total: 500 }) }); await call(B, "save", { rev: 0, state: baseState({ pts: 900, total: 900 }) });
+  assert.equal((await call(A, "adm_give", { kind: "pts", a: 5 })).error, "Нет доступа");
+  assert.equal((await call(A, "adm_anarchy_on", {})).error, "Нет доступа");
+  const on = await call(ADMIN, "adm_anarchy_on", { cast: true }); assert.ok(on.ok); assert.ok(on.snap >= 2);
+  assert.equal((await call(ADMIN, "adm_anarchy_on", {})).error, "Анархия уже идёт");
+  assert.equal((await call(A, "auth", {})).an, true);
+  assert.ok((await call(A, "adm_give", { kind: "pts", a: 1e6 })).ok);
+  assert.ok((await call(A, "adm_give", { kind: "cat", a: 5, b: 2 })).ok);
+  assert.match((await call(A, "adm_give", { kind: "cat", a: 70, b: 1 })).error, /Админских/);
+  assert.match((await call(A, "adm_give", { kind: "pts", a: 1e16 })).error, /Не больше/);
+  assert.match((await call(A, "adm_give", { kind: "pts", a: 5, target: 1002 })).error, /только себе/);
+  assert.match((await call(A, "adm_give", { kind: "gems", a: 5 })).error, /Недоступно/);
+  assert.equal((await call(A, "adm_resetall", {})).error, "Нет доступа");
+  assert.equal((await call(A, "adm_reset", { uid: 1002 })).error, "Нет доступа");
+  assert.ok((await call(B, "adm_bcast", { text: "хаос" })).ok);
+  assert.match((await call(B, "adm_bcast", { text: "хаос" })).error, /Подожди/);
+  assert.ok((await call(B, "adm_chaos", { mode: "disco" })).ok);
+  assert.equal((await call(A, "poll", {})).chaos.mode, "disco");
+  assert.equal((await call(A, "adm_chaos", { mode: "off" })).error, "Только владелец");
+  assert.ok((await call(A, "adm_wall", { text: "привет анархия" })).ok);
+  assert.equal((await call(B, "adm_wall", { list: true })).rows[0].text, "привет анархия");
+  assert.ok((await call(B, "adm_evt", { name: "Хаос", mult: 9, mins: 999 })).evt.mult <= 3);
+  // изменим прогресс во время анархии
+  await call(A, "save", { rev: 1, state: baseState({ pts: 700, total: 700 }) });
+  const rs = await call(ADMIN, "adm_anarchy_restore", {}); assert.ok(rs.ok);
+  const st = sq.prepare("SELECT state FROM users WHERE id=1001").get(); const s1 = JSON.parse(st.state);
+  assert.equal(s1.pts, 500); assert.ok(s1.rs >= 1);
+  assert.equal((await call(A, "auth", {})).an, false);
+  assert.equal((await call(A, "adm_give", { kind: "pts", a: 1 })).error, "Нет доступа");
+});

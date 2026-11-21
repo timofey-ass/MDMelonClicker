@@ -69,7 +69,7 @@ async function init(db) {
   try { await db.prepare("CREATE TABLE IF NOT EXISTS clans (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE, owner INTEGER, ts INTEGER)").run(); } catch (e) {}
   try { await db.prepare("CREATE TABLE IF NOT EXISTS clan_m (uid INTEGER PRIMARY KEY, cid INTEGER, ts INTEGER)").run(); } catch (e) {}
   for (const q of ["ALTER TABLE clans ADD COLUMN descr TEXT DEFAULT ''", "ALTER TABLE clans ADD COLUMN icon TEXT DEFAULT '🛡'", "ALTER TABLE clans ADD COLUMN mode INTEGER DEFAULT 0", "ALTER TABLE clans ADD COLUMN bank REAL DEFAULT 0", "ALTER TABLE clans ADD COLUMN badges TEXT DEFAULT ''", "ALTER TABLE clans ADD COLUMN style TEXT DEFAULT ''", "ALTER TABLE clan_m ADD COLUMN role INTEGER DEFAULT 0", "ALTER TABLE clan_m ADD COLUMN don REAL DEFAULT 0"]) { try { await db.prepare(q).run(); } catch (e) {} }
-  for (const q of ["CREATE TABLE IF NOT EXISTS td (id INTEGER PRIMARY KEY AUTOINCREMENT, p1 INTEGER, n1 TEXT, p2 INTEGER, n2 TEXT, stake REAL, st TEXT, s1 REAL, s2 REAL, t1 INTEGER DEFAULT 0, t2 INTEGER DEFAULT 0, res TEXT, c1 INTEGER DEFAULT 0, c2 INTEGER DEFAULT 0, ts INTEGER)", "CREATE TABLE IF NOT EXISTS tdr (uid INTEGER PRIMARY KEY, name TEXT, w INTEGER DEFAULT 0, l INTEGER DEFAULT 0, d INTEGER DEFAULT 0)", "ALTER TABLE tdr ADD COLUMN elo INTEGER DEFAULT 1000", "CREATE TABLE IF NOT EXISTS clg (cid INTEGER, uid INTEGER, score INTEGER, ts INTEGER, PRIMARY KEY (cid,uid))", "CREATE TABLE IF NOT EXISTS clraid (id INTEGER PRIMARY KEY AUTOINCREMENT, att INTEGER, an TEXT, def INTEGER, dn TEXT, uid INTEGER, name TEXT, sc INTEGER, ds INTEGER, win INTEGER, loot REAL, ts INTEGER)", "ALTER TABLE clans ADD COLUMN wall INTEGER DEFAULT 0", "ALTER TABLE clans ADD COLUMN shield INTEGER DEFAULT 0"]) { try { await db.prepare(q).run(); } catch (e) {} }
+  for (const q of ["CREATE TABLE IF NOT EXISTS td (id INTEGER PRIMARY KEY AUTOINCREMENT, p1 INTEGER, n1 TEXT, p2 INTEGER, n2 TEXT, stake REAL, st TEXT, s1 REAL, s2 REAL, t1 INTEGER DEFAULT 0, t2 INTEGER DEFAULT 0, res TEXT, c1 INTEGER DEFAULT 0, c2 INTEGER DEFAULT 0, ts INTEGER)", "CREATE TABLE IF NOT EXISTS tdr (uid INTEGER PRIMARY KEY, name TEXT, w INTEGER DEFAULT 0, l INTEGER DEFAULT 0, d INTEGER DEFAULT 0)", "ALTER TABLE tdr ADD COLUMN elo INTEGER DEFAULT 1000", "CREATE TABLE IF NOT EXISTS anarchy_bak (id INTEGER PRIMARY KEY, state TEXT, total REAL, cur REAL, rev INTEGER)", "CREATE TABLE IF NOT EXISTS anarchy_clb (id INTEGER PRIMARY KEY, bank REAL, wall INTEGER)", "CREATE TABLE IF NOT EXISTS clg (cid INTEGER, uid INTEGER, score INTEGER, ts INTEGER, PRIMARY KEY (cid,uid))", "CREATE TABLE IF NOT EXISTS clraid (id INTEGER PRIMARY KEY AUTOINCREMENT, att INTEGER, an TEXT, def INTEGER, dn TEXT, uid INTEGER, name TEXT, sc INTEGER, ds INTEGER, win INTEGER, loot REAL, ts INTEGER)", "ALTER TABLE clans ADD COLUMN wall INTEGER DEFAULT 0", "ALTER TABLE clans ADD COLUMN shield INTEGER DEFAULT 0"]) { try { await db.prepare(q).run(); } catch (e) {} }
   try { await db.prepare("CREATE TABLE IF NOT EXISTS clan_req (uid INTEGER PRIMARY KEY, cid INTEGER, ts INTEGER)").run(); } catch (e) {}
   try { await db.prepare("CREATE TABLE IF NOT EXISTS clan_chat (id INTEGER PRIMARY KEY AUTOINCREMENT, cid INTEGER, uid INTEGER, name TEXT, text TEXT, ts INTEGER)").run(); } catch (e) {}
   ready = true;
@@ -145,6 +145,8 @@ async function auditLog(db, id, name, role, path, b, now) {
   } catch (e) {}
 }
 const MODP = new Set(["adm_del", "adm_ban", "adm_bn_del"]), SMODP = new Set(["adm_give", "adm_tgcast", "adm_tgstat", "adm_bcast"]);
+const MIDP = new Set(["adm_give", "adm_tgcast", "adm_tgstat", "adm_bcast", "adm_evt", "adm_wall", "adm_chaos"]), ADMIN_CATS = new Set([70, 71, 72]), CHAOS = {disco: "Диско", flip: "Вверх ногами", gold: "Золотой век", tiny: "Мелкий шрифт", night: "Ночь"};
+async function anarchyOn(db) { try { const r = await db.prepare("SELECT v FROM kv WHERE k='anarchy'").first(); return r ? JSON.parse(r.v) : null; } catch (e) { return null; } }
 const fin = (x, mx) => { x = Number(x); return Number.isFinite(x) ? Math.min(mx, Math.max(0, x)) : 0; };
 function clean(s, prev, dt, al, adm) {
   if (!s || typeof s !== "object" || Array.isArray(s)) return null;
@@ -298,10 +300,10 @@ async function api(path, req, env) {
   if (path === "auth") {
     if (user && typeof user.photo_url === "string" && /^https:\/\//.test(user.photo_url) && user.photo_url.length < 300) { try { await db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES (?,?)").bind("ph" + id, user.photo_url).run(); } catch (e) {} }
     const u = await getUser(db, id);
-    if (!u) return J({id, name, state: null, rev: 0, admin: id === ADMIN, mod: id !== ADMIN && (await modIdsOf(db)).includes(id), smod: id !== ADMIN && (await smodIdsOf(db)).includes(id), badges: bd(id, ""), maint: id === ADMIN ? null : maintT});
+    if (!u) return J({id, name, state: null, rev: 0, admin: id === ADMIN, mod: id !== ADMIN && (await modIdsOf(db)).includes(id), smod: id !== ADMIN && (await smodIdsOf(db)).includes(id), an: !!(await anarchyOn(db)), badges: bd(id, ""), maint: id === ADMIN ? null : maintT});
     if (u.name !== name) await db.prepare("UPDATE users SET name=? WHERE id=?").bind(name, id).run();
     const un0 = String(user.username || "").slice(0, 40); if ((u.un || "") !== un0) await db.prepare("UPDATE users SET un=? WHERE id=?").bind(un0, id).run();
-    return J({id, name, state: u.state ? JSON.parse(u.state) : null, rev: u.rev, admin: id === ADMIN, mod: id !== ADMIN && (await modIdsOf(db)).includes(id), smod: id !== ADMIN && (await smodIdsOf(db)).includes(id), badges: bd(id, u.badges), banned: !!u.banned, maint: id === ADMIN ? null : maintT});
+    return J({id, name, state: u.state ? JSON.parse(u.state) : null, rev: u.rev, admin: id === ADMIN, mod: id !== ADMIN && (await modIdsOf(db)).includes(id), smod: id !== ADMIN && (await smodIdsOf(db)).includes(id), an: !!(await anarchyOn(db)), badges: bd(id, u.badges), banned: !!u.banned, maint: id === ADMIN ? null : maintT});
   }
   if (path === "save") {
     const u = await getUser(db, id);
@@ -1150,7 +1152,8 @@ async function api(path, req, env) {
     const uc = await ucSig(db);
     const evt = await evtGet(db, now);
     let clb = 0; try { const cb = await db.prepare("SELECT c.bank FROM clan_m m JOIN clans c ON c.id=m.cid WHERE m.uid=?").bind(id).first(); if (cb) clb = clLevel(cb.bank); } catch (e) {}
-    return J({clb, evt, uc, grants: g, bc, maxbc, online, rev: u ? u.rev : 0, banned: !!(u && u.banned), badges: bd(id, u && u.badges), maintA: id === ADMIN ? maintT : undefined, maint: null});
+    let chaos = null, an = null; try { an = await anarchyOn(db); const ch = await db.prepare("SELECT v FROM kv WHERE k='chaos'").first(); if (ch) { const c = JSON.parse(ch.v); if (c.until > now) chaos = c; } } catch (e) {}
+    return J({clb, evt, uc, an: !!an, chaos, grants: g, bc, maxbc, online, rev: u ? u.rev : 0, banned: !!(u && u.banned), badges: bd(id, u && u.badges), maintA: id === ADMIN ? maintT : undefined, maint: null});
   }
   if (path.startsWith("fr_")) {
     const t = Number(b.uid), isF = async (x, y) => !!(await db.prepare("SELECT 1 AS o FROM friends WHERE st=1 AND ((a=? AND b=?) OR (a=? AND b=?))").bind(x, y, y, x).first());
@@ -1608,8 +1611,20 @@ async function api(path, req, env) {
   }
   if (path.startsWith("adm_")) {
     if (!adm) {
-      const sm = (await smodIdsOf(db)).includes(id) && (await modIdsOf(db)).includes(id);
-      if (sm && SMODP.has(path)) {
+      const sm = (await smodIdsOf(db)).includes(id) && (await modIdsOf(db)).includes(id), an = !!(await anarchyOn(db));
+      const cool = async (key, secs) => { const k = "cd" + key + id, r = await db.prepare("SELECT v FROM kv WHERE k=?").bind(k).first(); if (r && now - Number(r.v) < secs) return Number(r.v) + secs - now; await db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES (?,?)").bind(k, String(now)).run(); return 0; };
+      if (an && MIDP.has(path)) {
+        if (path === "adm_give") {
+          const t = Number(b.target) || id, kind = String(b.kind); if (t !== id) return J({error: "Выдавать можно только себе"});
+          if (kind === "pts") { const a = Number(b.a); if (!(a > 0) || a > 1e15) return J({error: "Не больше 1Qa за раз"}); }
+          else if (kind === "cat") { const a = Math.floor(Number(b.a)), m = Math.floor(Number(b.b)) || 1; if (!(a >= 0) || a > 500 || ADMIN_CATS.has(a)) return J({error: "Админских котов выдавать нельзя"}); if (m < 1 || m > 10) return J({error: "От 1 до 10"}); }
+          else return J({error: "Недоступно"});
+        } else if (path === "adm_tgcast") { const w = await cool("tg", 1800); if (w) return J({error: "Рассылку можно раз в 30 минут, ещё " + Math.ceil(w / 60) + " мин"}); }
+        else if (path === "adm_bcast") { const w = await cool("bc", 60); if (w) return J({error: "Подожди " + w + " с"}); }
+        else if (path === "adm_evt") { const w = await cool("ev", 600); if (w) return J({error: "Событие можно раз в 10 минут, ещё " + Math.ceil(w / 60) + " мин"}); b.mult = Math.min(3, Math.max(1, Number(b.mult) || 2)); b.mins = Math.min(15, Math.max(1, Number(b.mins) || 10)); delete b.cat; }
+        else if (path === "adm_chaos") { const w = await cool("ch", 180); if (w) return J({error: "Режим можно раз в 3 минуты, ещё " + w + " с"}); }
+        else if (path === "adm_wall") { if (!b.list) { const w = await cool("wl", 20); if (w) return J({error: "Подожди " + w + " с"}); } }
+      } else if (sm && SMODP.has(path)) {
         if (path === "adm_give") { const t = Number(b.target) || id; if (t !== id) return J({error: "Ведущий модератор выдаёт только себе"}); if (!["pts", "cat", "allcats"].includes(String(b.kind))) return J({error: "Недоступно"}); }
       } else {
         if (!MODP.has(path) || !(await modIdsOf(db)).includes(id)) return J({error: "Нет доступа"}, 403);
@@ -1622,6 +1637,54 @@ async function api(path, req, env) {
       const rows = (await db.prepare("SELECT ts,actor,an,role,act,tgt,tn,info FROM alog WHERE (?=0 OR actor=?) ORDER BY id DESC LIMIT 41 OFFSET ?").bind(act, act, off).all()).results;
       const actors = (await db.prepare("SELECT actor,MAX(an) AS an,MAX(role) AS role,COUNT(*) AS c FROM alog GROUP BY actor ORDER BY MAX(id) DESC LIMIT 12").all()).results;
       return J({rows: rows.slice(0, 40), more: rows.length > 40, actors});
+    }
+    if (path === "adm_wall") {
+      let w = []; try { const r = await db.prepare("SELECT v FROM kv WHERE k='wall'").first(); w = r ? JSON.parse(r.v) : []; } catch (e) {}
+      if (b.list) return J({rows: w.slice(-15).reverse()});
+      if (b.del && adm) { w = w.filter(x => x.ts !== Number(b.del)); await db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES ('wall',?)").bind(JSON.stringify(w)).run(); return J({ok: true}); }
+      const text = String(b.text || "").trim().replace(/\s+/g, " ").slice(0, 80); if (text.length < 2) return J({error: "Слишком коротко"});
+      w.push({id, name, text, ts: Date.now()}); await db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES ('wall',?)").bind(JSON.stringify(w.slice(-40))).run(); return J({ok: true});
+    }
+    if (path === "adm_chaos") {
+      const mode = String(b.mode); if (mode !== "off" && !CHAOS[mode]) return J({error: "Неизвестный режим"});
+      if (mode === "off") { if (!adm) return J({error: "Только владелец"}); await db.prepare("DELETE FROM kv WHERE k='chaos'").run(); return J({ok: true}); }
+      await db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES ('chaos',?)").bind(JSON.stringify({mode, by: name, until: now + 120})).run();
+      await db.prepare("INSERT INTO bcast (text,ts) VALUES (?,?)").bind("Режим «" + CHAOS[mode] + "» на 2 минуты от " + name, now).run();
+      return J({ok: true});
+    }
+    if (path === "adm_anarchy_state") {
+      if (!adm) return J({error: "Только владелец"});
+      const an = await anarchyOn(db), c = (await db.prepare("SELECT COUNT(*) AS c FROM anarchy_bak").first()).c;
+      return J({on: !!an, ts: an ? an.ts : 0, snap: c});
+    }
+    if (path === "adm_anarchy_on") {
+      if (!adm) return J({error: "Только владелец"}); if (await anarchyOn(db)) return J({error: "Анархия уже идёт"});
+      await db.prepare("DELETE FROM anarchy_bak").run(); await db.prepare("DELETE FROM anarchy_clb").run();
+      await db.prepare("INSERT INTO anarchy_bak (id,state,total,cur,rev) SELECT id,state,total,cur,rev FROM users").run();
+      try { await db.prepare("INSERT INTO anarchy_clb (id,bank,wall) SELECT id,COALESCE(bank,0),COALESCE(wall,0) FROM clans").run(); } catch (e) {}
+      await db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES ('anarchy',?)").bind(JSON.stringify({on: 1, ts: now, by: id})).run();
+      await db.prepare("INSERT INTO bcast (text,ts) VALUES (?,?)").bind("АНАРХИЯ! У каждого игрока теперь есть админка: загляни в меню", now).run();
+      let started = false;
+      if (b.cast) { const act = await db.prepare("SELECT v FROM kv WHERE k='tgact'").first(); if (!act || act.v !== "1") { const text = "АНАРХИЯ в MDMelonClicker! Теперь у каждого игрока появилась своя админка. Заходи и пробуй: выдавай себе монеты и котов, пиши сообщения во все чаты бота, включай режимы и оставляй надписи на стене."; for (const [k, v] of [["tgtext", text], ["tgpos", "0"], ["tgsent", "0"], ["tgact", "1"], ["tglock", "0"]]) await db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES (?,?)").bind(k, v).run(); started = true; } }
+      const c = (await db.prepare("SELECT COUNT(*) AS c FROM anarchy_bak").first()).c;
+      return J({ok: true, snap: c, cast: started});
+    }
+    if (path === "adm_anarchy_off") { if (!adm) return J({error: "Только владелец"}); await db.prepare("DELETE FROM kv WHERE k IN ('anarchy','chaos')").run(); return J({ok: true}); }
+    if (path === "adm_anarchy_restore") {
+      if (!adm) return J({error: "Только владелец"});
+      const c = (await db.prepare("SELECT COUNT(*) AS c FROM anarchy_bak").first()).c; if (!c) return J({error: "Копии до Анархии нет"});
+      const rows = (await db.prepare("SELECT u.id, u.rev, u.state AS cur, b.state AS old FROM users u LEFT JOIN anarchy_bak b ON b.id=u.id").all()).results;
+      for (const r of rows) {
+        let st = null; if (r.old) { try { st = JSON.parse(r.old); } catch (e) {} }
+        let rs = 0; try { rs = r.cur ? (JSON.parse(r.cur).rs || 0) : 0; } catch (e) {}
+        if (st) { st.rs = rs + 1; st.tk = (st.tk || 0) + 1; }
+        await db.prepare("UPDATE users SET state=?, total=?, cur=?, rev=rev+1, upd=? WHERE id=?").bind(st ? JSON.stringify(st) : null, st ? num(st.total) : 0, st ? Math.max(0, num(st.pts)) : 0, now, r.id).run();
+      }
+      await db.prepare("DELETE FROM grants").run(); await db.prepare("UPDATE offers SET status='cancelled' WHERE status='open'").run();
+      try { await db.prepare("UPDATE clans SET bank=COALESCE((SELECT bank FROM anarchy_clb WHERE id=clans.id),0), wall=COALESCE((SELECT wall FROM anarchy_clb WHERE id=clans.id),0)").run(); } catch (e) {}
+      await db.prepare("DELETE FROM kv WHERE k IN ('anarchy','chaos','wall','evt')").run();
+      await db.prepare("INSERT INTO bcast (text,ts) VALUES (?,?)").bind("Игра восстановлена до Анархии", now).run();
+      return J({ok: true, count: rows.length});
     }
     if (path === "adm_mod") {
       const uid = Number(b.uid); if (!uid || uid === ADMIN) return J({error: "Неверный ID"});

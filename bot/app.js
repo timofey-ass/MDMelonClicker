@@ -383,6 +383,7 @@ async function save(force) {
   if (!S || saving || (!dirty && !force)) return; saving = true; S.ts = now();
   const r = await api("save", {rev, state: S}); saving = false;
   if (r.reset) { S = defState(); snap = {inv: {}}; rev = r.rev; dirty = true; toast("Прогресс сброшен администратором"); render(); return save(true); }
+  if (r.conflict && (r.state.rs || 0) !== (S.rs || 0)) { S = fixState(r.state); rev = r.rev; snap = cloneInv(); dirty = false; toast("Игра восстановлена до Анархии"); render(); return; }
   if (r.conflict) {
     const sv = r.state, m = Object.assign({}, sv.inv); for (const k in S.inv) { const d = (S.inv[k] || 0) - (snap.inv[k] || 0); m[k] = Math.max(0, (m[k] || 0) + d); }
     for (const k in snap.inv) if (!(k in S.inv)) m[k] = Math.max(0, (m[k] || 0) - snap.inv[k]);
