@@ -640,6 +640,19 @@ body.evton #view{padding-bottom:calc(140px + env(safe-area-inset-bottom))}
 
 
 
+
+/* плавность и отклик */
+#view.vin>*{animation:vin .32s cubic-bezier(.2,.8,.2,1) both}
+#view.vin>*:nth-child(2){animation-delay:.025s}#view.vin>*:nth-child(3){animation-delay:.05s}#view.vin>*:nth-child(4){animation-delay:.075s}#view.vin>*:nth-child(5){animation-delay:.1s}#view.vin>*:nth-child(6){animation-delay:.125s}#view.vin>*:nth-child(n+7){animation-delay:.15s}
+@keyframes vin{from{opacity:0;transform:translateY(14px) scale(.985)}to{opacity:1;transform:none}}
+.skw{display:flex;flex-direction:column;gap:10px;padding:14px 6px}
+.skl{display:block;height:46px;border-radius:16px;background:linear-gradient(100deg,var(--sch) 30%,color-mix(in srgb,var(--sch) 55%,#fff) 50%,var(--sch) 70%);background-size:220% 100%;animation:sksh 1.3s ease-in-out infinite}
+.skl.s{width:62%;height:34px}
+@keyframes sksh{from{background-position:120% 0}to{background-position:-120% 0}}
+.btn,.dri,.mbtn,.cell,.card.click,.wchip,.gmb button,.fechip{transition:transform .12s ease,filter .12s ease}
+.btn:active,.dri:active,.mbtn:active,.cell:active,.card.click:active,.wchip:active,.gmb button:active{transform:scale(.965)}
+.card{transition:background .2s ease}
+@media (prefers-reduced-motion:reduce){#view.vin>*,.skl{animation:none}}
 /* арена */
 .tdov{position:fixed;inset:0;z-index:999;background:#1c140e;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:24px;overflow:hidden}
 .tdt{font-size:24px;font-weight:800;color:var(--pri)}.tds{font-size:13px;opacity:.7;text-align:center}

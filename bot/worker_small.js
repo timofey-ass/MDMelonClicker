@@ -6,6 +6,7 @@ async function getHtml(env) {
   if (!r.ok) throw new Error("html " + r.status);
   return r.text();
 }
+
 const ATLAS = "https://raw.githubusercontent.com/timofey-ass/MDMelonClicker/HEAD/mdcats2.jpg";
 const BOT_USER = "mdmelonbot";
 const N_ITEMS = 103;
@@ -1831,7 +1832,7 @@ async function tgcall(env, method, body) {
 async function secret(env) { return hex(await crypto.subtle.digest("SHA-256", enc("md:" + env.BOT_TOKEN))).slice(0, 32); }
 
 const DEMO = "<script>window.__DEV=1;(function(){var f=window.fetch;var seed={pts:1500000,run:1500000,total:3000000,gems:12,taps:1234,b:[12,8,5,3,1,0,0],inv:{\"3\":1,\"10\":1,\"22\":1,\"40\":1,\"64\":1,\"73\":1,\"80\":1,\"63\":1}};var rows=[[1,\"Мурка\",9.5e9],[2,\"Барсик\",4.2e8],[3,\"Демо\",3e6]].map(function(r){return{id:r[0],name:r[1],total:r[2],badges:\"\"}});var m={auth:{id:3,name:\"Демо\",state:seed,rev:1,admin:false,badges:\"\"},save:{ok:true,rev:1},poll:{grants:[],bc:null,maxbc:0,online:5,rev:1,badges:\"\"},top:{rows:rows,rank:3},offers:{offers:[]},chat:{rows:[{id:1,uid:1,name:\"Мурка\",text:\"Привет! Кто трейд?\",ts:0,badges:\"b\"},{id:2,uid:2,name:\"Барсик\",text:\"Выбил Королевского арбуза!\",ts:0,badges:\"\"}]}};window.fetch=function(u,o){u=String(u);if(u.indexOf(\"/api/\")===0){return Promise.resolve(new Response(JSON.stringify(m[u.slice(5)]||{}),{headers:{\"content-type\":\"application/json\"}}))}return f.apply(this,arguments)}})()</script>";
-const ANN = ["6.14.0", ["Дуэли тапов 1 на 1 со ставками и защитой от автокликера", "События на поле: «Угадай арбуз»", "Клановые рейды: дежурство, стена, щит и добыча из казны", "Реквием: новые эффекты, сцепленные плитки профиля"], "Арена"];
+const ANN = ["6.15.0", ["Исправлено: кейсы снова открываются (в версиях 6.13–6.14 открытие падало)", "Плавные переходы между экранами, заглушки вместо «Загрузка…»", "Быстрее повторный вход: страница кэшируется и обновляется только при изменениях", "Помощники и ведущий модератор, подпись автора в рассылках"], "Плавность и исправления"];
 let annBusy = false;
 async function announce(env, origin) {
   if (annBusy || !env.DB || !env.BOT_TOKEN) return;
@@ -1891,7 +1892,7 @@ export default {
     if (ctx && ctx.waitUntil && req.method === "POST" && new URL(req.url).pathname === "/api/poll") ctx.waitUntil(announce(env, new URL(req.url).origin).then(() => tgcastStep(env, new URL(req.url).origin)));
     const url = new URL(req.url), p = url.pathname;
     try {
-      if (p === "/" || p === "/index.html") return new Response(await getHtml(env), {headers: {"content-type": "text/html;charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff", "referrer-policy": "no-referrer"}});
+      if (p === "/" || p === "/index.html") { const hx = await getHtml(env); let hh = 5381; for (let i = 0; i < hx.length; i += 97) hh = ((hh << 5) + hh + hx.charCodeAt(i)) | 0; const et = '"' + (hh >>> 0).toString(36) + hx.length.toString(36) + '"'; if (req.headers.get("if-none-match") === et) return new Response(null, {status: 304, headers: {"etag": et, "cache-control": "no-cache"}}); return new Response(hx, {headers: {"content-type": "text/html;charset=utf-8", "cache-control": "no-cache", "etag": et, "x-content-type-options": "nosniff", "referrer-policy": "no-referrer"}}); }
       if (p === "/demo") return new Response((await getHtml(env)).replace("<head>", "<head>" + DEMO), {headers: {"content-type": "text/html;charset=utf-8", "cache-control": "no-store"}});
       if (p === "/atlas.jpg") {
         const r = env.ASSETS ? await env.ASSETS.fetch("https://assets.local/mdcats2.jpg") : await fetch(ATLAS, {cf: {cacheTtl: 86400, cacheEverything: true}});

@@ -244,14 +244,14 @@ tTop = function () {
   }
   if (sub === 0) {
     h += `<div class="card"><div class="grow"><div class="t1" style="display:flex;align-items:center;gap:8px">${ic("medal", 18)}Таблица лидеров</div><div class="t2">Монеты на данный момент, траты в казино тоже считаются</div></div>${btn("Обновить", "reloadtop")}</div>`;
-    if (!lbData) return h + `<div class="t2" style="text-align:center;margin:30px">Загружаю…</div>`;
+    if (!lbData) return h + `<div class="skw"><i class="skl"></i><i class="skl"></i><i class="skl s"></i></div>`;
     h += lbPrize();
     h += `<div class="card" style="background:var(--sch)"><div class="t1 grow" style="color:var(--onprc)">Ты: ${nm(me.name, myBadges)}${lbData.rank ? " · место " + lbData.rank : ""}</div></div>`;
     lbData.rows.forEach((r, i) => { const hd = i < 3 ? (lbData.hold || []).find(x => x.rank === i + 1 && x.uid === r.id) : null; h += `<div class="card ${r.id === me.id ? "p" : ""}"><div class="circ" style="width:38px;height:38px;font-size:15px;font-weight:700"><span style="color:${["#ffd54f", "#cfd8dc", "#d7966a"][i] || "inherit"}">${i + 1}</span></div>${av(r.name, r.id, 40)}<div class="grow"><div class="t1">${nm(r.name, r.badges)}</div>${hd ? `<div class="t2" style="margin:0;font-size:12px">⏱ на этом месте ${lbDur(lbHeld(hd))}</div>` : ""}</div><div class="t1">${fmt(r.total)}</div></div>`; });
     return h;
   }
   h += `<div class="card"><div class="grow"><div class="t1" style="display:flex;align-items:center;gap:8px">${ic("swap", 18)}Обмен котами</div><div class="t2">Меняй дубликаты с другими игроками. Предложенный кот уходит в залог и возвращается при отмене.</div></div></div><div style="display:flex;gap:8px;margin-bottom:10px">${btn("Создать предложение", "newoffer")}${btn("Обновить", "reloadoff", "", "t")}</div>`;
-  if (!offData) return h + `<div class="t2" style="text-align:center;margin:30px">Загружаю…</div>`;
+  if (!offData) return h + `<div class="skw"><i class="skl"></i><i class="skl"></i><i class="skl s"></i></div>`;
   const mine = offData.filter(o => o.seller === me.id), oth = offData.filter(o => o.seller !== me.id);
   if (mine.length) { h += `<div class="sec">Мои предложения</div>`; mine.forEach(o => h += offerCard(o, true)); }
   h += `<div class="sec">Все предложения</div>`;
@@ -606,7 +606,7 @@ function tWorkshop() {
     h += ucs.length ? `<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">${ucs.map((i, n) => { const it = ITEMS[i], lk = it[6] ? "" : (it[3] === myId ? `<span class="chip" style="border:0">♥ ${wsLk.cat[it[5]] || 0}</span>` : wsLike("cat", it[5])); return `<div class="card col" style="align-items:center;gap:6px;padding:12px 8px"><div data-a="catinfo" data-i="${i}" style="position:relative">${catEl(i, 110, {})}${n < 3 && (wsLk.cat[it[5]] || 0) > 0 ? `<span style="position:absolute;top:-4px;left:-4px;background:var(--pri);color:#000;border-radius:10px;padding:1px 7px;font-size:11px;font-weight:700">#${n + 1}</span>` : ""}</div><div class="t1" style="font-size:14px;text-align:center;color:${RC[it[2]]}">${esc(it[1])}</div><div class="t2" style="margin:0;font-size:11px">${it[6] ? "MDMelon" : esc(it[4] || "Игрок")}</div>${lk}</div>`; }).join("")}</div>` : `<div class="t2" style="text-align:center;margin:20px">Пока нет котов от игроков. Будь первым: вкладка «Создать».</div>`;
   } else if (wsSub === 1) {
     const d = ideaData; h += `<div class="t2" style="font-size:12px;margin:2px 4px 8px">Идеи, которые добавили в игру. Ставь ♥ лучшим.</div>`;
-    if (!d) return h + `<div class="t2" style="text-align:center;margin:12px">Загружаю…</div>`;
+    if (!d) return h + `<div class="skw"><i class="skl"></i><i class="skl"></i><i class="skl s"></i></div>`;
     const ok = (d.ok || []).slice().sort((a, b) => (wsLk.idea[b.id] || 0) - (wsLk.idea[a.id] || 0) || b.id - a.id);
     h += ok.length ? ok.map(x => `<div class="card">${bdg("g", 20)}<div class="grow"><div style="font-size:14px;white-space:pre-wrap">${esc(x.text)}</div><div class="t2" style="margin:2px 0 0;font-size:11px">${esc(x.uname)}</div></div>${x.uid === myId ? "" : wsLike("idea", x.id)}</div>`).join("") : `<div class="t2" style="text-align:center;margin:20px">Пока ни одной добавленной идеи.</div>`;
   } else if (wsSub === 2) {
@@ -617,7 +617,7 @@ function tWorkshop() {
     if (my.length) h += `<div class="sec">Мои заявки</div>` + my.join("");
   } else {
     h += `<div class="sec">Коты на проверке${wsPend ? " · " + wsPend.length : ""}</div>`;
-    if (!wsPend) h += `<div class="t2" style="text-align:center;margin:12px">Загружаю…</div>`;
+    if (!wsPend) h += `<div class="skw"><i class="skl"></i><i class="skl"></i><i class="skl s"></i></div>`;
     else if (!wsPend.length) h += `<div class="t2" style="text-align:center;margin:12px">Заявок нет</div>`;
     else wsPend.forEach(x => { const cr = wsAR[x.id] !== undefined ? wsAR[x.id] : x.rar; h += `<div class="card col"><div style="display:flex;gap:12px;align-items:center"><img src="/ucat/${x.id}.jpg" style="width:84px;height:84px;border-radius:16px;object-fit:cover;flex:none"><div class="grow"><div class="t2" style="margin:0;font-size:12px">от <b>${esc(x.uname)}</b></div><div class="t2" style="margin:2px 0 0;font-size:12px">${esc(x.name)} · <span style="color:${RC[x.rar]}">${RARS[x.rar][0]}</span> · просит 💎${x.ask || 0}</div></div></div><input data-keep="wn${x.id}" placeholder="Название" maxlength="24">${wsRarChips(cr, "wsadr", x.id)}<div class="t2" style="margin:0;font-size:12px">Награда в 💎</div><input data-keep="wg${x.id}" inputmode="numeric" placeholder="0" maxlength="5"><div style="display:flex;gap:8px">${btn("Отклонить", "ucno", `data-i="${x.id}"`, "o")}${btn("Одобрить", "ucok", `data-i="${x.id}"`)}</div></div>`; });
     const d = ideaData; h += `<div class="sec">Идеи на проверке${d && d.pend ? " · " + d.pend.length : ""}</div>`;
@@ -695,7 +695,7 @@ tTop = function () {
   if (sub !== 1) return _tTopT();
   const seg = `<div class="seg"><button data-a="sub" data-i="0">Лидеры</button><button class="on" data-a="sub" data-i="1">Обмен</button><button data-a="sub" data-i="2">Чат</button><button data-a="sub" data-i="3">Друзья</button><button data-a="sub" data-i="4">Кланы</button></div>`;
   let h = mback + seg;
-  if (!offData) return h + `<div class="t2" style="text-align:center;margin:30px">Загружаю…</div>`;
+  if (!offData) return h + `<div class="skw"><i class="skl"></i><i class="skl"></i><i class="skl s"></i></div>`;
   const mine = offData.filter(o => o.seller === me.id), oth = offData.filter(o => o.seller !== me.id), canL = oth.filter(o => (S.inv[o.want + ""] || 0) >= 1);
   h += `<button class="btn" data-a="newoffer" style="width:100%;height:54px;justify-content:center;font-size:16px;margin-bottom:10px">＋ Создать обмен <span style="opacity:.7;font-weight:500;margin-left:6px">${mine.length}/5</span></button>`;
   h += `<div style="display:flex;gap:6px;margin-bottom:10px">${[["Все", oth.length + mine.length], ["Могу принять", canL.length], ["Мои", mine.length]].map((x, i) => `<button class="chip ${tradeF === i ? "p" : ""}" style="border:0;font-family:inherit" data-a="tradef" data-i="${i}">${x[0]} · ${x[1]}</button>`).join("")}</div>`;
@@ -931,7 +931,7 @@ tCasino = function () {
   if (cz.sub === 3) {
     const L = cz.lobby;
     let h = back + bal + `<div class="card col"><div class="t1" style="color:var(--pri)">Создать столик</div><div class="t2" style="font-size:12px;margin:0">У каждого игрока одинаковая ставка. Каждому по 5 карт, одна замена, у кого комбинация старше — забирает банк (5% банка уходит в джекпот).</div>${czBetUi()}<button class="btn" data-a="p2create" style="width:100%;height:50px;justify-content:center">Создать и ждать соперника</button></div><div class="sec">Открытые столики${L ? " · " + L.rows.length : ""}</div>`;
-    if (!L) return h + `<div class="t2" style="text-align:center;margin:20px">Загружаю…</div>`;
+    if (!L) return h + `<div class="skw"><i class="skl"></i><i class="skl"></i><i class="skl s"></i></div>`;
     h += L.rows.length ? L.rows.map(x => `<div class="card"><span style="font-size:24px">🃏</span><div class="grow"><div class="t1" style="font-size:15px">${esc(x.n1)}</div><div class="t2" style="margin:0;font-size:12px">Ставка ${fmt(x.stake)}</div></div>${btn("Сесть", "p2join", `data-i="${x.id}" data-s="${x.stake}"`, S.pts >= x.stake ? "" : "dis")}</div>`).join("") : `<div class="t2" style="text-align:center;margin:20px">Пока нет столиков. Создай первый и подожди соперника!</div>`;
     return h;
   }
@@ -1258,7 +1258,7 @@ tCasino = function () {
   if (cz.sub === 6) {
     const L = cz.dlobby;
     let h = back + bal + `<div class="card col"><div class="t1" style="color:var(--pri)">Создать столик · Кости-блеф</div><div class="t2" style="font-size:12px;margin:0">У каждого по 5 спрятанных кубиков. По очереди заявляйте «не меньше N кубиков с цифрой X» среди всех кубиков на столе (каждая следующая заявка выше). Не веришь, нажми «Не верю!»: кубики откроются, и кто был неправ, проигрывает банк. На ход 45 секунд. 5% банка идёт в джекпот.</div>${czBetUi()}<button class="btn" data-a="dccreate" style="width:100%;height:50px;justify-content:center">Создать и ждать соперника</button></div><div class="sec">Открытые столики${L ? " · " + L.rows.length : ""}</div>`;
-    if (!L) return h + `<div class="t2" style="text-align:center;margin:20px">Загружаю…</div>`;
+    if (!L) return h + `<div class="skw"><i class="skl"></i><i class="skl"></i><i class="skl s"></i></div>`;
     return h + (L.rows.length ? L.rows.map(x => `<div class="card"><span style="font-size:24px">🎲</span><div class="grow"><div class="t1" style="font-size:15px">${esc(x.n1)}</div><div class="t2" style="margin:0;font-size:12px">Ставка ${fmt(x.stake)}</div></div>${btn("Сесть", "dcjoin", `data-i="${x.id}" data-s="${x.stake}"`, S.pts >= x.stake ? "" : "dis")}</div>`).join("") : `<div class="t2" style="text-align:center;margin:20px">Пока нет столиков. Создай первый и подожди соперника!</div>`);
   }
   const t = cz.dc; if (!t) return back + `<div class="t2" style="text-align:center;margin:30px">Загружаю столик…</div>`;
@@ -1654,7 +1654,7 @@ function tSocial() { return sub === 3 ? tFriends() : tClans(); }
 function tFriends() {
   let h = `<div class="card col"><div class="t1">Найти игрока</div><div class="t2" style="margin:0">По имени или по ID (ID виден в профиле)</div><div style="display:flex;gap:8px"><input data-keep="frq" placeholder="Имя или ID" style="flex:1">${btn("Найти", "frfind")}</div></div>`;
   if (soc.found) h += `<div class="sec">Результаты</div>` + (soc.found.length ? soc.found.map(x => `<div class="card">${av(x.name, x.id, 40)}<div class="grow"><div class="t1">${esc(x.name)}</div><div class="t2">${fmt(x.total)}</div></div>${rowBtn(ic("userplus", 20), "frad", x.id)}</div>`).join("") : `<div class="t2" style="text-align:center;margin:12px">Никого не нашли</div>`);
-  if (!soc.fr) return h + `<div class="t2" style="text-align:center;margin:30px">Загружаю…</div>`;
+  if (!soc.fr) return h + `<div class="skw"><i class="skl"></i><i class="skl"></i><i class="skl s"></i></div>`;
   if (soc.fr.inc.length) { h += `<div class="sec">Заявки в друзья</div>`; soc.fr.inc.forEach(x => h += `<div class="card">${av(x.name, x.id, 40)}<div class="grow"><div class="t1">${esc(x.name)}</div></div>${rowBtn("Принять", "frok", x.id)}${rowBtn("✕", "frdl", x.id)}</div>`); }
   const fr = soc.fr.friends.slice().sort((a, b) => (b.online - a.online) || b.seen - a.seen);
   h += `<div class="sec">Друзья · ${fr.length} (в игре ${fr.filter(x => x.online).length})</div>`;
@@ -1663,14 +1663,14 @@ function tFriends() {
 }
 const clLv = bank => CL_LV.filter(x => bank >= x).length;
 function tClans() {
-  if (!soc.cl) return `<div class="t2" style="text-align:center;margin:30px">Загружаю…</div>`;
+  if (!soc.cl) return `<div class="skw"><i class="skl"></i><i class="skl"></i><i class="skl s"></i></div>`;
   const ci = soc.clan && soc.clan.clan;
   if (ci) return tMyClan(soc.clan);
   let h = "";
   if (soc.clan && soc.clan.inv) h += `<div class="card col" style="border:1px solid var(--pri)"><div class="t1" style="display:flex;align-items:center;gap:8px;color:var(--pri)">${ic("mail", 18)} Приглашение в клан</div><div class="t2" style="margin:0">Тебя зовут в клан <b>${esc(soc.clan.inv.name)}</b></div><div style="display:flex;gap:8px">${btn("Принять", "clinv", 'data-y="1"')}${btn("Отклонить", "clinv", 'data-y="0"', "o")}</div></div>`;
-  if (soc.clan && soc.clan.myreq) { const c = soc.cl.rows.find(x => x.id === soc.clan.myreq); h += `<div class="card"><div class="grow"><div class="t1">Заявка отправлена</div><div class="t2">${c ? esc(c.icon + " " + c.name) : "клан"}, ждём ответа главы</div></div>${rowBtn("Отменить", "clunreq", 0)}</div>`; }
+  if (soc.clan && soc.clan.myreq) { const c = (soc.cl.rows || []).find(x => x.id === soc.clan.myreq); h += `<div class="card"><div class="grow"><div class="t1">Заявка отправлена</div><div class="t2">${c ? esc(c.icon + " " + c.name) : "клан"}, ждём ответа главы</div></div>${rowBtn("Отменить", "clunreq", 0)}</div>`; }
   h += `<div class="card col"><div class="t1">Создать клан</div><div class="t2" style="margin:0">Нужно накопить 1 000 000 монет. До 30 участников. Общая казна даёт всем бонус к доходу.</div><div style="display:flex;align-items:center;gap:12px">${clIco({img: clNewImg, icon: "🛡"}, 56)}${btn(ic("image", 16) + (clNewImg ? " Другая картинка" : " Выбрать картинку"), "clnic", "", "o")}</div><input data-keep="cln" maxlength="20" placeholder="Название клана"><div>${btn("Создать", "clnew")}</div></div>`;
-  h += `<div class="sec">Таблица кланов</div>` + (soc.cl.rows.length ? soc.cl.rows.map((c, i) => `<div class="card" data-a="clview" data-i="${c.id}"><div class="circ" style="width:38px;height:38px;font-weight:700">${i + 1}</div><div class="grow"><div class="t1">${clIco(c, 24)} ${clNm(c)}${cbdg(c.badges)} · ур. ${c.level}</div><div class="t2">${fmt(c.score)} · ${c.n}/${soc.cl.max}${c.mode ? " · по заявке" : ""}${c.descr ? "<br>" + esc(c.descr) : ""}</div></div>${rowBtn(c.mode ? "Заявка" : "Вступить", "cljoin", c.id, c.n >= soc.cl.max ? "disabled" : 'data-stop="1"')}</div>`).join("") : `<div class="t2" style="text-align:center;margin:20px">Кланов пока нет. Создай первый!</div>`);
+  h += `<div class="sec">Таблица кланов</div>` + ((soc.cl.rows || []).length ? soc.cl.rows.map((c, i) => `<div class="card" data-a="clview" data-i="${c.id}"><div class="circ" style="width:38px;height:38px;font-weight:700">${i + 1}</div><div class="grow"><div class="t1">${clIco(c, 24)} ${clNm(c)}${cbdg(c.badges)} · ур. ${c.level}</div><div class="t2">${fmt(c.score)} · ${c.n}/${soc.cl.max}${c.mode ? " · по заявке" : ""}${c.descr ? "<br>" + esc(c.descr) : ""}</div></div>${rowBtn(c.mode ? "Заявка" : "Вступить", "cljoin", c.id, c.n >= soc.cl.max ? "disabled" : 'data-stop="1"')}</div>`).join("") : `<div class="t2" style="text-align:center;margin:20px">Кланов пока нет. Создай первый!</div>`);
   return h;
 }
 function tMyClan(d) {
@@ -1703,7 +1703,7 @@ const clBanner = c => c.bnimg ? `<div style="height:110px;margin:-14px -16px 0;b
 A.clview = async function (e) {
   const id = +e.dataset.i; if (!id) return;
   const r = await api("clan_info", {id}); if (r.error || !r.clan) return toast(r.error || "Клан не найден");
-  const c = r.clan, own = soc.clan && soc.clan.clan && soc.clan.clan.id === c.id, full = c.id && soc.cl && soc.cl.rows.find(x => x.id === c.id);
+  const c = r.clan, own = soc.clan && soc.clan.clan && soc.clan.clan.id === c.id, full = c.id && soc.cl && (soc.cl.rows || []).find(x => x.id === c.id);
   const adm = isAdm ? `<div class="card col" style="margin-top:10px;border:1px solid var(--out)"><div class="t1" style="display:flex;align-items:center;gap:8px;color:var(--pri)">${ic("shield", 18)}Админ</div><div class="t2" style="margin:0">Значки клана</div><div style="display:flex;gap:6px;flex-wrap:wrap">${Object.keys(CBADGES).map(k => `<span data-a="clbd" data-i="${c.id}" data-k="${k}" style="cursor:pointer;padding:4px 8px;border-radius:12px;background:${c.badges.includes(k) ? "var(--prc)" : "var(--sch)"}">${cbdg(k, 18).replace("margin-left:3px", "")}</span>`).join("")}</div><div class="t2" style="margin:4px 0 0">Пригласить игрока (имя или ID)</div><div style="display:flex;gap:8px"><input data-keep="cinv" placeholder="Имя или ID" style="flex:1">${btn(ic("mail", 16) + " Позвать", "clainv", `data-i="${c.id}"`)}</div>${btn(ic("trash", 16) + " Удалить клан и выгнать всех", "cladel", `data-i="${c.id}"`, "o")}</div>` : "";
   modal(`<div class="card col" style="padding-top:0">${clBanner(c)}<div style="display:flex;gap:12px;align-items:center;margin-top:12px">${clIco(c, 56)}<div class="grow"><div class="t1" style="font-size:19px;color:var(--pri)">${clNm(c)}${cbdg(c.badges, 18)}</div><div class="t2" style="margin:0">Уровень ${c.level} · ${r.members.length}/${r.max}</div></div></div>${c.descr ? `<div class="t2" style="margin:0">${esc(c.descr)}</div>` : ""}<div class="t2" style="margin:0">Очки: <b>${fmt(c.score)}</b> · Казна: <b>${fmt(c.bank)}</b></div></div><div style="max-height:260px;overflow-y:auto">${r.members.map(x => `<div class="card" data-a="prof" data-i="${x.id}">${av(x.name, x.id, 36)}<div class="grow"><div class="t1">${nm(x.name, x.badges)} ${roleIc(x.role)}</div><div class="t2">${fmt(x.total)}</div></div></div>`).join("")}</div>${adm}<div style="margin-top:12px;display:flex;gap:8px;justify-content:center">${!r.mine && full ? btn(c.mode ? "Подать заявку" : "Вступить", "cljoin2", `data-i="${c.id}"`) : ""}${btn("Закрыть", "mclose", "", "t")}</div>`);
 };
@@ -1841,7 +1841,7 @@ A.collget = async function (e) {
 let lbMode = 0, SEAS = null;
 async function seasLoad() { try { const r = await api("season_top", {}); if (r && !r.error && r.rows) { SEAS = r; if (tab === 4 && sub === 0 && lbMode === 1) render(); } } catch (e) {} }
 function seasHtml() {
-  if (!SEAS) return `<div class="t2" style="text-align:center;margin:30px">Загружаю…</div>`;
+  if (!SEAS) return `<div class="skw"><i class="skl"></i><i class="skl"></i><i class="skl s"></i></div>`;
   const left = Math.max(0, SEAS.ends - Math.floor(Date.now() / 1000)), dd = Math.floor(left / 86400), hh = Math.floor(left % 86400 / 3600);
   let h = `<div class="card col clset"><div class="t1" style="display:flex;align-items:center;gap:8px;color:var(--pri)">${ic("cup", 18)} Сезон месяца<span class="t2" style="margin:0 0 0 auto;font-size:12px">ещё ${dd} д ${hh} ч</span></div><div class="t2" style="margin:0">Считается всё, что ты заработал за месяц. Топ-3 в конце получают кристаллы: ${SEAS.rew.map(x => x + ic("gem", 12)).join(" · ")}. Сезон начинается заново для всех.</div></div>`;
   h += `<div class="card" style="background:var(--sch)"><div class="t1 grow" style="color:var(--onprc)">Ты: ${fmt(SEAS.myScore)}${SEAS.rank ? " · место " + SEAS.rank : ""}</div></div>`;
@@ -1925,15 +1925,15 @@ function chScreen() {
   if (cz.sub === 10) {
     const L = cz.chlobby;
     let h = `<button class="btn t bkb" data-a="czgo" data-k="0">← Казино</button>` + bal + `<div class="card col"><div class="t1" style="display:flex;align-items:center;gap:8px;color:var(--pri)">${ic("chess", 20)} Шахматы на двоих</div><div class="t2" style="font-size:12px;margin:0;line-height:1.4">Цвет фигур выпадает случайно. По 5 минут на каждого, часы идут на своём ходу. Победитель забирает банк без 5% (они уходят в джекпот), при ничьей каждый получает свою ставку. Закончилось время или сдался: проигрыш.</div>${czBetUi()}<button class="btn" data-a="chgcreate" style="width:100%;height:50px;justify-content:center">Создать и ждать соперника</button></div><div class="sec">Открытые столики${L ? " · " + L.rows.length : ""}</div>`;
-    if (!L) return h + `<div class="t2" style="text-align:center;margin:20px">Загружаю…</div>`;
+    if (!L) return h + `<div class="skw"><i class="skl"></i><i class="skl"></i><i class="skl s"></i></div>`;
     return h + (L.rows.length ? L.rows.map(x => `<div class="card"><div class="chav">${ic("user", 18)}</div><div class="grow"><div class="t1" style="font-size:15px">${esc(x.n1)}</div><div class="t2" style="margin:0;font-size:12px">Ставка ${fmt(x.stake)}</div></div>${btn("Сесть", "chgjoin", `data-i="${x.id}" data-s="${x.stake}"`, S.pts >= x.stake ? "" : "dis")}</div>`).join("") : `<div class="t2" style="text-align:center;margin:20px">Пока нет столиков. Создай первый и подожди соперника!</div>`);
   }
   if (cz.sub === 11) {
-    if (!C || !C.status) return `<div class="card col"><div class="t2" style="margin:0">Загрузка…</div></div>`;
+    if (!C || !C.status) return `<div class="card col"><div class="skw"><i class="skl"></i><i class="skl"></i><i class="skl s"></i></div></div>`;
     if (C.status === "wait") return `<div class="card col" style="align-items:center;text-align:center;gap:10px;padding:28px 16px"><div class="chav" style="width:56px;height:56px">${ic("users", 28)}</div><div class="t1" style="font-size:18px;margin:0">Ждём соперника</div><div class="t2" style="margin:0">Ставка ${fmt(C.bet)}. Когда кто-то сядет за столик, партия начнётся сама.</div><button class="btn o" data-a="chgcancel" style="justify-content:center">Закрыть столик</button></div>`;
     return chGame(C, C.done ? back : "");
   }
-  if (!C) return back + bal + `<div class="card col"><div class="t2" style="margin:0">Загрузка…</div></div>`;
+  if (!C) return back + bal + `<div class="card col"><div class="skw"><i class="skl"></i><i class="skl"></i><i class="skl s"></i></div></div>`;
   if (C.none) return back + bal + `<div class="card col"><div class="t1" style="display:flex;align-items:center;gap:8px;color:var(--pri)">${ic("chess", 20)} Шахматы · 5 минут</div><div class="t2" style="margin:0;font-size:12px;line-height:1.4">Играешь белыми против Арбуз-бота. На партию 5 минут, часы идут только на твоих ходах. Победа: ставка ×1.9. Ничья: ставка возвращается. Время вышло или сдался: ставка проигрывается. Пешка, дошедшая до края, становится ферзём. Партия сохраняется, можно выйти и вернуться.</div></div>${czBetUi()}<button class="btn" data-a="chstart" style="width:100%;height:54px;justify-content:center;font-size:17px;margin-top:10px">Начать партию</button>`;
   return chGame(C, back);
 }
@@ -2328,7 +2328,7 @@ let chr = null;
 async function chrLoad() { const r = await api("chg_top", {}); if (r && r.top) { chr = r; if (tab === 6 && cz.sub === 12) render(); } }
 function chrScreen() {
   const back = `<button class="btn t bkb" data-a="czgo" data-k="0">← Казино</button>`;
-  if (!chr) return back + `<div class="t2" style="text-align:center;margin:20px">Загружаю…</div>`;
+  if (!chr) return back + `<div class="skw"><i class="skl"></i><i class="skl"></i><i class="skl s"></i></div>`;
   const m = chr.me, g = m.w + m.l + m.d, wr = g ? Math.round(m.w / g * 100) : 0, bg = m.bw + m.bl + m.bd;
   const cell = (v, k, c) => `<div class="cell" style="padding:10px 2px"><b style="font-size:18px;color:${c || "var(--on)"}">${v}</b><span style="color:var(--onv);font-weight:500">${k}</span></div>`;
   let h = back + `<div class="card col chrme"><div style="display:flex;align-items:center;gap:12px"><div class="chav" style="width:56px;height:56px">${ic("chess", 28)}</div><div class="grow"><div class="t2" style="margin:0">Твой рейтинг</div><div style="font-size:34px;font-weight:700;color:var(--pri);line-height:1.1">${m.elo}</div></div><div style="text-align:right"><div class="t2" style="margin:0">Место</div><div class="t1" style="font-size:22px">${m.rank ? "#" + m.rank : "—"}</div></div></div>
@@ -2379,7 +2379,7 @@ async function ghLoad() {
 function ghCat() { const o = i => i >= 0 && (i + "") in S.inv && ITEMS[i] && !ITEMS[i][7]; if (o(+S.wand)) return +S.wand; if (o(+S.eq)) return +S.eq; const ks = Object.keys(S.inv).map(Number).filter(o).sort((a, b) => ITEMS[b][2] - ITEMS[a][2]); return ks.length ? ks[0] : -1; }
 const clk = s => { s = Math.max(0, Math.ceil(s)); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60); return h ? h + " ч " + m + " мин" : m + " мин"; };
 function ghPage() {
-  if (!GH) return `<div class="t2" style="text-align:center;margin:20px">Загружаю…</div>`;
+  if (!GH) return `<div class="skw"><i class="skl"></i><i class="skl"></i><i class="skl s"></i></div>`;
   const c = ghCat(), mi = GH.mine, left = mi ? mi.ret - ghNow() : 0;
   let h = `<div class="card col"><div class="t1" style="display:flex;align-items:center;gap:8px;color:var(--pri)">${ic("ghost", 20)} Кот-призрак</div><div class="t2" style="margin:0;font-size:12px;line-height:1.4">Отправь кота в гости к другому игроку. Через 6 часов он вернётся с подарком, а у хозяина останется табличка. Она исчезнет через неделю.</div></div>`;
   if (mi) h += `<div class="card col"><div style="display:flex;align-items:center;gap:12px">${ITEMS[mi.cat] ? catEl(mi.cat, 56, {}) : ic("ghost", 40)}<div class="grow"><div class="t1" style="font-size:16px">${left > 0 ? "Кот в пути" : "Кот вернулся!"}</div><div class="t2" style="margin:0;font-size:12px">${left > 0 ? "Гостит у «" + esc(mi.tname) + "». Вернётся через " + clk(left) : "Он был в гостях у «" + esc(mi.tname) + "»"}</div></div></div>${left > 0 ? bar(1 - left / 21600) : btn("Встретить кота", "ghclaim")}</div>`;
@@ -2441,7 +2441,7 @@ async function tdLoad() {
 }
 function tdPage() {
   const back = `<button class="btn t bkb" data-a="czgo" data-k="0">← Казино</button>`;
-  if (!TDS) return back + `<div class="t2" style="text-align:center;margin:20px">Загружаю…</div>`;
+  if (!TDS) return back + `<div class="skw"><i class="skl"></i><i class="skl"></i><i class="skl s"></i></div>`;
   const T = TDS, m = T.me, g = m.w + m.l + m.d, wr = g ? Math.round(m.w / g * 100) : 0, st = [1e3, 1e4, 1e5, 1e6, 1e7, 1e8];
   const cell = (v, k, c) => `<div class="cell" style="padding:10px 2px"><b style="font-size:18px;color:${c || "var(--on)"}">${v}</b><span style="color:var(--onv);font-weight:500">${k}</span></div>`;
   let h = back + `<div class="card col chrme"><div style="display:flex;align-items:center;gap:12px"><div class="chav" style="width:56px;height:56px">${ic("tap", 28)}</div><div class="grow"><div class="t2" style="margin:0">Твой рейтинг</div><div style="font-size:34px;font-weight:700;color:var(--pri);line-height:1.1">${m.elo}</div></div><div style="text-align:right"><div class="t2" style="margin:0">Место</div><div class="t1" style="font-size:22px">${m.rank ? "#" + m.rank : "—"}</div></div></div>
@@ -2480,7 +2480,7 @@ A.tdcancel = async function (e) { const r = await api("td_cancel", {id: +e.datas
 async function crLoad() { const r = await api("cr_state", {}); CRS = r || {error: "Нет связи"}; if (moreSub === 8) render(); }
 const crTime = s => s >= 3600 ? Math.ceil(s / 3600) + " ч" : Math.ceil(s / 60) + " мин";
 function crPage() {
-  if (!CRS) return `<div class="t2" style="text-align:center;margin:20px">Загружаю…</div>`;
+  if (!CRS) return `<div class="skw"><i class="skl"></i><i class="skl"></i><i class="skl s"></i></div>`;
   if (CRS.error) return `<div class="card col"><div class="t1" style="color:var(--pri)">${ic("shield", 20)} Рейды</div><div class="t2" style="margin:0">${esc(CRS.error)}. Вступи в клан в разделе «Сообщество», чтобы защищать его и рейдить другие.</div></div>`;
   const c = CRS.clan, mgr = c.role >= 1;
   let h = `<div class="card col"><div class="t1" style="display:flex;align-items:center;gap:8px;color:var(--pri)">${ic("shield", 20)} Клановые рейды</div><div class="t2" style="margin:0;font-size:12px;line-height:1.4">Дежурь, чтобы поднять защиту клана на 24 часа. Рейдь чужие кланы: если твой забег сильнее их защиты, клан забирает 5% их казны. После рейда клан получает щит на 4 часа.</div></div>`;

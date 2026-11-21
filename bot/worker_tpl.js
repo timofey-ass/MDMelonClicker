@@ -1,4 +1,5 @@
 const HTML = __HTML__;
+async function getHtml(env) { return HTML; }
 const ATLAS = "https://raw.githubusercontent.com/timofey-ass/MDMelonClicker/HEAD/mdcats2.jpg";
 const BOT_USER = "mdmelonbot";
 const N_ITEMS = 103;
@@ -1801,8 +1802,8 @@ export default {
     if (ctx && ctx.waitUntil && req.method === "POST" && new URL(req.url).pathname === "/api/poll") ctx.waitUntil(announce(env, new URL(req.url).origin).then(() => tgcastStep(env, new URL(req.url).origin)));
     const url = new URL(req.url), p = url.pathname;
     try {
-      if (p === "/" || p === "/index.html") return new Response(HTML, {headers: {"content-type": "text/html;charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff", "referrer-policy": "no-referrer"}});
-      if (p === "/demo") return new Response(HTML.replace("<head>", "<head>" + DEMO), {headers: {"content-type": "text/html;charset=utf-8", "cache-control": "no-store"}});
+      if (p === "/" || p === "/index.html") { const hx = await getHtml(env); let hh = 5381; for (let i = 0; i < hx.length; i += 97) hh = ((hh << 5) + hh + hx.charCodeAt(i)) | 0; const et = '"' + (hh >>> 0).toString(36) + hx.length.toString(36) + '"'; if (req.headers.get("if-none-match") === et) return new Response(null, {status: 304, headers: {"etag": et, "cache-control": "no-cache"}}); return new Response(hx, {headers: {"content-type": "text/html;charset=utf-8", "cache-control": "no-cache", "etag": et, "x-content-type-options": "nosniff", "referrer-policy": "no-referrer"}}); }
+      if (p === "/demo") return new Response((await getHtml(env)).replace("<head>", "<head>" + DEMO), {headers: {"content-type": "text/html;charset=utf-8", "cache-control": "no-store"}});
       if (p === "/atlas.jpg") {
         const r = env.ASSETS ? await env.ASSETS.fetch("https://assets.local/mdcats2.jpg") : await fetch(ATLAS, {cf: {cacheTtl: 86400, cacheEverything: true}});
         return new Response(r.body, {status: r.status, headers: {"content-type": "image/jpeg", "cache-control": "public,max-age=86400"}});

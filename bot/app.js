@@ -66,7 +66,7 @@ function checkAch() {
 }
 const pickR = ri => { const l = ITEMS.map((it, i) => it[2] === ri && !it[6] && !it[7] ? i : -1).filter(i => i >= 0); return l[Math.floor(Math.random() * l.length)]; };
 function rarR(w) { let r = Math.random() * w.reduce((a, b) => a + b, 0); for (let i = 0; i < w.length; i++) { r -= w[i]; if (r <= 0) return i; } return 0; }
-const SOLC = ["planet", "Солнечная система", 0, [1, 1, 1, 1, 1]], CS = ci => ci === 99 ? SOLC : CS(ci);
+const SOLC = ["planet", "Солнечная система", 0, [1, 1, 1, 1, 1]], CS = ci => ci === 99 ? SOLC : CASES[ci];
 function roll(ci) { if (ci === 4) { const q = Math.random(); if (q < .02) return 72; if (q < .07) return 63; ci = 2; } let w = CASES[ci][3].slice(); if (S.pity >= 14) w = [0, 0].concat(w.slice(2)); return pickR(rarR(w)); }
 function grant(idx, holo) { const k = idx + ""; const have = S.inv[k] || 0; S.inv[k] = have + 1; if (have === 0) { if (holo) { S.holo.push(idx); return "newholo"; } return "new"; } if (holo && !S.holo.includes(idx)) { S.holo.push(idx); return "holo"; } return "dup"; }
 const dupCount = r => Object.keys(S.inv).reduce((a, k) => a + (ITEMS[+k][2] === r ? Math.max(0, S.inv[k] - 1) : 0), 0);
@@ -100,9 +100,10 @@ function row(icon, t1, t2, rightHtml, click) { return `<div class="card ${click 
 
 // ---------- render
 function patchView(v, html) {
-  const t = document.createElement("div"); t.innerHTML = html;
+  const t = document.createElement("div"); t.innerHTML = html; const pk0 = v._pk;
   const a = Array.from(v.children), b = Array.from(t.children);
-  if (!a.length || a.length !== b.length || v._pk !== tab + ":" + (typeof moreSub !== "undefined" ? moreSub : 0) + ":" + (typeof sub !== "undefined" ? sub : 0) + ":" + (typeof cz !== "undefined" ? cz.sub : 0)) { v.innerHTML = html; }
+  const key = tab + ":" + (typeof moreSub !== "undefined" ? moreSub : 0) + ":" + (typeof sub !== "undefined" ? sub : 0) + ":" + (typeof cz !== "undefined" ? cz.sub : 0);
+  if (!a.length || a.length !== b.length || v._pk !== key) { v.innerHTML = html; if (pk0 && pk0 !== key && !matchMedia("(prefers-reduced-motion: reduce)").matches) { v.classList.remove("vin"); void v.offsetWidth; v.classList.add("vin"); } }
   else for (let i = 0; i < a.length; i++) if (a[i].outerHTML !== b[i].outerHTML) a[i].replaceWith(b[i]);
   v._pk = tab + ":" + (typeof moreSub !== "undefined" ? moreSub : 0) + ":" + (typeof sub !== "undefined" ? sub : 0) + ":" + (typeof cz !== "undefined" ? cz.sub : 0);
 }
@@ -190,13 +191,13 @@ function tTop() {
   let h = `<div class="seg"><button class="${sub === 0 ? "on" : ""}" data-a="sub" data-i="0">Лидеры</button><button class="${sub === 1 ? "on" : ""}" data-a="sub" data-i="1">Обмен котами</button></div>`;
   if (sub === 0) {
     h += `<div class="card"><div class="grow"><div class="t1" style="display:flex;align-items:center;gap:8px">${ic("medal", 18)}Таблица лидеров</div><div class="t2">Монеты на данный момент, траты в казино тоже считаются</div></div>${btn("Обновить", "reloadtop")}</div>`;
-    if (!lbData) return h + `<div class="t2" style="text-align:center;margin:30px">Загружаю…</div>`;
+    if (!lbData) return h + `<div class="skw"><i class="skl"></i><i class="skl"></i><i class="skl s"></i></div>`;
     h += `<div class="card" style="background:var(--sch)"><div class="t1 grow" style="color:var(--onprc)">Ты: ${esc(me.name)}${lbData.rank ? " · место " + lbData.rank : ""}</div></div>`;
     lbData.rows.forEach((r, i) => { h += `<div class="card ${r.id === me.id ? "p" : ""}"><div class="circ" style="width:38px;height:38px;font-size:15px;font-weight:700"><span style="color:${["#ffd54f", "#cfd8dc", "#d7966a"][i] || "inherit"}">${i + 1}</span></div><div class="grow"><div class="t1">${esc(r.name || "Игрок")}</div></div><div class="t1">${fmt(r.total)}</div></div>`; });
     return h;
   }
   h += `<div class="card"><div class="grow"><div class="t1" style="display:flex;align-items:center;gap:8px">${ic("swap", 18)}Обмен котами</div><div class="t2">Меняй дубликаты с другими игроками. Предложенный кот уходит в залог и возвращается при отмене.</div></div></div><div style="display:flex;gap:8px;margin-bottom:10px">${btn("Создать предложение", "newoffer")}${btn("Обновить", "reloadoff", "", "t")}</div>`;
-  if (!offData) return h + `<div class="t2" style="text-align:center;margin:30px">Загружаю…</div>`;
+  if (!offData) return h + `<div class="skw"><i class="skl"></i><i class="skl"></i><i class="skl s"></i></div>`;
   const mine = offData.filter(o => o.seller === me.id), oth = offData.filter(o => o.seller !== me.id);
   if (mine.length) { h += `<div class="sec">Мои предложения</div>`; mine.forEach(o => h += offerCard(o, true)); }
   h += `<div class="sec">Все предложения</div>`;

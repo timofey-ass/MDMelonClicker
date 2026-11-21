@@ -71,3 +71,13 @@ test("assetlinks.json привязывает приложение app.mdmeloncli
   const apk = readFileSync(join(root, "public", "MDMelonClicker.apk"));
   assert.equal(apk.slice(0, 2).toString(), "PK");
 });
+
+test("страница отдаётся с ETag и отвечает 304 на повторный запрос", async () => {
+  const w = await load();
+  const ASSETS = { fetch: async () => new Response("<html>GAME</html>", { status: 200 }) };
+  const env = { DB: makeDB(), BOT_TOKEN, ASSETS };
+  const r1 = await w.fetch(new Request("https://t.test/"), env, ctx), et = r1.headers.get("etag");
+  assert.ok(et); assert.equal(r1.headers.get("cache-control"), "no-cache");
+  const r2 = await w.fetch(new Request("https://t.test/", { headers: { "if-none-match": et } }), env, ctx);
+  assert.equal(r2.status, 304);
+});
