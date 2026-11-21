@@ -70,7 +70,7 @@ async function pollNow() {
   try {
     const r = await api("poll", {bc: lastBc});
     if (r && !r.error) {
-      EVT = r.evt || null; CLB = r.clb || 0; evtBar(); if (r.an !== undefined) isAn = !!r.an; applyChaos(r.chaos);
+      EVT = r.evt || null; CLB = r.clb || 0; evtBar(); if (r.an !== undefined) isAn = !!r.an; applyChaos(r.chaos); applyFloats(r.fl);
       maintA = r.maintA || null;       onlineN = r.online || 0; if (r.uc !== undefined && r.uc !== ucN) { try { await loadUcats(); } catch (e) {} } if (r.badges !== undefined) myBadges = r.badges;
       if (r.rev && r.rev > rev && !saving && !(r.grants && r.grants.length)) { dirty = true; save(true); }
       for (const g of r.grants || []) {
@@ -305,7 +305,7 @@ const admCard = (lite) => {
   if (!lite) h += logCard();
   if (!lite) h += `<div class="card col"><div class="t1" style="color:var(--pri)">Технический перерыв</div><div class="t2" style="font-size:12px;margin:0">Закрывает игру у всех игроков сразу, без перезагрузки страницы. Ты (админ) играть можешь. Когда выключишь, игра откроется сама.</div>${maintA ? `<div class="t2" style="color:var(--err,#ff5252);font-weight:700;margin:0">Сейчас игра закрыта: ${esc(maintA)}</div>` : ""}<textarea data-keep="mt" rows="2" placeholder="Что написать игрокам (необязательно)"></textarea>${btn(maintA ? "✅ Открыть игру" : "🛠 Закрыть на перерыв", "admmaint", 'style="width:100%;justify-content:center"', maintA ? "" : "o")}</div>`;
   if (!lite || lite === 2) h += `<div class="card col"><div class="t1" style="color:var(--pri)">Событие (множитель дохода)</div><input data-keep="evn" placeholder="Название, напр. Арбузная лихорадка"><input data-keep="evm" inputmode="decimal" placeholder="Множитель, напр. 2"><input data-keep="evt" inputmode="numeric" placeholder="Минут, напр. 60"><input data-keep="evc" inputmode="numeric" placeholder="ID кота-подарка (необязательно)">${btn("Запустить", "admev")}${btn("Остановить", "admevs")}</div>`;
-  h += wallCard() + chaosCard();
+  h += wallCard() + floatCard() + chaosCard();
   h += `<div class="card col"><div class="t1" style="color:var(--pri)">Сообщение всем в игре</div><textarea data-keep="bc" rows="2" placeholder="Текст сообщения"></textarea>${btn("Показать всем", "admbc")}</div>`;
   if (!lite) h += `<div class="card col"><div class="t1" style="color:var(--pri)">Промокоды</div><input data-keep="pcode" placeholder="Код, например NEWYEAR" style="text-transform:uppercase"><div class="buyrow4">${[["Монеты", "pts"], ["Самоцветы", "gems"], ["Кот", "cat"]].map(x => `<button class="chip ${admKind === x[1] ? "p" : ""}" style="border:0;font-family:inherit;justify-content:center" data-a="admkind" data-v="${x[1]}">${x[0]}</button>`).join("")}</div><input data-keep="pa" inputmode="decimal" placeholder="${admKind === "cat" ? "Номер кота 0–62" : "Сколько"}">${admKind === "cat" ? `<input data-keep="pb" inputmode="numeric" placeholder="Сколько котов (1)">` : ""}<input data-keep="pmx" inputmode="numeric" placeholder="Сколько человек смогут ввести (0 = без лимита)">${btn("Создать промокод", "admpromo")}`;
   if (promoList) if (!lite) h += promoList.map(p => `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid rgba(255,255,255,.06)"><div class="grow"><div class="t1" style="font-size:14px">${esc(p.code)}</div><div class="t2" style="font-size:11px">${rewTxt(p.kind, p.a, p.b)} · использовано ${p.used}${p.mx ? "/" + p.mx : ""}</div></div>${btn(ic("close", 16), "admpdel", `data-v="${esc(p.code)}"`, "t")}</div>`).join("");
@@ -2590,10 +2590,40 @@ const modCard = () => `<div class="card col"><div class="t1" style="color:var(--
 const CH_N = {disco: "Диско", flip: "Вверх ногами", gold: "Золотой век", tiny: "Мелкий шрифт", night: "Ночь"};
 let chaosCur = "";
 function applyChaos(c) {
-  const m = c && c.mode ? c.mode : ""; if (m === chaosCur) return; chaosCur = m;
-  for (const k in CH_N) document.body.classList.toggle("ch-" + k, k === m);
-  if (m) toast("Режим «" + CH_N[m] + "» от " + (c.by || "игрока"));
+  const l = Array.isArray(c) ? c : c && c.mode ? [c] : [], ms = l.map(x => x.mode).sort().join(","); if (ms === chaosCur) return;
+  const had = chaosCur.split(","); chaosCur = ms;
+  for (const k in CH_N) document.body.classList.toggle("ch-" + k, l.some(x => x.mode === k));
+  l.forEach(x => { if (!had.includes(x.mode)) toast("Режим «" + CH_N[x.mode] + "» от " + (x.by || "игрока")); });
 }
+// надписи в случайных местах + бредящий кот
+let flKey = "";
+function applyFloats(fl) {
+  let box = document.getElementById("flbox");
+  if (!isAn || !fl || !fl.length) { if (box) box.remove(); flKey = ""; return; }
+  const key = fl.map(x => x.ts).join(","); if (key === flKey && box) return; flKey = key;
+  if (!box) { box = document.createElement("div"); box.id = "flbox"; document.body.appendChild(box); }
+  box.innerHTML = fl.map(x => { const r = Math.abs(Math.sin(x.ts * 12.9898) * 43758.5453) % 1, r2 = Math.abs(Math.sin(x.ts * 78.233) * 12345.678) % 1, r3 = Math.abs(Math.sin(x.ts * 3.17) * 999.1) % 1; return `<div class="flt" style="left:${4 + r * 62}%;top:${8 + r2 * 80}%;transform:rotate(${Math.round(r3 * 30 - 15)}deg)">${esc(x.text)}</div>`; }).join("");
+}
+const BREDS = ["Арбуз это ягода, а я нет", "Вчера я съел звук", "Тапай левой пяткой", "Мяу в квадрате", "Где мои носки из будущего?", "Я видел как монеты спят", "Кто украл вторник?", "Банан подозрительный", "Шшш, стены слушают", "Ку-ка-ре-мяу", "Я налоговый инспектор луны", "Нажми на меня трижды и ничего не будет", "Корка важнее мякоти", "Бип-буп, я тостер"];
+let catT = 0;
+function catSay() {
+  let c = document.getElementById("brcat");
+  if (!isAn) { if (c) c.remove(); return; }
+  if (!c) { c = document.createElement("div"); c.id = "brcat"; c.innerHTML = `<div class="brb"></div><div class="bri"></div>`; c.querySelector(".bri").style.backgroundImage = `url(${MAS_URL})`; c.onclick = () => { c.classList.remove("on"); }; document.body.appendChild(c); }
+  c.style.left = (4 + Math.random() * 62) + "%"; c.style.top = (10 + Math.random() * 72) + "%";
+  c.querySelector(".brb").textContent = BREDS[Math.floor(Math.random() * BREDS.length)]; c.classList.add("on");
+  setTimeout(() => c.classList.remove("on"), 5000);
+}
+setInterval(() => { if (isAn && Math.random() < .6) catSay(); }, 9000);
+let floatList = null;
+function floatCard() {
+  return `<div class="card col"><div class="t1" style="color:var(--pri)">Надпись в игре</div><div class="t2" style="font-size:12px;margin:0">Появится у всех в случайном месте экрана. Всего 10 надписей, новые вытесняют старые. Раз в 15 секунд.</div><input data-keep="flt" maxlength="60" placeholder="Любой текст">${btn("Выпустить надпись", "admfloat", 'style="width:100%;justify-content:center"')}${isAdm ? btn("Стереть все надписи", "admfloat", 'data-all="1"', "o") : ""}</div>`;
+}
+A.admfloat = async function (e) {
+  if (e.dataset.all) { const r = await api("adm_float", {delall: 1}); toast("Стёрто"); return; }
+  const text = (KEEP.flt || "").trim(); if (!text) return toast("Напиши что-нибудь");
+  const r = await api("adm_float", {text}); if (r && r.error) return toast(r.error); KEEP.flt = ""; toast("Надпись пошла");
+};
 let wallList = null;
 async function loadWall() { const r = await api("adm_wall", {list: 1}); wallList = r && r.rows ? r.rows : []; if (tab === 5 && moreSub === 3) render(); }
 function wallCard() {
@@ -2623,3 +2653,4 @@ A.anarch = async function (e) {
   anSt = null; render();
 };
 A.anopen = function () { closeModal(); tab = 5; moreSub = 3; render(); };
+setInterval(() => document.body.classList.toggle("an-casino", !!isAn && tab === 6), 400);

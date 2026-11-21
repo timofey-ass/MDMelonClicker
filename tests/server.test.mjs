@@ -714,7 +714,7 @@ test("АНАРХИЯ: копия, права среднего модератор
   assert.ok((await call(B, "adm_bcast", { text: "хаос" })).ok);
   assert.match((await call(B, "adm_bcast", { text: "хаос" })).error, /Подожди/);
   assert.ok((await call(B, "adm_chaos", { mode: "disco" })).ok);
-  assert.equal((await call(A, "poll", {})).chaos.mode, "disco");
+  assert.equal((await call(A, "poll", {})).chaos[0].mode, "disco");
   assert.equal((await call(A, "adm_chaos", { mode: "off" })).error, "Только владелец");
   assert.ok((await call(A, "adm_wall", { text: "привет анархия" })).ok);
   assert.equal((await call(B, "adm_wall", { list: true })).rows[0].text, "привет анархия");
@@ -726,4 +726,18 @@ test("АНАРХИЯ: копия, права среднего модератор
   assert.equal(s1.pts, 500); assert.ok(s1.rs >= 1);
   assert.equal((await call(A, "auth", {})).an, false);
   assert.equal((await call(A, "adm_give", { kind: "pts", a: 1 })).error, "Нет доступа");
+});
+
+test("АНАРХИЯ: стак режимов, надписи (10), джекпот всегда", async () => {
+  const { call } = await makeEnv();
+  await call(A, "save", { rev: 0, state: baseState({ pts: 5000, total: 5000 }) });
+  await call(ADMIN, "adm_anarchy_on", {});
+  assert.ok((await call(ADMIN, "adm_chaos", { mode: "disco" })).ok);
+  assert.ok((await call(ADMIN, "adm_chaos", { mode: "night" })).ok);
+  assert.equal((await call(A, "poll", {})).chaos.length, 2);
+  for (let i = 0; i < 12; i++) await call(ADMIN, "adm_float", { text: "т" + i });
+  const fl = (await call(A, "poll", {})).fl; assert.equal(fl.length, 10); assert.equal(fl[9].text, "т11");
+  assert.equal((await call(A, "cz_info", {})).jp, 999e15);
+  const r = await call(A, "cz_roulette", { bet: 100, pick: "r" });
+  assert.equal(r.jackpot, true); assert.ok(r.payout > 9e17);
 });

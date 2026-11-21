@@ -152,7 +152,7 @@ async function auditLog(db, id, name, role, path, b, now) {
   } catch (e) {}
 }
 const MODP = new Set(["adm_del", "adm_ban", "adm_bn_del"]), SMODP = new Set(["adm_give", "adm_tgcast", "adm_tgstat", "adm_bcast"]);
-const MIDP = new Set(["adm_give", "adm_tgcast", "adm_tgstat", "adm_bcast", "adm_evt", "adm_wall", "adm_chaos"]), ADMIN_CATS = new Set([70, 71, 72]), CHAOS = {disco: "Диско", flip: "Вверх ногами", gold: "Золотой век", tiny: "Мелкий шрифт", night: "Ночь"};
+const MIDP = new Set(["adm_give", "adm_tgcast", "adm_tgstat", "adm_bcast", "adm_evt", "adm_wall", "adm_chaos", "adm_float"]), ADMIN_CATS = new Set([70, 71, 72]), CHAOS = {disco: "Диско", flip: "Вверх ногами", gold: "Золотой век", tiny: "Мелкий шрифт", night: "Ночь"};
 async function anarchyOn(db) { try { const r = await db.prepare("SELECT v FROM kv WHERE k='anarchy'").first(); return r ? JSON.parse(r.v) : null; } catch (e) { return null; } }
 const fin = (x, mx) => { x = Number(x); return Number.isFinite(x) ? Math.min(mx, Math.max(0, x)) : 0; };
 function clean(s, prev, dt, al, adm) {
@@ -549,16 +549,16 @@ async function api(path, req, env) {
     }
     return J({error: "?"});
   }
-  if (path === "cz_info") { const j = await jpGet(); return J({jp: j.pool, last: j.last}); }
+  if (path === "cz_info") { const j = await jpGet(); return J({jp: (await anarchyOn(db)) ? 999e15 : j.pool, last: j.last}); }
   if (path === "cz_roulette") {
     const bet = Math.floor(Number(b.bet)), pick = String(b.pick);
     if (!(bet >= 100) || !isFinite(bet) || !["r", "b", "g"].includes(pick)) return J({error: "Неверная ставка"});
     const contrib = bet * 0.05;
     await jpGet(); await db.prepare("UPDATE kv SET v=CAST(CAST(v AS REAL)+? AS TEXT) WHERE k='jp'").bind(contrib).run();
-    const sector = crnd(ZN), col = secColor(sector); let payout = 0, jackpot = false;
-    if (col === "j") { const j = await jpGet(); payout = bet + j.pool; jackpot = true; await db.prepare("UPDATE kv SET v=? WHERE k='jp'").bind(String(JP_SEED)).run(); await db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES ('jplast',?)").bind(JSON.stringify({n: name, a: j.pool, t: now})).run(); }
+    const anJ = !!(await anarchyOn(db)); let sector = crnd(ZN); if (anJ) { for (let i = 0; i < ZN; i++) if (secColor(i) === "j") { sector = i; break; } } const col = secColor(sector); let payout = 0, jackpot = false;
+    if (col === "j") { const j = await jpGet(); if (anJ) j.pool = 999e15; payout = bet + j.pool; jackpot = true; await db.prepare("UPDATE kv SET v=? WHERE k='jp'").bind(String(JP_SEED)).run(); await db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES ('jplast',?)").bind(JSON.stringify({n: name, a: j.pool, t: now})).run(); }
     else if (col === pick) payout = bet * (pick === "g" ? 24 : 2);
-    const j2 = await jpGet();
+    const j2 = await jpGet(); if (anJ) j2.pool = 999e15;
     await casinoPay(db, id, payout);
     return J({sector, payout, jackpot, jp: j2.pool, last: j2.last});
   }
@@ -1242,8 +1242,9 @@ async function api(path, req, env) {
     const uc = await ucSig(db);
     const evt = await evtGet(db, now);
     let clb = 0; try { const cb = await db.prepare("SELECT c.bank FROM clan_m m JOIN clans c ON c.id=m.cid WHERE m.uid=?").bind(id).first(); if (cb) clb = clLevel(cb.bank); } catch (e) {}
-    let chaos = null, an = null; try { an = await anarchyOn(db); const ch = await db.prepare("SELECT v FROM kv WHERE k='chaos'").first(); if (ch) { const c = JSON.parse(ch.v); if (c.until > now) chaos = c; } } catch (e) {}
-    return J({clb, evt, uc, an: !!an, chaos, grants: g, bc, maxbc, online, rev: u ? u.rev : 0, banned: !!(u && u.banned), badges: bd(id, u && u.badges), maintA: id === ADMIN ? maintT : undefined, maint: null});
+    let chaos = null, an = null; try { an = await anarchyOn(db); const ch = await db.prepare("SELECT v FROM kv WHERE k='chaos'").first(); if (ch) { const c = JSON.parse(ch.v); const l = (Array.isArray(c) ? c : [c]).filter(x => x.until > now); if (l.length) chaos = l; } } catch (e) {}
+    let fl = []; if (an) { try { const f = await db.prepare("SELECT v FROM kv WHERE k='floats'").first(); if (f) fl = JSON.parse(f.v).slice(-10); } catch (e) {} }
+    return J({clb, evt, uc, an: !!an, chaos, fl, grants: g, bc, maxbc, online, rev: u ? u.rev : 0, banned: !!(u && u.banned), badges: bd(id, u && u.badges), maintA: id === ADMIN ? maintT : undefined, maint: null});
   }
   if (path.startsWith("fr_")) {
     const t = Number(b.uid), isF = async (x, y) => !!(await db.prepare("SELECT 1 AS o FROM friends WHERE st=1 AND ((a=? AND b=?) OR (a=? AND b=?))").bind(x, y, y, x).first());
@@ -1713,6 +1714,7 @@ async function api(path, req, env) {
         else if (path === "adm_bcast") { const w = await cool("bc", 60); if (w) return J({error: "Подожди " + w + " с"}); }
         else if (path === "adm_evt") { const w = await cool("ev", 600); if (w) return J({error: "Событие можно раз в 10 минут, ещё " + Math.ceil(w / 60) + " мин"}); b.mult = Math.min(3, Math.max(1, Number(b.mult) || 2)); b.mins = Math.min(15, Math.max(1, Number(b.mins) || 10)); delete b.cat; }
         else if (path === "adm_chaos") { const w = await cool("ch", 180); if (w) return J({error: "Режим можно раз в 3 минуты, ещё " + w + " с"}); }
+        else if (path === "adm_float") { const w = await cool("fl", 15); if (w) return J({error: "Подожди " + w + " с"}); }
         else if (path === "adm_wall") { if (!b.list) { const w = await cool("wl", 20); if (w) return J({error: "Подожди " + w + " с"}); } }
       } else if (sm && SMODP.has(path)) {
         if (path === "adm_give") { const t = Number(b.target) || id; if (t !== id) return J({error: "Ведущий модератор выдаёт только себе"}); if (!["pts", "cat", "allcats"].includes(String(b.kind))) return J({error: "Недоступно"}); }
@@ -1735,10 +1737,19 @@ async function api(path, req, env) {
       const text = String(b.text || "").trim().replace(/\s+/g, " ").slice(0, 80); if (text.length < 2) return J({error: "Слишком коротко"});
       w.push({id, name, text, ts: Date.now()}); await db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES ('wall',?)").bind(JSON.stringify(w.slice(-40))).run(); return J({ok: true});
     }
+    if (path === "adm_float") {
+      let w = []; try { const r = await db.prepare("SELECT v FROM kv WHERE k='floats'").first(); w = r ? JSON.parse(r.v) : []; } catch (e) {}
+      if (b.delall && adm) { await db.prepare("DELETE FROM kv WHERE k='floats'").run(); return J({ok: true}); }
+      if (b.del && adm) { w = w.filter(x => x.ts !== Number(b.del)); await db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES ('floats',?)").bind(JSON.stringify(w)).run(); return J({ok: true}); }
+      const text = String(b.text || "").trim().replace(/\s+/g, " ").slice(0, 60); if (text.length < 1) return J({error: "Слишком коротко"});
+      w.push({name, text, ts: Date.now()}); await db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES ('floats',?)").bind(JSON.stringify(w.slice(-10))).run(); return J({ok: true});
+    }
     if (path === "adm_chaos") {
       const mode = String(b.mode); if (mode !== "off" && !CHAOS[mode]) return J({error: "Неизвестный режим"});
       if (mode === "off") { if (!adm) return J({error: "Только владелец"}); await db.prepare("DELETE FROM kv WHERE k='chaos'").run(); return J({ok: true}); }
-      await db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES ('chaos',?)").bind(JSON.stringify({mode, by: name, until: now + 120})).run();
+      let cl = []; try { const r = await db.prepare("SELECT v FROM kv WHERE k='chaos'").first(); if (r) { const c = JSON.parse(r.v); cl = (Array.isArray(c) ? c : [c]).filter(x => x.until > now && x.mode !== mode); } } catch (e) {}
+      cl.push({mode, by: name, until: now + 120});
+      await db.prepare("INSERT OR REPLACE INTO kv (k,v) VALUES ('chaos',?)").bind(JSON.stringify(cl)).run();
       await db.prepare("INSERT INTO bcast (text,ts) VALUES (?,?)").bind("Режим «" + CHAOS[mode] + "» на 2 минуты от " + name, now).run();
       return J({ok: true});
     }
@@ -1772,7 +1783,7 @@ async function api(path, req, env) {
       }
       await db.prepare("DELETE FROM grants").run(); await db.prepare("UPDATE offers SET status='cancelled' WHERE status='open'").run();
       try { await db.prepare("UPDATE clans SET bank=COALESCE((SELECT bank FROM anarchy_clb WHERE id=clans.id),0), wall=COALESCE((SELECT wall FROM anarchy_clb WHERE id=clans.id),0)").run(); } catch (e) {}
-      await db.prepare("DELETE FROM kv WHERE k IN ('anarchy','chaos','wall','evt')").run();
+      await db.prepare("DELETE FROM kv WHERE k IN ('anarchy','chaos','wall','evt','floats')").run();
       await db.prepare("INSERT INTO bcast (text,ts) VALUES (?,?)").bind("Игра восстановлена до Анархии", now).run();
       return J({ok: true, count: rows.length});
     }
@@ -1929,7 +1940,7 @@ async function tgcall(env, method, body) {
 async function secret(env) { return hex(await crypto.subtle.digest("SHA-256", enc("md:" + env.BOT_TOKEN))).slice(0, 32); }
 
 const DEMO = "<script>window.__DEV=1;(function(){var f=window.fetch;var seed={pts:1500000,run:1500000,total:3000000,gems:12,taps:1234,b:[12,8,5,3,1,0,0],inv:{\"3\":1,\"10\":1,\"22\":1,\"40\":1,\"64\":1,\"73\":1,\"80\":1,\"63\":1}};var rows=[[1,\"Мурка\",9.5e9],[2,\"Барсик\",4.2e8],[3,\"Демо\",3e6]].map(function(r){return{id:r[0],name:r[1],total:r[2],badges:\"\"}});var m={auth:{id:3,name:\"Демо\",state:seed,rev:1,admin:false,badges:\"\"},save:{ok:true,rev:1},poll:{grants:[],bc:null,maxbc:0,online:5,rev:1,badges:\"\"},top:{rows:rows,rank:3},offers:{offers:[]},chat:{rows:[{id:1,uid:1,name:\"Мурка\",text:\"Привет! Кто трейд?\",ts:0,badges:\"b\"},{id:2,uid:2,name:\"Барсик\",text:\"Выбил Королевского арбуза!\",ts:0,badges:\"\"}]}};window.fetch=function(u,o){u=String(u);if(u.indexOf(\"/api/\")===0){return Promise.resolve(new Response(JSON.stringify(m[u.slice(5)]||{}),{headers:{\"content-type\":\"application/json\"}}))}return f.apply(this,arguments)}})()</script>";
-const ANN = ["7.0.0", ["АНАРХИЯ: у каждого игрока появилась админка", "Выдача себе монет и котов (кроме админских), сообщения во все чаты бота", "Режимы для всех игроков, события, стена анархии", "Владелец: запуск анархии с копией прогресса, восстановление игры и сброс всем"], "АНАРХИЯ"];
+const ANN = ["7.0.0", ["АНАРХИЯ: у каждого игрока появилась админка", "Выдача себе монет и котов (кроме админских), сообщения во все чаты бота", "Режимы для всех игроков, события, стена анархии", "Владелец: запуск анархии с копией прогресса, восстановление игры и сброс всем", "Режимы стакаются, надписи в случайных местах (до 10), кот-арбуз несёт бред, золотое казино, джекпот 999 квадриллионов каждый спин"], "АНАРХИЯ"];
 let annBusy = false;
 async function announce(env, origin) {
   if (annBusy || !env.DB || !env.BOT_TOKEN) return;
