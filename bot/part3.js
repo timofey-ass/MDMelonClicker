@@ -2590,10 +2590,10 @@ const modCard = () => `<div class="card col"><div class="t1" style="color:var(--
 const CH_N = {disco: "Диско", flip: "Вверх ногами", gold: "Золотой век", tiny: "Мелкий шрифт", night: "Ночь", shake: "Землетрясение", invert: "Негатив", blur: "Туман", mirror: "Зеркало", spin: "Карусель"};
 let chaosCur = "";
 function applyChaos(c) {
-  const l = Array.isArray(c) ? c : c && c.mode ? [c] : [], ms = l.map(x => x.mode).sort().join(","); if (ms === chaosCur) return;
+  let l = Array.isArray(c) ? c.slice() : c && c.mode ? [c] : []; if (isAn) for (const m of ["shake", "gold"]) if (!l.some(x => x.mode === m)) l.push({mode: m, by: "Анархия"}); const ms = l.map(x => x.mode).sort().join(","); if (ms === chaosCur) return;
   const had = chaosCur.split(","); chaosCur = ms;
   for (const k in CH_N) document.body.classList.toggle("ch-" + k, l.some(x => x.mode === k));
-  l.forEach(x => { if (!had.includes(x.mode)) toast("Режим «" + CH_N[x.mode] + "» от " + (x.by || "игрока")); });
+  l.forEach(x => { if (!had.includes(x.mode) && x.by !== "Анархия") toast("Режим «" + CH_N[x.mode] + "» от " + (x.by || "игрока")); });
 }
 // надписи в случайных местах + бредящий кот
 let flKey = "";
@@ -2670,6 +2670,14 @@ setInterval(() => {
   if (!isAn) { if (g) g.remove(); return; }
   if (g) return;
   g = document.createElement("div"); g.id = "grain";
-  g.innerHTML = Array.from({length: 26}, (_, i) => `<i style="left:${(i * 37 + Math.random() * 20) % 100}%;width:${6 + Math.random() * 8}px;height:${6 + Math.random() * 8}px;animation-duration:${3 + Math.random() * 4}s;animation-delay:${-Math.random() * 7}s"></i>`).join("");
+  g.innerHTML = Array.from({length: 8}, (_, i) => `<i class="ilf" style="left:${(i * 13 + Math.random() * 9) % 96}%;animation-duration:${4 + Math.random() * 4}s;animation-delay:${-Math.random() * 8}s;background-image:url('${IL_SVG}')"></i>`).join("") + Array.from({length: 26}, (_, i) => `<i style="left:${(i * 37 + Math.random() * 20) % 100}%;width:${6 + Math.random() * 8}px;height:${6 + Math.random() * 8}px;animation-duration:${3 + Math.random() * 4}s;animation-delay:${-Math.random() * 7}s"></i>`).join("");
   document.body.appendChild(g);
 }, 1000);
+
+// флаг Израиля сверху (тап убирает) и падающие флаги
+const IL_SVG = "data:image/svg+xml," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 110"><rect width="160" height="110" fill="#fff"/><rect y="10" width="160" height="14" fill="#0038b8"/><rect y="86" width="160" height="14" fill="#0038b8"/><g fill="none" stroke="#0038b8" stroke-width="5"><path d="M80 30 L103 70 H57 Z"/><path d="M80 80 L57 40 H103 Z"/></g></svg>');
+let ilShown = false;
+setInterval(() => {
+  if (!isAn || ilShown) return; ilShown = true;
+  const f = document.createElement("div"); f.id = "ilflag"; f.style.backgroundImage = `url("${IL_SVG}")`; f.onclick = () => f.remove(); document.body.appendChild(f);
+}, 1500);

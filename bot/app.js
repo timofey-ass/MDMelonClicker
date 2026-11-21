@@ -50,10 +50,11 @@ function cpsRaw() { return BUILDS.reduce((a, b, i) => a + b[3] * S.b[i], 0) * fa
 function cps() { return nerf(cpsRaw()); }
 function tapValue() { if (("70" in S.inv) || ("71" in S.inv)) return 1; return nerf((1 + S.click + .02 * cpsRaw() / Math.max(factor(), 1)) * factor() * (1 + .1 * perk("tap"))) * (("70" in S.inv) ? 1e21 : 1) * (("72" in S.inv) ? 40 : 1) * reqMul() * 10; }
 const BGR = [1.15, 1.15, 1.15, 1.16, 1.17, 1.18, 1.18];
-function bCost(i, n) { const g = BGR[i] || 1.15; return BUILDS[i][2] * Math.pow(g, S.b[i]) * (Math.pow(g, n) - 1) / (g - 1); }
+const anCheap = () => { try { return !!isAn; } catch (e) { return false; } };
+function bCost(i, n) { if (anCheap()) return n; const g = BGR[i] || 1.15; return BUILDS[i][2] * Math.pow(g, S.b[i]) * (Math.pow(g, n) - 1) / (g - 1); }
 function bCount(i) { if (qty === 1) return 1; if (qty === 10) return 10; let n = 0; while (n < 500 && bCost(i, n + 1) <= S.pts) n++; return Math.max(1, n); }
 const UK = ["click", "crit", "fev"];
-const uCost = i => Math.floor(UPGR[i][3] * Math.pow(UPGR[i][4], S[UK[i]]));
+const uCost = i => anCheap() ? 1 : Math.floor(UPGR[i][3] * Math.pow(UPGR[i][4], S[UK[i]]));
 const freeEvery = () => FREE_EVERY * (1 - .15 * perk("case"));
 const pendingGems = () => { const x = S.run / 1e6; if (!(x >= 1)) return 0; const bn = (S.b || []).reduce((a, v) => a + (v || 0), 0); return Math.floor(Math.pow(x, 0.45) * (1 + Math.min(1, bn / 300))); };
 function level() { let xp = S.xp, lv = 1, need = 100; while (xp >= need && lv < 99) { xp -= need; lv++; need = 100 + 60 * lv; } return [lv, xp, need]; }
@@ -144,7 +145,7 @@ function tShop() {
   h += row("gem", "Перерождение", "Сброс прогресса за самоцветы. Каждые 25 самоцветов дают +10% ко всему навсегда", btn("", "prest", 'id="pres"', "o"));
   h += ascCard();
   h += `<div style="display:flex;align-items:center" class="sec"><span class="grow" style="margin:0">Самоцветы</span><span class="chip p">${ic("gem", 14)}${S.gems}</span></div>`;
-  for (const [k, icon, name, desc, base, cap] of PERKS) { const lv = perk(k), c = base * (lv + 1); h += row(icon, `${name} · ур. ${lv}/${cap}`, desc, lv >= cap ? `<span class="chip p">МАКС</span>` : btn(ic("gem", 14) + c, "perk", `data-i="${k}" ${cost(c, "gems")}`, "o")); }
+  for (const [k, icon, name, desc, base, cap] of PERKS) { const lv = perk(k), c = anCheap() ? 1 : base * (lv + 1); h += row(icon, `${name} · ур. ${lv}/${cap}`, desc, lv >= cap ? `<span class="chip p">МАКС</span>` : btn(ic("gem", 14) + c, "perk", `data-i="${k}" ${cost(c, "gems")}`, "o")); }
   h += `<div class="sec">Улучшения</div>`;
   UPGR.forEach((u, i) => { const c = uCost(i), mx = S[UK[i]] >= u[5]; h += row(u[0], `${u[1]}  ур. ${S[UK[i]]}`, u[2], mx ? `<span class="chip p">МАКС</span>` : btn(fmt(c), "upg", `data-i="${i}" ${cost(c)}`)); });
   h += `<div class="sec">Генераторы</div>`;
@@ -255,7 +256,7 @@ const A = {
   qty(e) { qty = +e.dataset.i; render(); },
   boost() { const c = Math.max(5000, cps() * 300); if (S.pts < c) return; if (now() < S.boost + 180) return toast("Ускорение ещё остывает"); S.pts -= c; S.boost = now() + 60; mark(); hap(); render(); },
   prest() { const g = pendingGems(); if (g < 1) return toast("Нужно накопить хотя бы 1 000 000 за забег"); if (!armed) { armed = true; toast("Нажми ещё раз: сброс за 💎 " + g); setTimeout(() => armed = false, 4000); return; } armed = false; Object.assign(S, {pts: 0, run: 0, click: 0, crit: 0, fev: 0, b: BUILDS.map(() => 0), boost: 0}); S.gems += g; S.gt += g; S.prest++; fever = frenzy = 0; toast("💎 +" + g + ". Бонус теперь +" + 10 * S.gt + "%"); hap("ok"); mark(); save(true); render(); },
-  perk(e) { const k = e.dataset.i, p = PERKS.find(x => x[0] === k), lv = perk(k), c = p[4] * (lv + 1); if (lv >= p[5]) return; if (S.gems < c) return toast("Не хватает самоцветов"); S.gems -= c; S.perks[k] = lv + 1; mark(); hap(); render(); },
+  perk(e) { const k = e.dataset.i, p = PERKS.find(x => x[0] === k), lv = perk(k), c = anCheap() ? 1 : p[4] * (lv + 1); if (lv >= p[5]) return; if (S.gems < c) return toast("Не хватает самоцветов"); S.gems -= c; S.perks[k] = lv + 1; mark(); hap(); render(); },
   upg(e) { const i = +e.dataset.i, c = uCost(i); if (S.pts < c || S[UK[i]] >= UPGR[i][5]) return; S.pts -= c; S[UK[i]]++; mark(); hap(); gsfx("buy"); render(); },
   bld(e) { const i = +e.dataset.i, n = bCount(i), c = bCost(i, n); if (S.pts < c) return; S.pts -= c; S.b[i] += n; checkAch(); mark(); hap(); gsfx("buy"); render(); },
   free() { openCase(0, 1); },
