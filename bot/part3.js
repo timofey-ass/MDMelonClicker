@@ -2721,3 +2721,44 @@ function segFx() {
     return o;
   };
 }
+
+// ===== M3: нижняя панель прячется при прокрутке, pull-to-refresh с морфинг-индикатором
+{
+  let ly = 0;
+  document.addEventListener("scroll", e => {
+    const t = e.target; if (!t || t.id !== "view") return;
+    const n = document.getElementById("nav"); if (!n || n.classList.contains("bk")) return;
+    const y = t.scrollTop, d = y - ly; ly = y;
+    if (y < 40 || d < -6) n.classList.remove("hd"); else if (d > 8 && y > 80) n.classList.add("hd");
+  }, {passive: true, capture: true});
+  const _rh = render; render = function () { _rh(); const n = document.getElementById("nav"); if (n && (_lastTab !== tab || n.classList.contains("bk"))) n.classList.remove("hd"); };
+}
+{
+  let ptr = null, y0 = 0, pull = 0, act = false, busy = false;
+  const mk = () => { if (ptr) return ptr; ptr = document.createElement("div"); ptr.id = "ptr"; ptr.innerHTML = '<div class="mli"></div>'; document.body.appendChild(ptr); return ptr; };
+  const view = () => document.getElementById("view");
+  document.addEventListener("touchstart", e => {
+    const v = view(); if (!v || busy || document.querySelector(".mdl,.tdov")) return;
+    if (!e.target.closest || !e.target.closest("#view") || v.scrollTop > 0 || tab === 0) { act = false; return; }
+    act = true; y0 = e.touches[0].clientY; pull = 0;
+  }, {passive: true});
+  document.addEventListener("touchmove", e => {
+    if (!act) return; const dy = e.touches[0].clientY - y0, v = view();
+    if (dy <= 0 || v.scrollTop > 0) { if (pull) { pull = 0; v.style.transform = ""; } return; }
+    pull = Math.min(130, dy * .5); const p = mk(); p.classList.remove("go"); v.classList.add("pull"); v.classList.remove("rel");
+    v.style.transform = `translateY(${pull * .6}px)`;
+    const k = Math.min(1, pull / 70); p.style.opacity = k; p.style.transform = `translateY(${pull * .6 - 40}px) scale(${.4 + .6 * k}) rotate(${pull * 4}deg)`;
+  }, {passive: true});
+  document.addEventListener("touchend", async () => {
+    if (!act) return; act = false; const v = view(), p = ptr; if (!v || !p) return;
+    v.classList.remove("pull"); v.classList.add("rel"); p.classList.add("go");
+    if (pull >= 70) {
+      busy = true; v.style.transform = "translateY(46px)"; p.style.transform = "translateY(10px) scale(1)"; p.style.opacity = 1; p.classList.add("spin");
+      const t0 = Date.now(); try { await pollNow(); } catch (e) {}
+      const w = 1000 - (Date.now() - t0); if (w > 0) await new Promise(r => setTimeout(r, w));
+      p.classList.remove("spin"); busy = false; toast("Обновлено");
+    }
+    v.style.transform = ""; p.style.opacity = 0; p.style.transform = "translateY(-70px) scale(.4)"; pull = 0;
+    setTimeout(() => v.classList.remove("rel"), 700);
+  }, {passive: true});
+}
