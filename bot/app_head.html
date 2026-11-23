@@ -860,3 +860,23 @@ input:focus,textarea:focus,select:focus{outline:none;box-shadow:inset 0 0 0 2px 
 .circ{border-radius:var(--sh-xxl)}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-delay:0s!important;transition-duration:.01ms!important}}
 </style>
+<style id="expressive2">
+/* ===== EXPRESSIVE 2: вообще всё ===== */
+html{scroll-behavior:smooth}
+button,[data-a]{transition:transform var(--d-fast) var(--sp-fast),border-radius var(--d-fast) var(--sp-fast),background-color .2s var(--ef),box-shadow .2s var(--ef),opacity .2s var(--ef),filter .15s}
+button:not(.nbk):not(.rpick):active,.av:active,.pks:active{transform:scale(.94)}
+.btn,.mbtn,.chip,.seg button,.card.click,#nav .pill,.av{position:relative;overflow:hidden}
+.rip{position:absolute;border-radius:50%;background:currentColor;opacity:.22;pointer-events:none;transform:scale(0);animation:xrip .55s var(--ef) forwards;z-index:0}
+@keyframes xrip{to{transform:scale(1);opacity:0}}
+@media (hover:hover){.btn:hover{filter:brightness(1.08)}.card.click:hover,.mbtn:hover{filter:brightness(1.12)}.chip:hover{filter:brightness(1.15)}}
+button:focus-visible,[data-a]:focus-visible{outline:2px solid var(--pri);outline-offset:2px}
+.mdc>*{animation:xin var(--d-def) var(--sp-def) both}
+.mdc>*:nth-child(2){animation-delay:.04s}.mdc>*:nth-child(3){animation-delay:.08s}.mdc>*:nth-child(4){animation-delay:.12s}.mdc>*:nth-child(5){animation-delay:.16s}.mdc>*:nth-child(n+6){animation-delay:.2s}
+#top h1,#top .chip{animation:xin var(--d-def) var(--sp-def) both}
+#top .chip{animation-delay:.06s}
+.card,.gmc,.mbtn,.chip,.bar,.sw,.seg,.sec{transition-property:transform,border-radius,background-color,box-shadow,opacity,filter,width,height}
+#view{overscroll-behavior-y:contain}
+@keyframes xpop{0%{transform:scale(1)}40%{transform:scale(1.12)}100%{transform:scale(1)}}
+.pop{animation:xpop var(--d-fast) var(--sp-fast)}
+.skl,.skw{animation-timing-function:var(--ef)}
+</style>

@@ -2681,3 +2681,12 @@ setInterval(() => {
   if (!isAn || ilShown) return; ilShown = true;
   const f = document.createElement("div"); f.id = "ilflag"; f.style.backgroundImage = `url("${IL_SVG}")`; f.onclick = () => f.remove(); document.body.appendChild(f);
 }, 1500);
+
+// ripple (state layer) для всех нажимаемых элементов
+document.addEventListener("pointerdown", e => {
+  const t = e.target.closest && e.target.closest(".btn,.mbtn,.chip,.seg button,.card.click,#nav button,.av"); if (!t) return;
+  const host = t.matches("#nav button") ? t.querySelector(".pill") : t; if (!host || host.classList.contains("dis")) return;
+  const r = host.getBoundingClientRect(), s = Math.max(r.width, r.height) * 2, d = document.createElement("span"); d.className = "rip";
+  d.style.cssText = `width:${s}px;height:${s}px;left:${e.clientX - r.left - s / 2}px;top:${e.clientY - r.top - s / 2}px`;
+  host.appendChild(d); setTimeout(() => d.remove(), 600);
+}, {passive: true});
