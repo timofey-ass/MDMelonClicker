@@ -459,7 +459,7 @@ let _lastTab = -1, _lastSub = -1;
 const _render4 = render;
 render = function () {
   _render4();
-  if (tab !== _lastTab) { _lastTab = tab; _lastSub = sub; const v = $("#view"); if (v) { v.classList.remove("vin"); void v.offsetWidth; v.classList.add("vin"); clearTimeout(v._vt); v._vt = setTimeout(() => v.classList.remove("vin"), 650); } }
+  if (tab !== _lastTab) { const dir = tab >= _lastTab ? 1 : -1; _lastTab = tab; _lastSub = sub; const v = $("#view"); if (v) { v.style.setProperty("--dx", dir * 28 + "px"); v.classList.remove("vin"); void v.offsetWidth; v.classList.add("vin"); clearTimeout(v._vt); v._vt = setTimeout(() => v.classList.remove("vin"), 650); } }
 };
 // эффекты на события
 const _toast0 = toast;
@@ -2690,3 +2690,34 @@ document.addEventListener("pointerdown", e => {
   d.style.cssText = `width:${s}px;height:${s}px;left:${e.clientX - r.left - s / 2}px;top:${e.clientY - r.top - s / 2}px`;
   host.appendChild(d); setTimeout(() => d.remove(), 600);
 }, {passive: true});
+
+// ===== M3: верхняя панель, скользящие сегменты, шторка, контейнер-трансформация
+document.addEventListener("scroll", e => { const t = e.target; if (t && t.id === "view") { const on = t.scrollTop > 10, a = document.getElementById("app"); if (a && a.classList.contains("scr") !== on) a.classList.toggle("scr", on); } }, {passive: true, capture: true});
+const segPos = {};
+function segFx() {
+  document.querySelectorAll("#view .seg").forEach((sg, k) => {
+    const on = sg.querySelector("button.on"); if (!on) return;
+    let i = sg.querySelector(".segi"); if (!i) { i = document.createElement("i"); i.className = "segi"; sg.prepend(i); }
+    sg.classList.add("x");
+    const l = on.offsetLeft, w = on.offsetWidth, key = k + ":" + sg.children.length, old = segPos[key];
+    if (old && (old.l !== l || old.w !== w)) { i.style.left = old.l + "px"; i.style.width = old.w + "px"; void i.offsetWidth; i.classList.add("go"); }
+    i.style.left = l + "px"; i.style.width = w + "px"; segPos[key] = {l, w};
+  });
+}
+{ const _rs = render; render = function () { _rs(); try { segFx(); } catch (e) {} }; }
+{
+  const _m = modal;
+  modal = function (html) {
+    const o = _m(html), s = o && o.querySelector(".mdc"); if (!s) return o;
+    try { const r = s.getBoundingClientRect(); s.style.transformOrigin = Math.max(0, Math.min(r.width, lastPt.x - r.left)) + "px " + Math.max(0, lastPt.y - r.top) + "px"; } catch (e) {}
+    let y0 = 0, dy = 0, drag = false;
+    s.addEventListener("touchstart", ev => { if (s.scrollTop > 0) return; y0 = ev.touches[0].clientY; dy = 0; drag = true; }, {passive: true});
+    s.addEventListener("touchmove", ev => { if (!drag) return; dy = ev.touches[0].clientY - y0; if (dy > 6 && s.scrollTop <= 0) { s.classList.add("drag"); s.style.transform = `translateY(${dy * .9}px)`; } else if (dy < 0) { dy = 0; s.style.transform = ""; } }, {passive: true});
+    s.addEventListener("touchend", () => {
+      if (!drag) return; drag = false; if (!s.classList.contains("drag")) return;
+      s.classList.remove("drag"); s.classList.add("rel");
+      if (dy > 110) { s.style.transform = "translateY(110%)"; setTimeout(closeModal, 220); } else s.style.transform = "";
+    });
+    return o;
+  };
+}

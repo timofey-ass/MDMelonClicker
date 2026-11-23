@@ -901,3 +901,29 @@ button:focus-visible,[data-a]:focus-visible{outline:2px solid var(--pri);outline
 #ltip{animation:xin var(--d-slow) var(--sp-def) .3s both;max-width:300px;font-size:12.5px;line-height:1.4;padding:8px 14px;border-radius:16px;background:rgba(255,255,255,.05)}
 @media (prefers-reduced-motion:reduce){#load .lw::before,#load .lw::after{animation:none}}
 </style>
+<style id="m3all">
+/* ===== M3: общие паттерны движения ===== */
+/* shared axis X: экраны слева/справа по направлению вкладок */
+@keyframes xinx{from{opacity:0;transform:translateX(var(--dx,24px)) scale(.97)}to{opacity:1;transform:none}}
+#view.vin>*{animation-name:xinx!important}
+/* сворачивающаяся верхняя панель */
+#top{transition:padding var(--d-def) var(--sp-def),background-color .25s var(--ef),box-shadow .25s var(--ef)}
+#top h1{transition:font-size var(--d-def) var(--sp-def),letter-spacing .3s}
+#app.scr #top{padding-top:6px;padding-bottom:4px;background:color-mix(in srgb,var(--sc) 88%,transparent);box-shadow:0 4px 16px rgba(0,0,0,.35)}
+#app.scr #top h1{font-size:18px}
+/* скользящий индикатор сегментов */
+.seg{position:relative}
+.seg button{position:relative;z-index:1}
+.segi{position:absolute;top:4px;bottom:4px;border-radius:20px;background:linear-gradient(135deg,#7a4519,var(--prc));box-shadow:0 2px 8px rgba(0,0,0,.3);z-index:0;pointer-events:none}
+.segi.go{transition:left var(--d-def) var(--sp-def),width var(--d-def) var(--sp-def)}
+.seg.x button.on{background:none!important;box-shadow:none!important}
+/* волнистые индикаторы прогресса (M3 Expressive) */
+.bar:not([style*="height"]){height:14px;background:linear-gradient(transparent 5px,rgba(255,255,255,.1) 5px 9px,transparent 9px);box-shadow:none;overflow:hidden}
+.bar:not([style*="height"])>i{-webkit-mask:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2224%22%20height%3D%2214%22%3E%3Cpath%20d%3D%22M0%207%20Q6%201.5%2012%207%20T24%207%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%225%22%20stroke-linecap%3D%22round%22/%3E%3C/svg%3E") 0 0/24px 14px repeat-x;mask:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2224%22%20height%3D%2214%22%3E%3Cpath%20d%3D%22M0%207%20Q6%201.5%2012%207%20T24%207%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%225%22%20stroke-linecap%3D%22round%22/%3E%3C/svg%3E") 0 0/24px 14px repeat-x;animation:xwave 1.1s linear infinite;border-radius:0}
+@keyframes xwave{to{-webkit-mask-position:24px 0;mask-position:24px 0}}
+/* шторка тянется пальцем */
+.mdc{touch-action:pan-y}
+.mdc.drag{transition:none!important;animation:none!important}
+.mdc.rel{transition:transform var(--d-def) var(--sp-def)!important}
+@media (prefers-reduced-motion:reduce){.bar>i{animation:none!important}}
+</style>
