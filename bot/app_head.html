@@ -810,3 +810,53 @@ input,select,textarea{border-radius:14px}
 @media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 ::selection{background:rgba(255,183,124,.3)}
 </style>
+<style id="expressive">
+/* ===== M3 EXPRESSIVE: пружинная моторика ===== */
+:root{--sp-fast:linear(0,0.0268,0.0938,0.1846,0.2866,0.3912,0.4923,0.5858,0.6696,0.7427,0.8048,0.8564,0.8983,0.9317,0.9576,0.9771,0.9915,1.0015,1.0082,1.0123,1.0144,1.0152,1.0149,1.0139,1.0126,1.0111,1.0095,1.0079,1.0065,1.0052,1.0041,1.0031,1.0023,1.0016,1.0011,1.0007,1.0004,1.0002,1,0.9999,1);--sp-def:linear(0,0.0265,0.0935,0.1853,0.2895,0.3972,0.5019,0.5993,0.6867,0.763,0.8276,0.881,0.9239,0.9574,0.9827,1.0011,1.0138,1.0219,1.0264,1.0282,1.0281,1.0266,1.0242,1.0213,1.0183,1.0153,1.0124,1.0098,1.0075,1.0056,1.0039,1.0026,1.0015,1.0007,1.0001,0.9997,0.9995,0.9993,0.9992,0.9992,1);--sp-slow:linear(0,0.0224,0.0795,0.1582,0.2488,0.3438,0.4379,0.5273,0.6097,0.6837,0.7488,0.8048,0.8521,0.8914,0.9234,0.949,0.969,0.9842,0.9956,1.0036,1.0091,1.0126,1.0144,1.0151,1.015,1.0142,1.0131,1.0118,1.0103,1.0089,1.0075,1.0062,1.0051,1.0041,1.0032,1.0024,1.0018,1.0013,1.0009,1.0005,1);--d-fast:.42s;--d-def:.62s;--d-slow:.9s;--ef:cubic-bezier(.2,0,0,1);--ef-in:cubic-bezier(.3,0,.8,.15);
+--sh-xs:4px;--sh-s:8px;--sh-m:12px;--sh-l:16px;--sh-xl:28px;--sh-xxl:48px}
+/* вход экранов: пружина со ступенчатой задержкой */
+@keyframes xin{from{opacity:0;transform:translateY(22px) scale(.96)}to{opacity:1;transform:none}}
+#view.vin>*{animation:xin var(--d-def) var(--sp-def) both!important}
+#view.vin>*:nth-child(1){animation-delay:0s!important}
+#view.vin>*:nth-child(2){animation-delay:.04s!important}#view.vin>*:nth-child(3){animation-delay:.08s!important}#view.vin>*:nth-child(4){animation-delay:.12s!important}#view.vin>*:nth-child(5){animation-delay:.16s!important}#view.vin>*:nth-child(6){animation-delay:.2s!important}#view.vin>*:nth-child(7){animation-delay:.24s!important}#view.vin>*:nth-child(8){animation-delay:.28s!important}
+#view.vin>*:nth-child(n+9){animation:none!important}
+/* нажатия: пружина + морфинг формы (M3 Expressive) */
+.btn,.card.click,.mbtn,.chip,.seg button,#nav button .pill,.gml>*,.gmc{transition:transform var(--d-fast) var(--sp-fast),border-radius var(--d-fast) var(--sp-fast),background-color .2s var(--ef),box-shadow .2s var(--ef),filter .15s!important}
+.btn:active{transform:scale(.93)!important;border-radius:14px!important}
+.btn.t:active,.btn.o:active{border-radius:12px!important}
+.card.click:active,.mbtn:active,.gml>*:active,.gmc:active{transform:scale(.965)!important;border-radius:16px!important}
+.chip:active{transform:scale(.92)}
+.seg button:active{transform:scale(.94)}
+#nav button:active .pill{transform:scale(.88)!important}
+/* навигация: индикатор раскрывается пружиной */
+#nav button{transition:flex var(--d-def) var(--sp-def),color .2s var(--ef)!important}
+#nav button.on .pill{animation:xpill var(--d-def) var(--sp-def) both}
+@keyframes xpill{from{transform:scaleX(.6);opacity:.4}to{transform:none;opacity:1}}
+#nav button .ic{transition:transform var(--d-fast) var(--sp-fast)}#nav button.on .ic{transform:scale(1.08)}
+/* модальные окна и шторки */
+@keyframes xsheet{from{transform:translateY(60%) scale(.96);opacity:.4}to{transform:none;opacity:1}}
+.mdc{animation:xsheet var(--d-def) var(--sp-def) both!important}
+@keyframes xscrim{from{opacity:0}to{opacity:1}}
+.mdl{animation:xscrim .25s var(--ef) both!important}
+/* снэкбар */
+#toast{transition:opacity .2s var(--ef),transform var(--d-def) var(--sp-def)!important;transform:translateX(-50%) translateY(24px) scale(.9)}
+#toast.s{transform:translateX(-50%) translateY(-6px) scale(1)!important}
+/* переключатель и прогресс */
+.sw{transition:background-color .25s var(--ef),box-shadow .25s var(--ef)!important}
+.sw::after{transition:left var(--d-fast) var(--sp-fast),top var(--d-fast) var(--sp-fast),width var(--d-fast) var(--sp-fast),height var(--d-fast) var(--sp-fast),background-color .2s var(--ef)!important}
+.sw:active::after{width:28px!important}
+.bar>i{transition:width var(--d-slow) var(--sp-slow)!important}
+/* списки: появление при прокрутке без JS */
+@supports (animation-timeline:view()){
+  #view:not(.vin)>.card{animation:xscroll linear both;animation-timeline:view();animation-range:entry 0% entry 35%}
+  @keyframes xscroll{from{opacity:.35;transform:translateY(18px) scale(.97)}to{opacity:1;transform:none}}
+}
+/* формы по шкале M3 */
+.card{border-radius:var(--sh-xl)}.card.col{border-radius:var(--sh-xl)}
+.chip{border-radius:var(--sh-m)}
+input,select,textarea{border-radius:var(--sh-m);transition:box-shadow .2s var(--ef),background-color .2s var(--ef)}
+input:focus,textarea:focus,select:focus{outline:none;box-shadow:inset 0 0 0 2px var(--pri)}
+.mdc{border-radius:var(--sh-xl) var(--sh-xl) 0 0}
+.circ{border-radius:var(--sh-xxl)}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-delay:0s!important;transition-duration:.01ms!important}}
+</style>
